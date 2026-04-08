@@ -8,6 +8,10 @@
   import StockBadge from '$lib/components/StockBadge.svelte';
   import ParticleBurst from '$lib/components/ParticleBurst.svelte';
   import { revealOnScroll } from '$lib/animations/reveal';
+  import { cart } from '$lib/stores/cart';
+  import { openCart } from '$lib/stores/cartDrawer';
+  import { createCart, updateCart } from '$lib/api';
+  import type { CartItem } from '$lib/stores/cart';
 
   export let data: PageData;
 
@@ -38,7 +42,7 @@
     return formatPrice(product.price_usd, 'usd');
   }
 
-  function handleAddToCart(e: MouseEvent) {
+  async function handleAddToCart(e: MouseEvent) {
     if (!selectedSize) {
       cartError = 'Please select a size.';
       // Shake the size selector
@@ -54,8 +58,59 @@
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     burst.trigger(rect.left + rect.width / 2, rect.top);
 
-    // Placeholder: cart store will be wired in Plan 5
-    console.log('Add to cart:', product.id, selectedSize);
+    // Build CartItem from product data
+    const variantId = `${product.id}_${selectedSize}`;
+    const unitPrice = product.currency === 'gbp' ? product.price_gbp : product.price_usd;
+    const newItem: CartItem = {
+      variantId,
+      productId: product.id,
+      title: `${product.name} / ${selectedSize}`,
+      quantity: 1,
+      unitPrice,
+      currency: product.currency ?? 'usd',
+    };
+
+    try {
+      let cartId = $cart.id;
+
+      if (!cartId) {
+        // No cart yet — create one via API
+        const existingToken = typeof localStorage !== 'undefined'
+          ? localStorage.getItem('iv_cart_token')
+          : null;
+
+        if (existingToken) {
+          cartId = existingToken;
+        } else {
+          const newCart = await createCart();
+          cartId = newCart.id;
+          localStorage.setItem('iv_cart_token', cartId);
+        }
+      }
+
+      // Merge new item into current items list
+      const currentItems = $cart.items;
+      const existing = currentItems.find((i) => i.variantId === variantId);
+      const updatedItems = existing
+        ? currentItems.map((i) =>
+            i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i
+          )
+        : [...currentItems, newItem];
+
+      // Push to API
+      await updateCart(cartId, updatedItems.map((i) => ({
+        variantId: i.variantId,
+        quantity: i.quantity,
+      })));
+
+      // Update local store
+      cart.setCart(cartId, updatedItems);
+
+      // Open drawer
+      openCart();
+    } catch (err) {
+      cartError = err instanceof Error ? err.message : 'Failed to add to cart.';
+    }
   }
 
   onMount(() => {

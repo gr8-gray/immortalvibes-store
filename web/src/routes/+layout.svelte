@@ -6,6 +6,7 @@
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import MagneticCursor from '$lib/components/MagneticCursor.svelte';
+  import CartDrawer from '$lib/components/CartDrawer.svelte';
 
   let { children } = $props();
 
@@ -39,6 +40,9 @@
 
 <!-- Footer -->
 <Footer />
+
+<!-- Cart drawer — slides in from right -->
+<CartDrawer />
 
 <style>
   :global(body) {
