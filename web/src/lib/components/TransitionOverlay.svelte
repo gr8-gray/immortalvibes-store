@@ -39,12 +39,10 @@
 
   // T1
   let t1Flash: HTMLElement;
-  let t1Blast: HTMLElement;
-  let t1Shockwave: HTMLElement;
-  let t1StreakEls: HTMLElement[] = [];
-  let t1Atmo: HTMLElement;
-  let t1Stars: HTMLCanvasElement;
-  let t1City: HTMLElement;
+  let t1Horizon: HTMLElement;
+  let t1StreakCanvas: HTMLCanvasElement;
+  let t1AtmoLeft: HTMLElement;
+  let t1AtmoRight: HTMLElement;
 
   // T2
   let t2StreakEls: HTMLElement[] = [];
@@ -65,7 +63,7 @@
   let t4City: HTMLElement;
 
   function getT1Els(): T1Elements {
-    return { overlay: overlayEl, flash: t1Flash, blast: t1Blast, shockwave: t1Shockwave, streaks: t1StreakEls, atmo: t1Atmo, starsCanvas: t1Stars, cityline: t1City };
+    return { overlay: overlayEl, flash: t1Flash, horizon: t1Horizon, streakCanvas: t1StreakCanvas, atmoLeft: t1AtmoLeft, atmoRight: t1AtmoRight };
   }
   function getT2Els(): T2Elements {
     return { overlay: overlayEl, streaks: t2StreakEls, flash: t2Flash, mist: t2Mist };
@@ -88,25 +86,10 @@
   <!-- T1 LAYERS -->
   <div class="t1-layer">
     <div bind:this={t1Flash} class="t1-flash"></div>
-    <div bind:this={t1Blast} class="t1-blast"></div>
-    <div bind:this={t1Shockwave} class="t1-shockwave"></div>
-    <div bind:this={t1Atmo} class="t1-atmo"></div>
-    {#each Array(10) as _, i}
-      <div bind:this={t1StreakEls[i]} class="t1-streak" style="left: {8 + i * 9}%;"></div>
-    {/each}
-    <canvas bind:this={t1Stars} class="t1-stars"></canvas>
-    <div bind:this={t1City} class="t1-city">
-      <svg viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0,120 L0,80 L40,80 L40,50 L60,50 L60,30 L80,30 L80,50 L100,50 L100,60 L140,60 L140,40 L160,40 L160,20 L180,20 L180,40 L200,40 L200,55 L240,55 L240,35 L260,35 L260,55 L280,55 L280,70 L320,70 L320,45 L350,45 L350,25 L370,25 L370,45 L390,45 L390,60 L420,60 L420,80 L460,80 L460,55 L490,55 L490,70 L520,70 L520,45 L540,45 L540,30 L560,30 L560,45 L580,45 L580,65 L620,65 L620,80 L660,80 L660,50 L680,50 L680,35 L700,35 L700,50 L720,50 L720,60 L760,60 L760,40 L800,40 L800,55 L840,55 L840,75 L880,75 L880,50 L910,50 L910,30 L930,30 L930,50 L960,50 L960,65 L1000,65 L1000,80 L1040,80 L1040,55 L1070,55 L1070,40 L1090,40 L1090,55 L1110,55 L1110,70 L1150,70 L1150,45 L1180,45 L1180,60 L1220,60 L1220,80 L1260,80 L1260,50 L1290,50 L1290,35 L1310,35 L1310,50 L1340,50 L1340,65 L1380,65 L1380,80 L1440,80 L1440,120 Z" fill="rgba(20,40,80,0.8)"/>
-        <rect x="62" y="35" width="4" height="3" fill="rgba(240,237,230,0.2)"/>
-        <rect x="162" y="25" width="4" height="3" fill="rgba(240,237,230,0.15)"/>
-        <rect x="352" y="30" width="4" height="3" fill="rgba(240,237,230,0.2)"/>
-        <rect x="543" y="35" width="4" height="3" fill="rgba(240,237,230,0.15)"/>
-        <rect x="912" y="35" width="4" height="3" fill="rgba(240,237,230,0.2)"/>
-        <rect x="1072" y="45" width="4" height="3" fill="rgba(240,237,230,0.15)"/>
-        <rect x="1292" y="40" width="4" height="3" fill="rgba(240,237,230,0.2)"/>
-      </svg>
-    </div>
+    <div bind:this={t1Horizon} class="t1-horizon"></div>
+    <canvas bind:this={t1StreakCanvas} class="t1-streak-canvas"></canvas>
+    <div bind:this={t1AtmoLeft} class="t1-atmo-left"></div>
+    <div bind:this={t1AtmoRight} class="t1-atmo-right"></div>
   </div>
 
   <!-- T2 LAYERS -->
@@ -164,50 +147,68 @@
 
   /* T1 */
   .t1-layer { position: absolute; inset: 0; }
-  .t1-flash { position: absolute; inset: 0; background: #ffffff; opacity: 0; }
-  .t1-blast {
+
+  .t1-flash {
     position: absolute;
-    bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 60vw; height: 50vh;
-    background: radial-gradient(ellipse at center bottom, rgba(255,255,200,0.95) 0%, rgba(255,200,50,0.85) 20%, rgba(255,100,20,0.7) 45%, rgba(200,50,0,0.35) 65%, transparent 80%);
-    border-radius: 50% 50% 0 0;
-    opacity: 0;
-    transform-origin: 50% 100%;
-  }
-  .t1-shockwave {
-    position: absolute;
-    bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 40vw; height: 20vw;
-    border: 1px solid rgba(255,180,50,0.4);
-    border-radius: 50%;
-    opacity: 0;
-    transform-origin: 50% 100%;
-  }
-  .t1-atmo {
-    position: absolute;
-    bottom: 0; left: 0; right: 0; height: 35vh;
-    background: linear-gradient(to top, rgba(79,195,247,0.4), transparent);
+    inset: 0;
+    background: #F0EDE6;
     opacity: 0;
   }
-  .t1-streak {
+
+  .t1-horizon {
     position: absolute;
-    top: 0; bottom: 0;
-    width: 1px;
-    background: linear-gradient(to top, transparent 0%, rgba(180,220,255,0.6) 30%, rgba(220,235,255,0.8) 60%, transparent 100%);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 14vh;
+    background: radial-gradient(
+      ellipse at 50% 100%,
+      rgba(8, 22, 65, 0.7) 0%,
+      rgba(15, 45, 110, 0.5) 20%,
+      rgba(25, 65, 140, 0.3) 40%,
+      rgba(79, 195, 247, 0.08) 75%,
+      transparent 90%
+    );
+    border-radius: 50% 50% 0 0 / 80% 80% 0 0;
+  }
+
+  .t1-streak-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     opacity: 0;
-    transform-origin: 50% 100%;
   }
-  .t1-stars {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    opacity: 0; display: none;
-  }
-  .t1-city {
+
+  .t1-atmo-left {
     position: absolute;
-    bottom: 0; left: 0; right: 0; height: 120px;
-    overflow: hidden;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 18vw;
+    background: linear-gradient(
+      to right,
+      rgba(79, 195, 247, 0.45) 0%,
+      rgba(30, 100, 200, 0.25) 40%,
+      transparent 100%
+    );
+    opacity: 0;
   }
-  .t1-city svg { width: 100%; height: 100%; }
+
+  .t1-atmo-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 18vw;
+    background: linear-gradient(
+      to left,
+      rgba(79, 195, 247, 0.45) 0%,
+      rgba(30, 100, 200, 0.25) 40%,
+      transparent 100%
+    );
+    opacity: 0;
+  }
 
   /* T2 */
   .t2-layer { position: absolute; inset: 0; }
