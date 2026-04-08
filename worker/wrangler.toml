@@ -1,0 +1,29 @@
+name = "immortalvibes-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+GO_API_URL = "https://immortalvibes-api.fly.dev"
+
+[[kv_namespaces]]
+binding = "CARTS"
+id = "3657548d8b844fc382fb86522d89470d"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "90465a50f8ac49b381e7ecf6b2a567a2"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "2340c492e3b241d98e737ca7ac8019b5"
+
+# R2 bucket added in Task 7
+# [[r2_buckets]]
+# binding = "IMAGES"
+# bucket_name = "immortalvibes-images"
+
+# Custom domain routes added in Task 9
+# routes = [
+#   { pattern = "theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" },
+#   { pattern = "www.theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" }
+# ]
