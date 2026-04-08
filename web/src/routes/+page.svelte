@@ -29,10 +29,10 @@
   });
 
   const missions = [
-    { number: '001', label: 'Low Earth Orbit', product: 'Warped Reality Beanie', slug: 'warped-reality-beanie' },
-    { number: '002', label: 'Lunar Surface',   product: 'Vanguard Trucker Hat',  slug: 'vanguard-trucker-hat' },
-    { number: '003', label: 'Stellar Nursery', product: 'Racerback Tanktop',     slug: 'racerback-tanktop' },
-    { number: '004', label: 'Deep Space',      product: 'Next Drop',             slug: null },
+    { number: '001', label: 'Low Earth Orbit', product: 'Warped Reality Beanie', slug: 'warped-reality-beanie', image: '/photos/blue-beanie.jpeg' },
+    { number: '002', label: 'Lunar Surface',   product: 'Vanguard Trucker Hat',  slug: 'vanguard-trucker-hat', image: null },
+    { number: '003', label: 'Stellar Nursery', product: 'Racerback Tanktop',     slug: 'racerback-tanktop',    image: '/photos/tank-front.png' },
+    { number: '004', label: 'Deep Space',      product: 'Next Drop',             slug: null,                   image: null },
   ] as const;
 </script>
 
@@ -86,6 +86,9 @@
           <p class="teaser-label">{mission.label}</p>
           <p class="teaser-product">{mission.product}</p>
         </div>
+        {#if mission.image}
+          <img class="teaser-image" src={mission.image} alt={mission.product} />
+        {/if}
         {#if mission.slug}
           <a href="/shop/{mission.slug}" class="teaser-link" data-magnetic>
             VIEW →
@@ -260,6 +263,22 @@
 
   .teaser-link:hover {
     color: #F0EDE6;
+  }
+
+  .teaser-image {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+    transform: rotate(-6deg);
+    flex-shrink: 0;
+    opacity: 0.85;
+    transition: opacity 0.2s, transform 0.3s;
+  }
+
+  .teaser-item:hover .teaser-image {
+    opacity: 1;
+    transform: rotate(-3deg) scale(1.06);
   }
 
   .teaser-tbd {

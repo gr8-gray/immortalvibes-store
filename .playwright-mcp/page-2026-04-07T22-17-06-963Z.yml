@@ -1,0 +1,551 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - list [ref=e5]:
+          - listitem [ref=e6]:
+            - button "Explore" [ref=e7] [cursor=pointer]:
+              - generic [ref=e8]: Explore
+              - img [ref=e9]
+        - search [ref=e15]:
+          - generic [ref=e16]: Search
+          - searchbox "Search" [ref=e17]
+      - link "NASA Logo" [ref=e19] [cursor=pointer]:
+        - /url: https://www.nasa.gov/
+        - img "NASA Logo" [ref=e20]
+      - navigation "Primary navigation" [ref=e21]:
+        - list [ref=e23]:
+          - listitem [ref=e24]:
+            - button "News & Events" [ref=e25]:
+              - generic [ref=e26]: News & Events
+              - img [ref=e27]
+          - listitem [ref=e30]:
+            - button "Multimedia" [ref=e31]:
+              - generic [ref=e32]: Multimedia
+              - img [ref=e33]
+          - listitem [ref=e36]:
+            - link "NASA+ Live" [ref=e37] [cursor=pointer]:
+              - /url: https://plus.nasa.gov/
+  - text: Live
+  - main [ref=e38]:
+    - article [ref=e39]:
+      - generic [ref=e40]:
+        - navigation [ref=e46]:
+          - list [ref=e47]:
+            - listitem [ref=e48]:
+              - button "Artemis" [ref=e49] [cursor=pointer]:
+                - generic [ref=e50]: Artemis
+                - img [ref=e51]
+            - listitem [ref=e53]:
+              - link "Artemis I" [ref=e54] [cursor=pointer]:
+                - /url: https://www.nasa.gov/mission/artemis-i/
+            - listitem [ref=e55]:
+              - button "Artemis II" [ref=e56] [cursor=pointer]:
+                - generic [ref=e57]: Artemis II
+                - img [ref=e58]
+            - listitem [ref=e60]:
+              - button "Artemis III" [ref=e61] [cursor=pointer]:
+                - generic [ref=e62]: Artemis III
+                - img [ref=e63]
+            - listitem [ref=e65]:
+              - button "Artemis IV" [ref=e66] [cursor=pointer]:
+                - generic [ref=e67]: Artemis IV
+                - img [ref=e68]
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - heading "Artemis" [level=1] [ref=e74]
+            - paragraph [ref=e75]: Under Artemis, NASA will send astronauts on increasingly difficult missions to explore more of the Moon for scientific discovery, economic benefits, and to build on our foundation for the first crewed missions to Mars.
+          - generic [ref=e77]:
+            - heading "Quick Facts" [level=3] [ref=e78]
+            - generic [ref=e79]:
+              - generic [ref=e82]:
+                - generic [ref=e84]:
+                  - paragraph [ref=e86]: NASA, in coordination with the U.S. Department of State and seven other initial signatory nations, established the Artemis Accords in 2020.
+                  - figure [ref=e89]
+                - tabpanel [ref=e90]:
+                  - generic [ref=e91]:
+                    - paragraph [ref=e93]: Artemis II, the first crewed Artemis flight, marks a key step toward long‑term return to the Moon and future missions to Mars.
+                    - figure [ref=e96]
+                - tabpanel [ref=e97]:
+                  - generic [ref=e98]:
+                    - paragraph [ref=e100]: During Artemis I, the SLS (Space Launch System), roared into the night sky and sent the Orion spacecraft on a 1.4-million-mile journey beyond the Moon and back.
+                    - figure [ref=e103]
+                - tabpanel [ref=e104]:
+                  - generic [ref=e105]:
+                    - paragraph [ref=e107]: NASA, in coordination with the U.S. Department of State and seven other initial signatory nations, established the Artemis Accords in 2020.
+                    - figure [ref=e110]
+                - generic [ref=e112]:
+                  - paragraph [ref=e114]: Artemis II, the first crewed Artemis flight, marks a key step toward long‑term return to the Moon and future missions to Mars.
+                  - figure [ref=e117]
+                - generic [ref=e119]:
+                  - paragraph [ref=e121]: During Artemis I, the SLS (Space Launch System), roared into the night sky and sent the Orion spacecraft on a 1.4-million-mile journey beyond the Moon and back.
+                  - figure [ref=e124]
+                - generic [ref=e126]:
+                  - paragraph [ref=e128]: NASA, in coordination with the U.S. Department of State and seven other initial signatory nations, established the Artemis Accords in 2020.
+                  - figure [ref=e131]
+              - generic [ref=e132]:
+                - img [ref=e134]
+                - img [ref=e137]
+        - generic [ref=e139]:
+          - generic [ref=e144]:
+            - heading "Strengthening Artemis" [level=2] [ref=e145]
+            - paragraph [ref=e146]: To achieve the national goal of landing American astronauts on the surface of the Moon and maintaining U.S. superiority in exploration and discovery, NASA is increasing its cadence of missions under the Artemis program, standardizing the SLS (Space Launch System) rocket configuration, and adding a new mission.
+            - link "Artemis Missions about Strengthening Artemis" [ref=e147] [cursor=pointer]:
+              - /url: https://www.nasa.gov/directorates/esdmd/nasa-strengthens-artemis-adds-mission-refines-overall-architecture/
+              - generic [ref=e148]:
+                - text: Artemis Missions
+                - generic [ref=e149]: about Strengthening Artemis
+              - img [ref=e150]
+          - figure [ref=e155]
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - heading "Artemis News" [level=2] [ref=e160]
+            - link "More Artemis News" [ref=e162] [cursor=pointer]:
+              - /url: https://www.nasa.gov/artemis-ii-news-and-updates/
+              - generic [ref=e163]: More Artemis News
+              - img [ref=e164]
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - link "News Release 3 Min Read NASA’s Artemis II Crew Beams Official Moon Flyby Photos to Earth" [ref=e170] [cursor=pointer]:
+                - /url: https://www.nasa.gov/news-release/nasas-artemis-ii-crew-beams-official-moon-flyby-photos-to-earth/
+                - generic [ref=e171]:
+                  - generic [ref=e172]:
+                    - generic [ref=e173]:
+                      - img [ref=e174]
+                      - generic [ref=e178]: News Release
+                    - generic [ref=e179]:
+                      - generic [ref=e180]: 3 Min Read
+                      - paragraph [ref=e181]: NASA’s Artemis II Crew Beams Official Moon Flyby Photos to Earth
+                  - figure [ref=e182]
+              - generic [ref=e183]:
+                - link "Image Article 1 Min Read Earthset" [ref=e184] [cursor=pointer]:
+                  - /url: https://www.nasa.gov/image-article/earthset/
+                  - generic [ref=e185]:
+                    - generic [ref=e186]:
+                      - generic [ref=e187]:
+                        - img [ref=e188]
+                        - generic [ref=e193]: Image Article
+                      - generic [ref=e194]:
+                        - generic [ref=e195]: 1 Min Read
+                        - paragraph [ref=e196]: Earthset
+                    - figure [ref=e197]
+                - generic [ref=e198]:
+                  - link "News Release 2 Min Read NASA to Host Media Call with Artemis II Crew on Way Home from Moon" [ref=e199] [cursor=pointer]:
+                    - /url: https://www.nasa.gov/news-release/nasa-to-host-media-call-with-artemis-ii-crew-on-way-home-from-moon/
+                    - generic [ref=e200]:
+                      - generic [ref=e201]:
+                        - generic [ref=e202]:
+                          - img [ref=e203]
+                          - generic [ref=e207]: News Release
+                        - generic [ref=e208]:
+                          - generic [ref=e209]: 2 Min Read
+                          - paragraph [ref=e210]: NASA to Host Media Call with Artemis II Crew on Way Home from Moon
+                      - figure [ref=e211]
+                  - 'link "Blog 2 Min Read Artemis II Flight Day 7: Crew Makes Long‑Distance Call, Begins Return" [ref=e212] [cursor=pointer]':
+                    - /url: https://www.nasa.gov/blogs/missions/2026/04/07/artemis-ii-flight-day-7-crew-makes-long%e2%80%91distance-call-begins-return/
+                    - generic [ref=e213]:
+                      - generic [ref=e214]:
+                        - generic [ref=e215]:
+                          - img [ref=e216]
+                          - generic [ref=e219]: Blog
+                        - generic [ref=e220]:
+                          - generic [ref=e221]: 2 Min Read
+                          - paragraph [ref=e222]: "Artemis II Flight Day 7: Crew Makes Long‑Distance Call, Begins Return"
+                      - figure [ref=e223]
+            - generic [ref=e224]:
+              - 'link "3 Min Read Artemis II Flight Day 6: Crew Wraps Historic Lunar Flyby Blog" [ref=e225] [cursor=pointer]':
+                - /url: https://www.nasa.gov/blogs/missions/2026/04/06/artemis-ii-flight-day-6-crew-wraps-historic-lunar-flyby/
+                - generic [ref=e226]:
+                  - figure [ref=e229]
+                  - generic [ref=e230]:
+                    - generic [ref=e231]: 3 Min Read
+                    - paragraph [ref=e232]: "Artemis II Flight Day 6: Crew Wraps Historic Lunar Flyby"
+                    - generic [ref=e233]:
+                      - img [ref=e234]
+                      - generic [ref=e237]: Blog
+              - link "5 Min Read NASA’s Artemis II Crew Eclipses Record for Farthest Human Spaceflight News Release" [ref=e238] [cursor=pointer]:
+                - /url: https://www.nasa.gov/news-release/nasas-artemis-ii-crew-eclipses-record-for-farthest-human-spaceflight/
+                - generic [ref=e239]:
+                  - figure [ref=e242]
+                  - generic [ref=e243]:
+                    - generic [ref=e244]: 5 Min Read
+                    - paragraph [ref=e245]: NASA’s Artemis II Crew Eclipses Record for Farthest Human Spaceflight
+                    - generic [ref=e246]:
+                      - img [ref=e247]
+                      - generic [ref=e251]: News Release
+              - 'link "7 Min Read Artemis II Flight Day 6: Lunar Flyby Updates Blog" [ref=e252] [cursor=pointer]':
+                - /url: https://www.nasa.gov/blogs/missions/2026/04/06/artemis-ii-flight-day-6-lunar-flyby-updates/
+                - generic [ref=e253]:
+                  - figure [ref=e256]
+                  - generic [ref=e257]:
+                    - generic [ref=e258]: 7 Min Read
+                    - paragraph [ref=e259]: "Artemis II Flight Day 6: Lunar Flyby Updates"
+                    - generic [ref=e260]:
+                      - img [ref=e261]
+                      - generic [ref=e264]: Blog
+              - link "1 Min Read The Near Side of the Moon Image Article" [ref=e265] [cursor=pointer]:
+                - /url: https://www.nasa.gov/image-article/the-near-side-of-the-moon/
+                - generic [ref=e266]:
+                  - figure [ref=e269]
+                  - generic [ref=e270]:
+                    - generic [ref=e271]: 1 Min Read
+                    - paragraph [ref=e272]: The Near Side of the Moon
+                    - generic [ref=e273]:
+                      - img [ref=e274]
+                      - generic [ref=e279]: Image Article
+        - generic [ref=e281]:
+          - tablist [ref=e282]:
+            - tab "Lunar Exploration" [selected] [ref=e283]
+            - tab "Lunar Discovery" [ref=e284]
+            - tab "Moon to Mars" [ref=e285]
+          - tabpanel "Lunar Exploration" [ref=e287]:
+            - generic [ref=e288]:
+              - heading "Lunar Exploration" [level=2] [ref=e290]
+              - paragraph [ref=e291]: The Moon is a 4.5-billion-year-old time capsule.
+              - paragraph [ref=e292]: We’re going back to the Moon for scientific discovery, economic benefits, and inspiration for a new generation of explorers. While maintaining American leadership in exploration, we will build a global alliance and explore deep space for the benefit of all.
+              - link "Earth's Moon" [ref=e294] [cursor=pointer]:
+                - /url: https://science.nasa.gov/moon/
+                - generic [ref=e295]: Earth's Moon
+                - img [ref=e296]
+            - generic [ref=e302]:
+              - figure [ref=e303]
+              - generic [ref=e304]:
+                - generic [ref=e305]: On flight day six of the Artemis I mission, the Orion spacecraft used its optical navigation camera to snap this black-and-white photo of the Moon.
+                - generic [ref=e306]: NASA
+        - generic [ref=e308]:
+          - heading "Missions" [level=2] [ref=e310]
+          - generic [ref=e312]:
+            - figure [ref=e316]:
+              - img "Artemis I Patch" [ref=e317]
+            - generic [ref=e319]:
+              - heading "Artemis I" [level=2] [ref=e321]
+              - paragraph [ref=e323]: Launched in 2022, Artemis I was the first in a series of increasingly complex missions that will enable human exploration at the Moon and future missions to Mars.
+            - link [ref=e325] [cursor=pointer]:
+              - /url: https://www.nasa.gov/mission/artemis-i/
+              - img [ref=e326]
+          - generic [ref=e330]:
+            - figure [ref=e334]
+            - generic [ref=e336]:
+              - heading "Artemis II" [level=2] [ref=e338]
+              - paragraph [ref=e340]: The first crewed Artemis flight marks a key step toward long‑term return to the Moon and future missions to Mars.
+            - link [ref=e342] [cursor=pointer]:
+              - /url: https://www.nasa.gov/mission/artemis-ii/
+              - img [ref=e343]
+          - generic [ref=e347]:
+            - figure [ref=e351]:
+              - img "Artemis Logo - red rocket trail, blue arch that represents earth, ARTEMIS text, gray half sphere on a white background" [ref=e352]
+            - generic [ref=e354]:
+              - heading "Artemis III" [level=2] [ref=e356]
+              - paragraph [ref=e358]: Scheduled for 2027, this new demonstration mission in low Earth orbit will test one or both commercial landers from SpaceX and Blue Origin, respectively.
+            - link [ref=e360] [cursor=pointer]:
+              - /url: https://www.nasa.gov/mission/artemis-iii/
+              - img [ref=e361]
+          - generic [ref=e365]:
+            - figure [ref=e369]:
+              - img "Artemis Logo - red rocket trail, blue arch that represents earth, ARTEMIS text, gray half sphere on a white background" [ref=e370]
+            - generic [ref=e372]:
+              - heading "Artemis IV" [level=2] [ref=e374]
+              - paragraph [ref=e376]: NASA continues to target early 2028 for the first Artemis lunar landing, a date that has remained unchanged since mid‑2025. After reaching lunar orbit, the crew will transfer from Orion to a commercial lunar lander for their descent to the Moon’s surface.
+            - link [ref=e378] [cursor=pointer]:
+              - /url: https://www.nasa.gov/mission/artemis-iv/
+              - img [ref=e379]
+          - generic [ref=e383]:
+            - figure [ref=e387]:
+              - img "Artemis Logo - red rocket trail, blue arch that represents earth, ARTEMIS text, gray half sphere on a white background" [ref=e388]
+            - generic [ref=e390]:
+              - heading "Artemis V" [level=2] [ref=e392]
+              - paragraph [ref=e394]: Using the standard SLS (Space Launch System) rocket configuration, NASA expects to launch this lunar surface mission by late 2028, with subsequent missions planned roughly once per year.
+            - link [ref=e396] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/artemis/
+              - img [ref=e397]
+        - figure [ref=e403]:
+          - link "Explanation of what the different parts of the NASA Artemis logo mean" [ref=e404] [cursor=pointer]:
+            - /url: https://www.nasa.gov/wp-content/uploads/2023/06/artemis-logo-explanation.png
+            - img "Explanation of what the different parts of the NASA Artemis logo mean" [ref=e405]
+        - generic [ref=e407]:
+          - generic [ref=e412]:
+            - heading "Our Artemis II Crew" [level=2] [ref=e413]
+            - paragraph [ref=e414]: Meet the astronauts who will venture around the Moon on Artemis II, the first crewed flight aboard NASA’s human deep space capabilities, paving the way for future lunar surface missions.
+            - link "Forging New Frontiers about Our Artemis II Crew" [ref=e415] [cursor=pointer]:
+              - /url: https://www.nasa.gov/feature/our-artemis-crew/
+              - generic [ref=e416]:
+                - text: Forging New Frontiers
+                - generic [ref=e417]: about Our Artemis II Crew
+              - img [ref=e418]
+          - figure [ref=e423]
+        - generic [ref=e425]:
+          - heading "Media Resources" [level=2] [ref=e427]
+          - generic [ref=e429]:
+            - figure [ref=e433]
+            - heading "Artemis II Press Kit" [level=2] [ref=e437]
+            - link [ref=e439] [cursor=pointer]:
+              - /url: https://www.nasa.gov/artemis-ii-press-kit/
+              - img [ref=e440]
+          - generic [ref=e444]:
+            - figure [ref=e448]
+            - heading "Artemis II Reference Guide" [level=2] [ref=e452]
+            - link [ref=e454] [cursor=pointer]:
+              - /url: https://www.nasa.gov/wp-content/uploads/2026/01/a2-reference-guide-012825.pdf?emrc=69d58253ba060
+              - img [ref=e455]
+          - generic [ref=e459]:
+            - figure [ref=e463]
+            - heading "Artemis II Resources for Media" [level=2] [ref=e467]
+            - link [ref=e469] [cursor=pointer]:
+              - /url: https://www.nasa.gov/artemis-ii-media-resources/
+              - img [ref=e470]
+        - generic [ref=e474]:
+          - tablist [ref=e475]:
+            - tab "Spacecraft" [selected] [ref=e476]
+            - tab "Rocket" [ref=e477]
+            - tab "Ground Systems" [ref=e478]
+            - tab "Lunar Landers" [ref=e479]
+            - tab "Spacesuits & Rovers" [ref=e480]
+            - tab "Lunar Delivery" [ref=e481]
+            - tab "Gateway" [ref=e482]
+            - tab "Artemis Partners" [ref=e483]
+          - tabpanel "Spacecraft" [ref=e485]:
+            - generic [ref=e486]:
+              - heading "Carrying Humanity to the Moon" [level=2] [ref=e488]
+              - paragraph [ref=e489]: Orion is developed to be capable of sending astronauts to the Moon and is a crucial step toward eventually sending crews on to Mars.
+              - paragraph [ref=e490]: The Orion spacecraft will serve as the exploration vehicle that will carry and sustain the crew on Artemis missions to the Moon and return them safely to Earth. Orion will launch on NASA’s new heavy-lift rocket, the SLS (Space Launch System).
+              - link "About Orion" [ref=e492] [cursor=pointer]:
+                - /url: https://www.nasa.gov/humans-in-space/orion-spacecraft/
+                - generic [ref=e493]: About Orion
+                - img [ref=e494]
+            - generic [ref=e500]:
+              - figure [ref=e501]
+              - generic [ref=e502]:
+                - generic [ref=e503]: The full Moon is seen behind NASA’s Artemis II SLS (Space Launch System) rocket and Orion spacecraft, standing atop a mobile launcher at Launch Complex 39B, Sunday, Feb. 1, 2026, at Kennedy Space Center in Florida.
+                - generic [ref=e504]: NASA/John Kraus
+        - generic [ref=e505]:
+          - generic [ref=e510]:
+            - heading "The Artemis Accords" [level=2] [ref=e511]
+            - paragraph [ref=e512]: NASA, in coordination with the U.S. Department of State and seven other initial signatory nations, established the Artemis Accords in 2020. Now with more than 60 signatories, the Artemis Accords provide a common set of principles to enhance the governance of the civil exploration and use of outer space as many countries and private companies conduct missions and operations around the Moon.
+            - link "Civil Space Exploration about The Artemis Accords" [ref=e513] [cursor=pointer]:
+              - /url: https://www.nasa.gov/artemis-accords/
+              - generic [ref=e514]:
+                - text: Civil Space Exploration
+                - generic [ref=e515]: about The Artemis Accords
+              - img [ref=e516]
+          - figure [ref=e521]
+        - generic [ref=e524]:
+          - generic [ref=e525]:
+            - heading "Learning Resources" [level=3] [ref=e527]
+            - heading "Join Artemis" [level=2] [ref=e529]
+            - paragraph [ref=e531]: Find your place in space.
+            - paragraph [ref=e532]: Make, launch, compete and learn. Find your favorite way to be part of the Artemis mission.
+            - link "Start Exploring about Join Artemis" [ref=e533] [cursor=pointer]:
+              - /url: https://www.nasa.gov/learning-resources/join-artemis/
+              - generic [ref=e534]:
+                - text: Start Exploring
+                - generic [ref=e535]: about Join Artemis
+              - img [ref=e536]
+          - figure [ref=e542]:
+            - img "Two students man a rover built for the Human Exploration Rover Challenge (HERC)." [ref=e543]
+        - generic [ref=e546]:
+          - generic [ref=e548]:
+            - generic [ref=e549]: Featured Video
+            - heading "To the Moon" [level=3] [ref=e550]
+            - paragraph [ref=e551]: The Artemis II mission, slated to launch in 2026, will fly four astronauts around the Moon. This mission will last for about 10 days and will be the first crewed test flight of the SLS (Space Launch System) rocket, the Orion spacecraft, and the Exploration Ground Systems needed to support them.
+            - link "Watch More Artemis Videos" [ref=e552] [cursor=pointer]:
+              - /url: https://www.youtube.com/playlist?list=PL2aBZuCeDwlS_2sGfYSvcoJZLRG069i-H
+              - generic [ref=e553]: Watch More Artemis Videos
+              - img [ref=e554]
+          - iframe [ref=e560]:
+            - generic [active] [ref=f3e1]:
+              - generic "YouTube Video Player" [ref=f3e3]
+              - generic [ref=f3e5]:
+                - generic:
+                  - generic:
+                    - button "Play video" [ref=f3e10] [cursor=pointer]
+                    - button "Hide player controls" [ref=f3e12] [cursor=pointer]
+                    - generic [ref=f3e14]:
+                      - generic [ref=f3e19]:
+                        - generic [ref=f3e20]:
+                          - 'link "Artemis II to the Moon: Launch to Splashdown (NASA Mission Animation)" [ref=f3e21] [cursor=pointer]':
+                            - /url: https://www.youtube.com/watch?v=Ke6XX8FHOHM
+                          - link "NASA" [ref=f3e22] [cursor=pointer]:
+                            - /url: /channel/UCLA_DiR1FfKNvjuUpBHmylQ
+                            - generic [ref=f3e23]: NASA
+                        - generic [ref=f3e24]:
+                          - button [ref=f3e25] [cursor=pointer]
+                          - generic [ref=f3e27]:
+                            - generic: NASA
+                            - generic: 14.3M subscribers
+                      - generic [ref=f3e28]:
+                        - button "Share" [ref=f3e31] [cursor=pointer]:
+                          - generic [ref=f3e35]:
+                            - img
+                        - link "Watch on YouTube" [ref=f3e42] [cursor=pointer]:
+                          - /url: https://www.youtube.com/watch?v=Ke6XX8FHOHM
+                          - generic [ref=f3e45]:
+                            - text: Watch on
+                            - img [ref=f3e47]:
+                              - generic [ref=f3e49]:
+                                - img
+        - generic [ref=e562]:
+          - generic [ref=e564]:
+            - generic [ref=e565]: Keep Exploring
+            - heading "Discover More" [level=2] [ref=e566]
+          - generic [ref=e567]:
+            - link "Humans In Space" [ref=e568] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/
+              - generic [ref=e569]:
+                - paragraph [ref=e572]:
+                  - generic [ref=e573]: Humans In Space
+                  - img [ref=e574]
+                - figure [ref=e577]
+            - link "Destinations" [ref=e578] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/destinations/
+              - generic [ref=e579]:
+                - paragraph [ref=e582]:
+                  - generic [ref=e583]: Destinations
+                  - img [ref=e584]
+                - figure [ref=e587]
+            - link "Astronauts" [ref=e588] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/astronauts/
+              - generic [ref=e589]:
+                - paragraph [ref=e592]:
+                  - generic [ref=e593]: Astronauts
+                  - img [ref=e594]
+                - figure [ref=e597]
+            - link "Living in Space" [ref=e598] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/living-in-space/
+              - generic [ref=e599]:
+                - paragraph [ref=e602]:
+                  - generic [ref=e603]: Living in Space
+                  - img [ref=e604]
+                - figure [ref=e607]
+  - contentinfo [ref=e608]:
+    - generic [ref=e609]:
+      - img "NASA Logo" [ref=e611]
+      - generic [ref=e613]:
+        - generic [ref=e615]:
+          - heading "National Aeronautics and Space Administration" [level=3] [ref=e616]
+          - paragraph [ref=e617]: NASA explores the unknown in air and space, innovates for the benefit of humanity, and inspires the world through discovery.
+          - list [ref=e618]:
+            - listitem [ref=e619]:
+              - link "About NASA's Mission" [ref=e620] [cursor=pointer]:
+                - /url: https://www.nasa.gov/about/
+          - link "Join Us" [ref=e621] [cursor=pointer]:
+            - /url: https://www.nasa.gov/get-involved/
+            - text: Join Us
+            - img [ref=e622]
+        - list [ref=e628]:
+          - listitem [ref=e629]:
+            - link "Home" [ref=e630] [cursor=pointer]:
+              - /url: https://www.nasa.gov/
+          - listitem [ref=e631]:
+            - link "News & Events" [ref=e632] [cursor=pointer]:
+              - /url: https://www.nasa.gov/news/
+          - listitem [ref=e633]:
+            - link "Multimedia" [ref=e634] [cursor=pointer]:
+              - /url: https://www.nasa.gov/multimedia/
+          - listitem [ref=e635]:
+            - link "NASA+ Live" [ref=e636] [cursor=pointer]:
+              - /url: https://plus.nasa.gov/
+          - listitem [ref=e637]:
+            - link "Missions" [ref=e638] [cursor=pointer]:
+              - /url: https://www.nasa.gov/nasa-missions/
+          - listitem [ref=e639]:
+            - link "Humans in Space" [ref=e640] [cursor=pointer]:
+              - /url: https://www.nasa.gov/humans-in-space/
+          - listitem [ref=e641]:
+            - link "Earth" [ref=e642] [cursor=pointer]:
+              - /url: https://science.nasa.gov/earth/
+          - listitem [ref=e643]:
+            - link "The Solar System" [ref=e644] [cursor=pointer]:
+              - /url: https://science.nasa.gov/solar-system/
+          - listitem [ref=e645]:
+            - link "The Universe" [ref=e646] [cursor=pointer]:
+              - /url: https://science.nasa.gov/universe/
+          - listitem [ref=e647]:
+            - link "Science" [ref=e648] [cursor=pointer]:
+              - /url: https://science.nasa.gov/
+          - listitem [ref=e649]:
+            - link "Aeronautics" [ref=e650] [cursor=pointer]:
+              - /url: https://www.nasa.gov/aeronautics/
+          - listitem [ref=e651]:
+            - link "Technology" [ref=e652] [cursor=pointer]:
+              - /url: https://www.nasa.gov/technology/
+          - listitem [ref=e653]:
+            - link "Learning Resources" [ref=e654] [cursor=pointer]:
+              - /url: https://www.nasa.gov/learning-resources/
+          - listitem [ref=e655]:
+            - link "About NASA" [ref=e656] [cursor=pointer]:
+              - /url: https://www.nasa.gov/about/
+          - listitem [ref=e657]:
+            - link "NASA en Español (opens in new tab)" [ref=e658] [cursor=pointer]:
+              - /url: https://www.nasa.gov/es/
+              - text: NASA en Español
+              - generic [ref=e659]: (opens in new tab)
+        - generic [ref=e661]:
+          - generic [ref=e662]:
+            - heading "Follow NASA" [level=3] [ref=e663]
+            - list [ref=e664]:
+              - listitem [ref=e665]:
+                - link "NASA on Facebook (opens in new tab)" [ref=e666] [cursor=pointer]:
+                  - /url: https://www.facebook.com/NASA
+                  - img [ref=e667]
+              - listitem [ref=e669]:
+                - link "NASA on Instagram (opens in new tab)" [ref=e670] [cursor=pointer]:
+                  - /url: https://www.instagram.com/nasa/
+                  - img [ref=e671]
+              - listitem [ref=e675]:
+                - link "NASA on X (opens in new tab)" [ref=e676] [cursor=pointer]:
+                  - /url: https://x.com/NASA
+                  - img [ref=e677]
+              - listitem [ref=e679]:
+                - link "NASA on YouTube (opens in new tab)" [ref=e680] [cursor=pointer]:
+                  - /url: https://www.youtube.com/@NASA
+                  - img [ref=e681]
+          - list [ref=e683]:
+            - listitem [ref=e684]:
+              - link "More NASA Social Accounts" [ref=e685] [cursor=pointer]:
+                - /url: https://www.nasa.gov/social-media/
+            - listitem [ref=e686]:
+              - link "NASA Newsletters" [ref=e687] [cursor=pointer]:
+                - /url: https://www.nasa.gov/nasa-newsletters/
+        - list [ref=e689]:
+          - listitem [ref=e690]:
+            - link "Sitemap" [ref=e691] [cursor=pointer]:
+              - /url: https://www.nasa.gov/sitemap/
+          - listitem [ref=e692]:
+            - link "For Media" [ref=e693] [cursor=pointer]:
+              - /url: https://www.nasa.gov/news/nasa-media-contacts/
+          - listitem [ref=e694]:
+            - link "Privacy Policy" [ref=e695] [cursor=pointer]:
+              - /url: https://www.nasa.gov/nasa-web-privacy-policy-and-important-notices/
+          - listitem [ref=e696]:
+            - link "FOIA" [ref=e697] [cursor=pointer]:
+              - /url: https://www.nasa.gov/foia/
+          - listitem [ref=e698]:
+            - link "No FEAR Act" [ref=e699] [cursor=pointer]:
+              - /url: https://www.nasa.gov/no-fear-act/
+          - listitem [ref=e700]:
+            - link "Office of the IG (opens in new tab)" [ref=e701] [cursor=pointer]:
+              - /url: http://oig.nasa.gov/
+              - text: Office of the IG
+              - generic [ref=e702]: (opens in new tab)
+          - listitem [ref=e703]:
+            - link "Budget & Annual Reports" [ref=e704] [cursor=pointer]:
+              - /url: https://www.nasa.gov/budgets-plans-and-reports/
+          - listitem [ref=e705]:
+            - link "Agency Financial Reports" [ref=e706] [cursor=pointer]:
+              - /url: https://www.nasa.gov/organizations/budget-annual-reports/agency-financial-reports/
+          - listitem [ref=e707]:
+            - link "Contact NASA" [ref=e708] [cursor=pointer]:
+              - /url: https://www.nasa.gov/contact-nasa/
+          - listitem [ref=e709]:
+            - link "Accessibility" [ref=e710] [cursor=pointer]:
+              - /url: https://www.nasa.gov/accessibility/
+        - list [ref=e712]:
+          - listitem [ref=e713]:
+            - generic [ref=e714]: "Page Last Updated:"
+            - generic [ref=e715]: Mar 26, 2026
+          - listitem [ref=e716]:
+            - generic [ref=e717]: "Page Editor:"
+            - generic [ref=e718]: rwbenjam
+          - listitem [ref=e719]:
+            - generic [ref=e720]: "Responsible NASA Official:"
+            - generic [ref=e721]: Abigail Bowman

@@ -1,6 +1,7 @@
 <!-- web/src/lib/components/MagneticCursor.svelte -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
   import { gsap } from 'gsap';
 
   let cursorDot: HTMLDivElement;
@@ -107,6 +108,7 @@
   });
 
   onDestroy(() => {
+    if (!browser) return;
     cancelAnimationFrame(rafId);
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('mousedown', onMouseDown);

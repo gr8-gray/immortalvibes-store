@@ -17,10 +17,9 @@ id = "90465a50f8ac49b381e7ecf6b2a567a2"
 binding = "RATE_LIMIT_KV"
 id = "2340c492e3b241d98e737ca7ac8019b5"
 
-# R2 bucket added in Task 7
-# [[r2_buckets]]
-# binding = "IMAGES"
-# bucket_name = "immortalvibes-images"
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "immortalvibes-images"
 
 # Custom domain routes added in Task 9
 # routes = [
