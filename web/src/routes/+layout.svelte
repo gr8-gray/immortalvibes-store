@@ -5,6 +5,7 @@
   import StarField from '$lib/components/StarField.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import MagneticCursor from '$lib/components/MagneticCursor.svelte';
 
   let { children } = $props();
 
@@ -21,6 +22,9 @@
     });
   }
 </script>
+
+<!-- Magnetic cursor — desktop only, hidden on touch -->
+<MagneticCursor />
 
 <!-- Star field fixed behind everything -->
 <StarField />
