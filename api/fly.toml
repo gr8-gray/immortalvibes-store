@@ -24,3 +24,6 @@ primary_region = 'iad'
   memory = '256mb'
   cpu_kind = 'shared'
   cpus = 1
+
+# Postgres: attached as immortalvibes-db via `fly postgres attach`
+# DATABASE_URL secret is managed by Fly — do not set manually.

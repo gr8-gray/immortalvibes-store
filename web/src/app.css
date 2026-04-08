@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Brand Custom Properties ────────────────────────── */
+:root {
+  --void: #030308;
+  --space: #08080f;
+  --navy: #0A0E2A;
+  --lunar: #F0EDE6;
+  --gold: #C8922A;
+  --earth-blue: #4FC3F7;
+}
+
+/* ─── Base Reset ─────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background-color: var(--void);
+  color: var(--lunar);
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--void);
+  overflow-x: hidden;
+}
+
+/* ─── Typography Utilities ───────────────────────────── */
+.type-hero {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 200;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+}
+
+.type-display {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+}
+
+.type-body {
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+}
+
+.type-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Price: gold ONLY ───────────────────────────────── */
+.price {
+  color: var(--gold);
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+/* ─── LEO Scene: earth-blue lives HERE only ─────────── */
+.leo-scene {
+  background-color: var(--navy);
+  color: var(--earth-blue);
+}
+
+/* ─── Lunar opacity hierarchy ────────────────────────── */
+.text-lunar-primary   { color: rgba(240, 237, 230, 1.0); }
+.text-lunar-secondary { color: rgba(240, 237, 230, 0.7); }
+.text-lunar-tertiary  { color: rgba(240, 237, 230, 0.4); }
+.text-lunar-ghost     { color: rgba(240, 237, 230, 0.2); }
+
+/* ─── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: rgba(240, 237, 230, 0.2); border-radius: 2px; }

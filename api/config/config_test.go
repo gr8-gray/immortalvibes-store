@@ -7,13 +7,23 @@ import (
 	"github.com/immortalvibes/api/config"
 )
 
+func setAllEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("PROXY_SECRET", "test-secret")
+	t.Setenv("STRIPE_SECRET_KEY", "sk_test_123")
+	t.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_123")
+	t.Setenv("ADMIN_SECRET", "admin-secret")
+	t.Setenv("R2_PUBLIC_URL", "https://r2.example.com")
+	t.Setenv("CF_ACCOUNT_ID", "acct123")
+	t.Setenv("CF_KV_CARTS_ID", "ns123")
+	t.Setenv("CF_API_TOKEN", "tok123")
+	t.Setenv("DATABASE_URL", "postgres://localhost/test")
+	t.Setenv("RESEND_API_KEY", "re_123")
+}
+
 func TestLoad_defaults(t *testing.T) {
+	setAllEnv(t)
 	os.Unsetenv("PORT")
-	os.Setenv("PROXY_SECRET", "test-secret")
-	os.Unsetenv("STRIPE_SECRET_KEY")
-	os.Unsetenv("STRIPE_WEBHOOK_SECRET")
-	os.Unsetenv("ADMIN_SECRET")
-	defer os.Unsetenv("PROXY_SECRET")
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -25,28 +35,16 @@ func TestLoad_defaults(t *testing.T) {
 }
 
 func TestLoad_missingRequired(t *testing.T) {
-	os.Setenv("PORT", "8080")
-	os.Unsetenv("PROXY_SECRET")
-
+	// Don't set any env vars — all required fields missing.
 	_, err := config.Load()
 	if err == nil {
-		t.Fatal("expected error for missing PROXY_SECRET, got nil")
+		t.Fatal("expected error for missing required env vars, got nil")
 	}
 }
 
 func TestLoad_allSet(t *testing.T) {
-	os.Setenv("PORT", "9090")
-	os.Setenv("PROXY_SECRET", "test-secret")
-	os.Setenv("STRIPE_SECRET_KEY", "sk_test_123")
-	os.Setenv("STRIPE_WEBHOOK_SECRET", "whsec_123")
-	os.Setenv("ADMIN_SECRET", "admin-secret")
-	defer func() {
-		os.Unsetenv("PORT")
-		os.Unsetenv("PROXY_SECRET")
-		os.Unsetenv("STRIPE_SECRET_KEY")
-		os.Unsetenv("STRIPE_WEBHOOK_SECRET")
-		os.Unsetenv("ADMIN_SECRET")
-	}()
+	setAllEnv(t)
+	t.Setenv("PORT", "9090")
 
 	cfg, err := config.Load()
 	if err != nil {
