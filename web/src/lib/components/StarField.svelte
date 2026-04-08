@@ -1,8 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import gsap from 'gsap';
   import ScrollTrigger from 'gsap/ScrollTrigger';
+  import { mouseParallax } from '$lib/stores/mouseParallax';
+
+  let mouseX = 0;
+  let mouseY = 0;
 
   if (browser) {
     gsap.registerPlugin(ScrollTrigger);
@@ -59,18 +63,22 @@
     canvas.height = window.innerHeight;
   }
 
+  // Mouse parallax multipliers per layer (fraction of canvas dimension)
+  const MOUSE_MULT = [0.008, 0.018, 0.035];
+
   function draw(): void {
     if (!ctx || !canvas) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     LAYERS.forEach((layer, i) => {
-      const parallaxOffset = scrollY * layer.speed;
+      const scrollOffset = scrollY * layer.speed;
+      const mox = mouseX * MOUSE_MULT[i] * canvas.width;
+      const moy = mouseY * MOUSE_MULT[i] * canvas.height;
 
       stars[i].forEach((star) => {
-        const x = star.x * canvas.width;
-        // Apply parallax: shift Y up by offset, wrap with modulo
-        const rawY = star.y * canvas.height - parallaxOffset;
+        const x = star.x * canvas.width + mox;
+        const rawY = star.y * canvas.height - scrollOffset + moy;
         const y = ((rawY % canvas.height) + canvas.height) % canvas.height;
 
         ctx.beginPath();
@@ -92,7 +100,6 @@
 
     window.addEventListener('resize', resize);
 
-    // GSAP ScrollTrigger drives the parallax scrollY value
     scrollTriggerInstance = ScrollTrigger.create({
       start: 0,
       end: 'max',
@@ -101,14 +108,19 @@
       }
     });
 
-    rafId = requestAnimationFrame(draw);
-  });
+    const unsubMouse = mouseParallax.subscribe(({ x, y }) => {
+      mouseX = x;
+      mouseY = y;
+    });
 
-  onDestroy(() => {
-    if (!browser) return;
-    cancelAnimationFrame(rafId);
-    window.removeEventListener('resize', resize);
-    scrollTriggerInstance?.kill();
+    rafId = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', resize);
+      scrollTriggerInstance?.kill();
+      unsubMouse();
+    };
   });
 </script>
 
