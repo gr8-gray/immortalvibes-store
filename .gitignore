@@ -1,0 +1,21 @@
+# Go
+api/*.exe
+api/server
+api/.env
+
+# Node / Worker
+worker/node_modules/
+worker/.wrangler/
+worker/dist/
+
+# SvelteKit (Plan 3)
+web/node_modules/
+web/.svelte-kit/
+web/build/
+
+# Brainstorm artifacts
+.superpowers/
+
+# OS
+.DS_Store
+Thumbs.db
