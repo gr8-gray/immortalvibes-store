@@ -3,6 +3,7 @@
   import '../app.css';
   import { browser } from '$app/environment';
   import { beforeNavigate, goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import StarField from '$lib/components/StarField.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -10,6 +11,9 @@
   import CartDrawer from '$lib/components/CartDrawer.svelte';
   import TransitionOverlay from '$lib/components/TransitionOverlay.svelte';
   import { resolveTransition, slugFromPath, MISSION_ACCENT, transitionStore } from '$lib/stores/transition';
+
+  // Hide chrome on immersive pages
+  $: immersive = $page.url.pathname === '/' || $page.url.pathname === '/shop';
 
   let { children } = $props();
 
@@ -56,14 +60,14 @@
 <MagneticCursor />
 <StarField />
 <TransitionOverlay bind:this={overlayComponent} />
-<Nav />
+{#if !immersive}<Nav />{/if}
 
 <main bind:this={mainEl} class="layout-main">
   {@render children()}
 </main>
 
-<Footer />
-<CartDrawer />
+{#if !immersive}<Footer />{/if}
+{#if !immersive}<CartDrawer />{/if}
 
 <style>
   :global(body) {
