@@ -1,47 +1,68 @@
+<!-- web/src/routes/+layout.svelte -->
 <script lang="ts">
   import '../app.css';
   import { browser } from '$app/environment';
-  import { onNavigate } from '$app/navigation';
+  import { beforeNavigate, goto } from '$app/navigation';
   import StarField from '$lib/components/StarField.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import MagneticCursor from '$lib/components/MagneticCursor.svelte';
   import CartDrawer from '$lib/components/CartDrawer.svelte';
+  import TransitionOverlay from '$lib/components/TransitionOverlay.svelte';
+  import { resolveTransition, slugFromPath, MISSION_ACCENT, transitionStore } from '$lib/stores/transition';
 
   let { children } = $props();
 
-  // View Transition API for page transitions (progressive enhancement)
+  let overlayComponent: TransitionOverlay;
+  let mainEl: HTMLElement;
+  let navigating = false;
+
   if (browser) {
-    onNavigate((navigation) => {
-      if (!document.startViewTransition) return;
-      return new Promise((resolve) => {
-        document.startViewTransition(async () => {
-          resolve();
-          await navigation.complete;
-        });
-      });
+    beforeNavigate(({ to, cancel }) => {
+      if (navigating || !to) return;
+
+      const fromPath = window.location.pathname;
+      const toPath = to.url.pathname;
+      const transType = resolveTransition(fromPath, toPath);
+
+      if (!transType) return;
+
+      cancel();
+      navigating = true;
+
+      const slug = slugFromPath(toPath);
+      const accent = MISSION_ACCENT[slug] ?? '#4FC3F7';
+
+      let cx = 0.5;
+      let cy = 0.5;
+      const unsub = transitionStore.subscribe((s) => { cx = s.clickX; cy = s.clickY; });
+      unsub();
+
+      overlayComponent.triggerOut(
+        transType,
+        { clickX: cx, clickY: cy, accentColor: accent, mainContent: mainEl },
+        () => {
+          goto(toPath, { noScroll: true }).then(() => {
+            overlayComponent.triggerIn(transType, () => {
+              navigating = false;
+            });
+          });
+        }
+      );
     });
   }
 </script>
 
-<!-- Magnetic cursor — desktop only, hidden on touch -->
 <MagneticCursor />
-
-<!-- Star field fixed behind everything -->
 <StarField />
-
-<!-- Page chrome: nav sits above star field -->
+<TransitionOverlay bind:this={overlayComponent} />
 <Nav />
 
-<!-- Main content -->
-<main class="layout-main">
+<main bind:this={mainEl} class="layout-main">
   {@render children()}
 </main>
 
-<!-- Footer -->
 <Footer />
-
-<!-- Cart drawer — slides in from right -->
 <CartDrawer />
 
 <style>
@@ -52,7 +73,6 @@
   .layout-main {
     position: relative;
     z-index: 10;
-    /* Offset for fixed nav height (~72px) */
     padding-top: 4.5rem;
     min-height: 100vh;
   }
