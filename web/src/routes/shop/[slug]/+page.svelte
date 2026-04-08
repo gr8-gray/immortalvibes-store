@@ -12,8 +12,18 @@
   import { openCart } from '$lib/stores/cartDrawer';
   import { createCart, updateCart } from '$lib/api';
   import type { CartItem } from '$lib/stores/cart';
+  import { MISSION_ORDER } from '$lib/stores/transition';
+  import { goto } from '$app/navigation';
 
   export let data: PageData;
+
+  $: currentIndex = MISSION_ORDER.indexOf(product.slug ?? '');
+  $: prevSlug = currentIndex > 0 ? MISSION_ORDER[currentIndex - 1] : null;
+  $: nextSlug = currentIndex < MISSION_ORDER.length - 1 ? MISSION_ORDER[currentIndex + 1] : null;
+
+  function navigateMission(slug: string) {
+    goto(`/shop/${slug}`, { noScroll: true });
+  }
 
   $: product = data.product;
   $: missionNumber = product.mission_number;
@@ -148,6 +158,34 @@
       <span class="mission-number">{missionNumber}</span>
       <span class="mission-name">{missionLabels[missionNumber]}</span>
     </div>
+
+    <!-- Mission prev/next nav -->
+    {#if prevSlug || nextSlug}
+      <div class="mission-nav">
+        {#if prevSlug}
+          <button
+            class="mission-nav-btn"
+            on:click={() => prevSlug && navigateMission(prevSlug)}
+            aria-label="Previous mission"
+            data-magnetic
+          >
+            ← PREV MISSION
+          </button>
+        {:else}
+          <span></span>
+        {/if}
+        {#if nextSlug}
+          <button
+            class="mission-nav-btn"
+            on:click={() => nextSlug && navigateMission(nextSlug)}
+            aria-label="Next mission"
+            data-magnetic
+          >
+            NEXT MISSION →
+          </button>
+        {/if}
+      </div>
+    {/if}
 
     <div class="product-layout">
       <!-- Left: product image -->
@@ -352,5 +390,33 @@
 
   .add-to-cart:active {
     transform: translateY(0);
+  }
+
+  .mission-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 0 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .mission-nav-btn {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.62rem;
+    letter-spacing: 0.2em;
+    color: rgba(240,237,230,0.35);
+    background: none;
+    border: 1px solid rgba(240,237,230,0.1);
+    padding: 0.6rem 1.2rem;
+    cursor: none;
+    transition: color 0.2s, border-color 0.2s;
+    text-transform: uppercase;
+  }
+
+  .mission-nav-btn:hover {
+    color: rgba(240,237,230,0.75);
+    border-color: rgba(240,237,230,0.25);
   }
 </style>
