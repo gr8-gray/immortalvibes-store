@@ -23,9 +23,10 @@
   }
 
   const LAYERS: Layer[] = [
-    { count: 200, speed: 0.2, minRadius: 0.5, maxRadius: 0.8, minAlpha: 0.2, maxAlpha: 0.4 },
-    { count: 120, speed: 0.5, minRadius: 0.6, maxRadius: 1.1, minAlpha: 0.3, maxAlpha: 0.6 },
-    { count: 60,  speed: 0.8, minRadius: 0.9, maxRadius: 1.5, minAlpha: 0.4, maxAlpha: 0.7 }
+    { count: 1800, speed: 0.05, minRadius: 0.3, maxRadius: 0.5, minAlpha: 0.04, maxAlpha: 0.18 }, // haze — Milky Way cloud
+    { count: 500,  speed: 0.2,  minRadius: 0.4, maxRadius: 0.9, minAlpha: 0.15, maxAlpha: 0.5  }, // deep stars
+    { count: 200,  speed: 0.5,  minRadius: 0.6, maxRadius: 1.3, minAlpha: 0.3,  maxAlpha: 0.75 }, // mid stars
+    { count: 80,   speed: 0.8,  minRadius: 1.0, maxRadius: 2.2, minAlpha: 0.55, maxAlpha: 1.0  }  // bright stars
   ];
 
   interface Star {
@@ -64,7 +65,7 @@
   }
 
   // Mouse parallax multipliers per layer (fraction of canvas dimension)
-  const MOUSE_MULT = [0.008, 0.018, 0.035];
+  const MOUSE_MULT = [0.002, 0.008, 0.018, 0.035];
 
   function draw(): void {
     if (!ctx || !canvas) return;
@@ -135,4 +136,4 @@
     pointer-events: none;
     z-index: 0;
   "
-/>
+></canvas>

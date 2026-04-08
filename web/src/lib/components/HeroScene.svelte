@@ -379,8 +379,8 @@
     // Time progression: 0 = golden hour, 1 = full night (over 90 seconds)
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
-    // Mouse UP → camY +1 → horizon moves DOWN → more sky visible
-    const horizonY = h * (0.58 + camY * 0.24);
+    // Mouse UP → camY +1 → horizon drops far down → sky dominates
+    const horizonY = h * (0.55 + camY * 0.34);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
@@ -389,13 +389,13 @@
     drawFigures(horizonY, panPx);
     drawParticles(horizonY, progress);
 
-    // MW photo: invisible at golden hour, builds with night progress AND looking up
+    // MW photo: invisible at golden hour, dramatic at night + looking up
     if (mwPhotoEl) {
-      const progressBoost = Math.max(0, (progress - 0.25) * 1.2);
-      const lookUpBoost = Math.max(0, camY * 0.5);
-      mwPhotoEl.style.opacity = String(Math.min(0.72, progressBoost + lookUpBoost));
+      const progressBoost = Math.max(0, (progress - 0.15) * 1.3);
+      const lookUpBoost   = Math.max(0, camY * 0.7);
+      mwPhotoEl.style.opacity = String(Math.min(0.88, progressBoost + lookUpBoost));
     }
-    milkyWayOffsetY = camY * h * 0.08;
+    milkyWayOffsetY = camY * h * 0.12;
 
     // Notify parent every 4 frames
     if (frameCount % 4 === 0) onCameraUpdate(camY);

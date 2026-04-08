@@ -13,7 +13,7 @@
   import { resolveTransition, slugFromPath, MISSION_ACCENT, transitionStore } from '$lib/stores/transition';
 
   // Hide chrome on immersive pages
-  $: immersive = $page.url.pathname === '/' || $page.url.pathname === '/shop';
+  const immersive = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
 
   let { children } = $props();
 
