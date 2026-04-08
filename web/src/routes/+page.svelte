@@ -3,29 +3,91 @@
   import { onMount } from 'svelte';
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
-  import MissionScene from '$lib/components/MissionScene.svelte';
   import { revealOnScroll } from '$lib/animations/reveal';
+  import { mouseParallax } from '$lib/stores/mouseParallax';
 
   gsap.registerPlugin(ScrollTrigger);
 
+  let sceneInner: HTMLElement;
+  let heroContent: HTMLElement;
   let heroHeading: HTMLHeadingElement;
   let heroSub: HTMLParagraphElement;
   let heroCta: HTMLAnchorElement;
   let teaserSection: HTMLElement;
 
   onMount(() => {
-    // Hero entrance sequence — not scroll triggered, runs immediately
+    // ── Hero entrance ──
     const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
     tl
       .from(heroHeading, { opacity: 0, y: 40, duration: 1.2, delay: 0.3 })
       .from(heroSub, { opacity: 0, y: 20, duration: 0.8 }, '-=0.6')
       .from(heroCta, { opacity: 0, y: 16, duration: 0.6 }, '-=0.4');
 
-    // Scroll reveals for mission teasers
+    // ── Mouse look-around ──
+    let idleTween: gsap.core.Tween | null = null;
+    let idleTimer: ReturnType<typeof setTimeout>;
+
+    function startIdleBreathing() {
+      idleTween = gsap.to(sceneInner, {
+        rotateX: 1.5,
+        rotateY: 1.5,
+        duration: 4,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+        overwrite: true
+      });
+    }
+
+    function onMouseMove(e: MouseEvent) {
+      clearTimeout(idleTimer);
+      idleTween?.kill();
+      idleTween = null;
+
+      // Normalize to -1..1 from viewport center
+      const nx = (e.clientX / window.innerWidth - 0.5) * 2;
+      const ny = (e.clientY / window.innerHeight - 0.5) * 2;
+
+      // Tilt the scene
+      gsap.to(sceneInner, {
+        rotateY: nx * 8,
+        rotateX: -ny * 6,
+        duration: 1.2,
+        ease: 'power2.out',
+        overwrite: 'auto'
+      });
+
+      // Counter-tilt hero content (30% — feels painted on sky)
+      gsap.to(heroContent, {
+        rotateY: -nx * 8 * 0.3,
+        rotateX: ny * 6 * 0.3,
+        duration: 1.2,
+        ease: 'power2.out',
+        overwrite: 'auto'
+      });
+
+      // Drive star layer parallax
+      mouseParallax.set({ x: nx, y: ny });
+
+      idleTimer = setTimeout(startIdleBreathing, 3000);
+    }
+
+    // Start idle after 3s of inactivity on load
+    idleTimer = setTimeout(startIdleBreathing, 3000);
+    window.addEventListener('mousemove', onMouseMove);
+
+    // ── Scroll reveals ──
     if (teaserSection) {
       const items = teaserSection.querySelectorAll<HTMLElement>('.teaser-item');
       items.forEach((el, i) => revealOnScroll(el, i * 0.12));
     }
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      clearTimeout(idleTimer);
+      idleTween?.kill();
+      mouseParallax.set({ x: 0, y: 0 });
+    };
   });
 
   const missions = [
@@ -41,38 +103,49 @@
   <meta name="description" content="Garments built for those who orbit higher. Limited drops, infinite purpose." />
 </svelte:head>
 
-<!-- Hero: full-bleed mission 001 scene as base -->
-<MissionScene missionNumber="001">
-  <section class="hero">
-    <div class="hero-inner">
-      <p class="hero-eyebrow">IMMORTAL VIBES</p>
+<!-- Earth POV hero: night sky looking up -->
+<div class="scene-perspective">
+  <div class="scene-inner" bind:this={sceneInner}>
 
-      <h1 bind:this={heroHeading} class="hero-heading">
-        RISE BEYOND<br />THE MORTAL PLANE
-      </h1>
+    <!-- Milky Way band overlay -->
+    <div class="milky-way" aria-hidden="true"></div>
 
-      <p bind:this={heroSub} class="hero-sub">
-        Garments built for those who orbit higher.<br />
-        Limited drops. Infinite purpose.
-      </p>
+    <!-- Atmosphere horizon at bottom -->
+    <div class="atmosphere-horizon" aria-hidden="true"></div>
 
-      <a
-        bind:this={heroCta}
-        href="/shop"
-        class="hero-cta"
-        data-magnetic
-      >
-        SELECT YOUR MISSION
-      </a>
-    </div>
+    <!-- Hero content -->
+    <section class="hero">
+      <div class="hero-inner" bind:this={heroContent}>
+        <p class="hero-eyebrow">IMMORTAL VIBES</p>
 
-    <!-- Scroll indicator -->
-    <div class="scroll-indicator" aria-hidden="true">
-      <span class="scroll-line"></span>
-      <span class="scroll-label">SCROLL</span>
-    </div>
-  </section>
-</MissionScene>
+        <h1 bind:this={heroHeading} class="hero-heading">
+          RISE BEYOND<br />THE MORTAL PLANE
+        </h1>
+
+        <p bind:this={heroSub} class="hero-sub">
+          Garments built for those who orbit higher.<br />
+          Limited drops. Infinite purpose.
+        </p>
+
+        <a
+          bind:this={heroCta}
+          href="/shop"
+          class="hero-cta"
+          data-magnetic
+        >
+          ENTER THE MISSIONS
+        </a>
+      </div>
+
+      <!-- Scroll indicator -->
+      <div class="scroll-indicator" aria-hidden="true">
+        <span class="scroll-line"></span>
+        <span class="scroll-label">SCROLL</span>
+      </div>
+    </section>
+
+  </div>
+</div>
 
 <!-- Mission teasers below the fold -->
 <section bind:this={teaserSection} class="teasers">
@@ -102,6 +175,64 @@
 </section>
 
 <style>
+  /* ── Scene wrapper ── */
+  .scene-perspective {
+    perspective: 800px;
+    perspective-origin: 50% 50%;
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+  }
+
+  .scene-inner {
+    transform-style: preserve-3d;
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    will-change: transform;
+  }
+
+  /* ── Milky Way band ── */
+  .milky-way {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      135deg,
+      transparent 20%,
+      rgba(240, 237, 230, 0.008) 35%,
+      rgba(240, 237, 230, 0.022) 42%,
+      rgba(240, 237, 230, 0.032) 50%,
+      rgba(240, 237, 230, 0.022) 58%,
+      rgba(240, 237, 230, 0.008) 65%,
+      transparent 80%
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Atmosphere horizon ── */
+  .atmosphere-horizon {
+    position: absolute;
+    bottom: 0;
+    left: -10%;
+    right: -10%;
+    height: 14vh;
+    background: radial-gradient(
+      ellipse at 50% 100%,
+      rgba(8, 22, 65, 0.7) 0%,
+      rgba(15, 45, 110, 0.5) 20%,
+      rgba(25, 65, 140, 0.3) 40%,
+      rgba(55, 130, 190, 0.18) 60%,
+      rgba(79, 195, 247, 0.08) 75%,
+      transparent 90%
+    );
+    border-radius: 50% 50% 0 0 / 80% 80% 0 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Hero ── */
   .hero {
     min-height: 100vh;
     display: flex;
@@ -111,6 +242,7 @@
     text-align: center;
     padding: 6rem 2rem 4rem;
     position: relative;
+    z-index: 2;
   }
 
   .hero-inner {
@@ -118,6 +250,8 @@
     flex-direction: column;
     align-items: center;
     gap: 2rem;
+    transform-style: preserve-3d;
+    will-change: transform;
   }
 
   .hero-eyebrow {
@@ -148,7 +282,8 @@
 
   .hero-cta {
     display: inline-block;
-    border: 1px solid rgba(240, 237, 230, 0.3);
+    border: 1px solid rgba(240, 237, 230, 0.2);
+    border-bottom-color: rgba(200, 146, 42, 0.35);
     color: rgba(240, 237, 230, 0.7);
     font-family: 'Inter', sans-serif;
     font-size: 0.65rem;
@@ -156,11 +291,18 @@
     padding: 1rem 2.5rem;
     text-decoration: none;
     transition: border-color 0.2s, color 0.2s;
+    animation: ctaPulse 2.8s ease-in-out infinite;
   }
 
   .hero-cta:hover {
-    border-color: rgba(240, 237, 230, 0.7);
+    border-color: rgba(240, 237, 230, 0.6);
+    border-bottom-color: rgba(200, 146, 42, 0.8);
     color: #F0EDE6;
+  }
+
+  @keyframes ctaPulse {
+    0%, 100% { border-bottom-color: rgba(200, 146, 42, 0.15); }
+    50%       { border-bottom-color: rgba(200, 146, 42, 0.6); }
   }
 
   .scroll-indicator {
@@ -194,7 +336,7 @@
     50% { transform: translateX(-50%) translateY(6px); }
   }
 
-  /* Teaser section */
+  /* ── Teasers ── */
   .teasers {
     background: #030308;
     padding: 8rem 2rem;
