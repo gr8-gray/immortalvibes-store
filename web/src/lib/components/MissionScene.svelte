@@ -1,6 +1,7 @@
 <!-- web/src/lib/components/MissionScene.svelte -->
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
 
   export let missionNumber: '001' | '002' | '003' | '004' = '001';
 
@@ -107,6 +108,7 @@
   });
 
   onDestroy(() => {
+    if (!browser) return;
     cancelAnimationFrame(animationId);
     window.removeEventListener('resize', resize);
   });
