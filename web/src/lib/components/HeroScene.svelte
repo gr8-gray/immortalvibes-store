@@ -374,16 +374,16 @@
   function draw(): void {
     if (!ctx || !canvas) return;
 
-    // Snappier lerp — more 1:1 feel
-    camX += (targetX - camX) * 0.12;
-    camY += (targetY - camY) * 0.12;
+    // Neck-tilt feel — fast enough to feel physical
+    camX += (targetX - camX) * 0.20;
+    camY += (targetY - camY) * 0.20;
     frameCount++;
 
     // Time progression: 0 = golden hour, 1 = full night (over 90 seconds)
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
     // Mouse UP → camY +1 → horizon drops far down → sky dominates
-    const horizonY = h * (0.50 + camY * 0.52);
+    const horizonY = h * (0.50 + camY * 0.60);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
@@ -412,10 +412,17 @@
 
     // MW photo: faint base "leak" always visible, swells to full at tilt
     if (mwPhotoEl) {
-      const mwOpacity = Math.min(0.85, 0.04 + Math.max(0, camY - 0.2) * 1.02);
+      const mwOpacity = Math.min(0.88, 0.04 + Math.max(0, camY) * 0.86);
       mwPhotoEl.style.opacity = String(mwOpacity);
+      // Scroll image upward as camY increases — shows zenith at full tilt
+      mwPhotoEl.style.backgroundPosition = `center ${Math.max(0, 25 - camY * 30)}%`;
+      // Dynamic mask — fills more screen as you look up
+      const maskFade = Math.round(72 + camY * 28); // 72% at neutral → 100% at full tilt
+      const maskStr = `linear-gradient(to bottom, black 30%, transparent ${maskFade}%)`;
+      mwPhotoEl.style.maskImage = maskStr;
+      mwPhotoEl.style.webkitMaskImage = maskStr;
     }
-    milkyWayOffsetY = -camY * h * 0.10; // negative = moves up when looking up
+    milkyWayOffsetY = 0;
 
     // Notify parent every 4 frames
     if (frameCount % 4 === 0) onCameraUpdate(camY);
@@ -539,15 +546,12 @@
     inset: 0;
     background-image: url('/milky-way.webp');
     background-size: cover;
-    background-position: center 25%;
+    background-position: center 25%; /* overridden dynamically in draw() */
     opacity: 0;
     mix-blend-mode: screen;
     pointer-events: none;
     z-index: 3;
     will-change: transform;
-    /* fade out toward horizon so it stays in the sky only */
-    mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
-    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
   }
 
   .text-rise {
@@ -569,7 +573,7 @@
 
   .text-cta {
     position: fixed;
-    top: calc(50% + 3.25rem);
+    top: calc(50% + 2.5rem);
     left: 50%;
     transform: translateX(-50%);
     z-index: 5;
