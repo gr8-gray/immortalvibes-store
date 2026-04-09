@@ -366,6 +366,7 @@
 
   let mwPhotoEl: HTMLElement;
   let mortalEl: HTMLElement;
+  let riseEl: HTMLElement;
   let ctaEl: HTMLAnchorElement;
   let frameCount = 0;
   let milkyWayOffsetY = 0;
@@ -398,9 +399,14 @@
       mortalEl.style.opacity = String(Math.max(0, 1 - camY * 2.8));
     }
 
-    // CTA button — pure MW + button state when visible, ground nearly gone
+    // "RISE BEYOND" — emerges as you enter sky, fully visible before button
+    if (riseEl) {
+      riseEl.style.opacity = String(Math.min(1, Math.max(0, (camY - 0.35) * 4)));
+    }
+
+    // CTA button — only reachable when fully in sky realm (ground ~6% strip, mortal plane gone)
     if (ctaEl) {
-      const ctaOpacity = Math.max(0, (camY - 0.48) * 5);
+      const ctaOpacity = Math.max(0, (camY - 0.50) * 5);
       ctaEl.style.opacity = String(ctaOpacity);
       ctaEl.style.pointerEvents = ctaOpacity < 0.1 ? 'none' : 'all';
     }
@@ -489,6 +495,15 @@
   THE MORTAL PLANE
 </div>
 
+<!-- RISE BEYOND — lives in the stars, revealed at deep tilt -->
+<div
+  bind:this={riseEl}
+  aria-hidden="true"
+  class="text-rise"
+>
+  RISE BEYOND
+</div>
+
 <a
   bind:this={ctaEl}
   href="/shop"
@@ -526,6 +541,23 @@
     pointer-events: none;
     z-index: 5;
     text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+  }
+
+  .text-rise {
+    position: fixed;
+    top: 14%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem;
+    font-weight: 300;
+    letter-spacing: 0.45em;
+    color: rgba(240, 237, 230, 0.88);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    text-shadow: 0 0 60px rgba(240, 237, 230, 0.15);
   }
 
   .mw-photo {
