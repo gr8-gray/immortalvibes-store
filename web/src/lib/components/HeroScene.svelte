@@ -4,8 +4,6 @@
   import { browser } from '$app/environment';
   import gsap from 'gsap';
 
-  // Callback: parent receives camY so it can show/hide CTA
-  export let onCameraUpdate: (camY: number) => void = () => {};
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -155,7 +153,7 @@
     }
 
     // Stars — emerge as progress increases
-    const starVisibility = Math.max(0, (progress - 0.15) / 0.6);
+    const starVisibility = Math.max(0, (progress - 0.05) / 0.5);
     if (starVisibility > 0.01) {
       const worldW = w * WORLD_SCALE;
       stars.forEach(star => {
@@ -368,8 +366,6 @@
   let mortalEl: HTMLElement;
   let riseEl: HTMLElement;
   let ctaEl: HTMLAnchorElement;
-  let frameCount = 0;
-  let milkyWayOffsetY = 0;
 
   function draw(): void {
     if (!ctx || !canvas) return;
@@ -377,7 +373,6 @@
     // Neck-tilt feel — fast enough to feel physical
     camX += (targetX - camX) * 0.20;
     camY += (targetY - camY) * 0.20;
-    frameCount++;
 
     // Time progression: 0 = golden hour, 1 = full night (over 90 seconds)
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
@@ -422,11 +417,6 @@
       mwPhotoEl.style.maskImage = maskStr;
       mwPhotoEl.style.webkitMaskImage = maskStr;
     }
-    milkyWayOffsetY = 0;
-
-    // Notify parent every 4 frames
-    if (frameCount % 4 === 0) onCameraUpdate(camY);
-
     rafId = requestAnimationFrame(draw);
   }
 
@@ -518,7 +508,6 @@
   bind:this={mwPhotoEl}
   aria-hidden="true"
   class="mw-photo"
-  style="transform: translateY({milkyWayOffsetY}px);"
 ></div>
 
 <canvas
@@ -540,6 +529,7 @@
     white-space: nowrap;
     pointer-events: none;
     z-index: 5;
+    opacity: 0;
     text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
   }
 
@@ -570,7 +560,7 @@
     mix-blend-mode: screen;
     pointer-events: none;
     z-index: 3;
-    will-change: transform;
+    will-change: opacity, background-position;
   }
 
   .text-cta {
@@ -595,6 +585,8 @@
     opacity: 0;
     pointer-events: none;
     white-space: nowrap;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, color 0.2s;
   }
 
   .text-cta:hover {
