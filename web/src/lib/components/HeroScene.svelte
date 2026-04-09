@@ -366,6 +366,8 @@
 
   let mwPhotoEl: HTMLElement;
   let mortalEl: HTMLElement;
+  let riseEl: HTMLElement;
+  let ctaEl: HTMLAnchorElement;
   let frameCount = 0;
   let milkyWayOffsetY = 0;
 
@@ -394,6 +396,18 @@
     if (mortalEl) {
       mortalEl.style.top = `${horizonY - 28}px`;
       mortalEl.style.opacity = String(Math.max(0, 1 - camY * 2.8));
+    }
+
+    // "RISE BEYOND" — reveals at deep tilt
+    if (riseEl) {
+      riseEl.style.opacity = String(Math.max(0, (camY - 0.55) * 4));
+    }
+
+    // CTA button — appears after "RISE BEYOND" reads
+    if (ctaEl) {
+      const ctaOpacity = Math.max(0, (camY - 0.65) * 5);
+      ctaEl.style.opacity = String(ctaOpacity);
+      ctaEl.style.pointerEvents = ctaOpacity < 0.1 ? 'none' : 'all';
     }
 
     // MW photo: only visible when looking up — purely camY driven
@@ -473,6 +487,22 @@
   THE MORTAL PLANE
 </div>
 
+<div
+  bind:this={riseEl}
+  aria-hidden="true"
+  class="text-rise"
+>
+  RISE BEYOND
+</div>
+
+<a
+  bind:this={ctaEl}
+  href="/shop"
+  class="text-cta"
+>
+  ENTER THE MISSIONS
+</a>
+
 <!-- Milky Way photo — screen blend adds nebula color on top of canvas sky -->
 <!-- Replace URL with /milky-way.jpg once you save the photo to web/static/ -->
 <div
@@ -518,5 +548,58 @@
     /* fade out toward horizon so it stays in the sky only */
     mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
     -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
+  }
+
+  .text-rise {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    color: rgba(240, 237, 230, 0.90);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    text-shadow: 0 0 40px rgba(240, 237, 230, 0.2);
+  }
+
+  .text-cta {
+    position: fixed;
+    top: calc(50% + 3.25rem);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: inline-block;
+    border: 1px solid rgba(240, 237, 230, 0.3);
+    border-bottom-color: rgba(200, 146, 42, 0.5);
+    color: rgba(240, 237, 230, 0.9);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.25em;
+    padding: 1rem 2.5rem;
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 30px rgba(240, 237, 230, 0.08), 0 0 60px rgba(200, 146, 42, 0.06);
+    animation: ctaPulse 2.8s ease-in-out infinite;
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .text-cta:hover {
+    border-color: rgba(240, 237, 230, 0.8);
+    border-bottom-color: rgba(200, 146, 42, 1);
+    color: #F0EDE6;
+    box-shadow: 0 0 50px rgba(240, 237, 230, 0.18), 0 0 100px rgba(200, 146, 42, 0.14);
+  }
+
+  @keyframes ctaPulse {
+    0%, 100% { border-bottom-color: rgba(200, 146, 42, 0.15); }
+    50%       { border-bottom-color: rgba(200, 146, 42, 0.65); }
   }
 </style>
