@@ -365,6 +365,7 @@
   }
 
   let mwPhotoEl: HTMLElement;
+  let mortalEl: HTMLElement;
   let frameCount = 0;
   let milkyWayOffsetY = 0;
 
@@ -388,6 +389,12 @@
     drawGround(horizonY, panPx);
     drawFigures(horizonY, panPx);
     drawParticles(horizonY, progress);
+
+    // "THE MORTAL PLANE" — anchored just above the horizon, fades early in tilt
+    if (mortalEl) {
+      mortalEl.style.top = `${horizonY - 28}px`;
+      mortalEl.style.opacity = String(Math.max(0, 1 - camY * 2.8));
+    }
 
     // MW photo: only visible when looking up — purely camY driven
     if (mwPhotoEl) {
@@ -457,6 +464,15 @@
   });
 </script>
 
+<!-- THE MORTAL PLANE text — anchored to the horizon -->
+<div
+  bind:this={mortalEl}
+  aria-hidden="true"
+  class="text-mortal"
+>
+  THE MORTAL PLANE
+</div>
+
 <!-- Milky Way photo — screen blend adds nebula color on top of canvas sky -->
 <!-- Replace URL with /milky-way.jpg once you save the photo to web/static/ -->
 <div
@@ -473,6 +489,21 @@
 ></canvas>
 
 <style>
+  .text-mortal {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.75rem;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    color: rgba(240, 237, 230, 0.55);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+  }
+
   .mw-photo {
     position: fixed;
     inset: 0;
