@@ -410,10 +410,10 @@
       ctaEl.style.pointerEvents = ctaOpacity < 0.1 ? 'none' : 'all';
     }
 
-    // MW photo: only visible when looking up — purely camY driven
+    // MW photo: faint base "leak" always visible, swells to full at tilt
     if (mwPhotoEl) {
-      const lookUp = Math.max(0, camY - 0.05); // small deadzone before it appears
-      mwPhotoEl.style.opacity = String(Math.min(0.88, lookUp * 2.0));
+      const mwOpacity = Math.min(0.85, 0.04 + Math.max(0, camY - 0.2) * 1.02);
+      mwPhotoEl.style.opacity = String(mwOpacity);
     }
     milkyWayOffsetY = -camY * h * 0.10; // negative = moves up when looking up
 
