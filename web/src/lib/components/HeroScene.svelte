@@ -380,7 +380,7 @@
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
     // Mouse UP → camY +1 → horizon drops far down → sky dominates
-    const horizonY = h * (0.55 + camY * 0.34);
+    const horizonY = h * (0.50 + camY * 0.52);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
@@ -389,13 +389,12 @@
     drawFigures(horizonY, panPx);
     drawParticles(horizonY, progress);
 
-    // MW photo: invisible at golden hour, dramatic at night + looking up
+    // MW photo: only visible when looking up — purely camY driven
     if (mwPhotoEl) {
-      const progressBoost = Math.max(0, (progress - 0.15) * 1.3);
-      const lookUpBoost   = Math.max(0, camY * 0.7);
-      mwPhotoEl.style.opacity = String(Math.min(0.88, progressBoost + lookUpBoost));
+      const lookUp = Math.max(0, camY - 0.05); // small deadzone before it appears
+      mwPhotoEl.style.opacity = String(Math.min(0.88, lookUp * 2.0));
     }
-    milkyWayOffsetY = camY * h * 0.12;
+    milkyWayOffsetY = -camY * h * 0.10; // negative = moves up when looking up
 
     // Notify parent every 4 frames
     if (frameCount % 4 === 0) onCameraUpdate(camY);
@@ -431,7 +430,13 @@
       targetY = -((e.clientY / h - 0.5) * 2); // invert: mouse up → look up
     }
 
+    function onMouseLeave() {
+      targetX = 0;
+      targetY = 0;
+    }
+
     window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseleave', onMouseLeave);
 
     // Entry reveal — fade canvas in
     gsap.fromTo(canvas,
@@ -446,6 +451,7 @@
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseleave', onMouseLeave);
       window.removeEventListener('resize', resize);
     };
   });
@@ -478,5 +484,8 @@
     pointer-events: none;
     z-index: 3;
     will-change: transform;
+    /* fade out toward horizon so it stays in the sky only */
+    mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
+    -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 72%);
   }
 </style>
