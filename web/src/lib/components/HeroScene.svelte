@@ -382,9 +382,8 @@
     // Time progression: 0 = golden hour, 1 = full night (over 90 seconds)
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
-    // Mouse UP → camY +1 → horizon drops far down → sky dominates
-    // coeff 0.78 → ground exits at camY ≈ 0.64, nearly gone by button hover zone
-    const horizonY = h * (0.50 + camY * 0.78);
+    // Neutral shows 65% sky. Ground exits at camY≈0.49 — exactly at button threshold.
+    const horizonY = h * (0.65 + camY * 0.72);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
@@ -457,7 +456,7 @@
     function onMouseMove(e: MouseEvent) {
       // 2.5x amplification — mouse only needs to reach ~30% from top for full reveal
       targetX = Math.max(-1, Math.min(1,  (e.clientX / w - 0.5) * 2.5));
-      targetY = Math.max(-1, Math.min(1, -((e.clientY / h - 0.5) * 2.5)));
+      targetY = Math.max(-0.5, Math.min(1, -((e.clientY / h - 0.5) * 2.5)));
     }
 
     function onMouseLeave() {
