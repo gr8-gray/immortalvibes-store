@@ -8,39 +8,9 @@
 
   gsap.registerPlugin(ScrollTrigger);
 
-  let heroHeading: HTMLHeadingElement;
-  let heroSub: HTMLParagraphElement;
-  let heroCta: HTMLAnchorElement;
   let teaserSection: HTMLElement;
 
-  // CTA visibility — show when looking up, only hide when looking significantly down
-  // Hysteresis prevents it vanishing when mouse drifts down to click
-  let ctaShown = false;
-  function handleCameraUpdate(camY: number) {
-    if (!heroCta) return;
-    const shouldShow = ctaShown ? camY > -0.18 : camY > 0.10;
-    if (shouldShow === ctaShown) return;
-    ctaShown = shouldShow;
-    gsap.to(heroCta, {
-      opacity: shouldShow ? 1 : 0,
-      y: shouldShow ? 0 : 10,
-      duration: 0.5,
-      ease: 'power2.out',
-      overwrite: 'auto'
-    });
-  }
-
   onMount(() => {
-    // CTA starts hidden — revealed only when looking up
-    gsap.set(heroCta, { opacity: 0, y: 10 });
-
-    // Hero text entrance — delayed to let scene fade in first
-    const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
-    tl
-      .from(heroHeading, { opacity: 0, y: 30, duration: 1.4, delay: 2.0 })
-      .from(heroSub,     { opacity: 0, y: 20, duration: 0.9 }, '-=0.6');
-
-    // Scroll reveals for teasers
     if (teaserSection) {
       const items = teaserSection.querySelectorAll<HTMLElement>('.teaser-item');
       items.forEach((el, i) => revealOnScroll(el, i * 0.12));
@@ -60,33 +30,10 @@
   <meta name="description" content="Garments built for those who orbit higher. Limited drops, infinite purpose." />
 </svelte:head>
 
-<!-- Panoramic environment canvas -->
-<HeroScene onCameraUpdate={handleCameraUpdate} />
+<HeroScene />
 
-<!-- Hero text overlay — centered above the scene -->
-<section class="hero">
-  <div class="hero-inner">
-    <p class="hero-eyebrow">IMMORTAL VIBES</p>
-
-    <h1 bind:this={heroHeading} class="hero-heading">
-      RISE BEYOND<br />THE MORTAL PLANE
-    </h1>
-
-    <p bind:this={heroSub} class="hero-sub">
-      Garments built for those who orbit higher.<br />
-      Limited drops. Infinite purpose.
-    </p>
-
-    <a
-      bind:this={heroCta}
-      href="/shop"
-      class="hero-cta"
-      data-magnetic
-    >
-      ENTER THE MISSIONS
-    </a>
-  </div>
-
+<!-- Scroll indicator — anchored to bottom of viewport during hero -->
+<section class="hero-spacer">
   <div class="scroll-indicator" aria-hidden="true">
     <span class="scroll-line"></span>
     <span class="scroll-label">SCROLL</span>
@@ -121,93 +68,11 @@
 </section>
 
 <style>
-  /* ── Hero overlay — vertically centered in the sky ── */
-  .hero {
+  .hero-spacer {
     position: relative;
     z-index: 10;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    padding: 2rem;
     pointer-events: none;
-  }
-
-  /* Re-enable pointer events only on interactive elements */
-  .hero-cta {
-    pointer-events: all;
-  }
-
-  .hero-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .hero-eyebrow {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.4em;
-    color: rgba(240, 237, 230, 0.35);
-    margin: 0;
-  }
-
-  .hero-heading {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(3rem, 10vw, 9rem);
-    font-weight: 300;
-    color: #F0EDE6;
-    margin: 0;
-    line-height: 0.95;
-    letter-spacing: -0.01em;
-    text-shadow: 0 0 80px rgba(0,0,0,0.8);
-  }
-
-  .hero-sub {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
-    line-height: 1.8;
-    color: rgba(240, 237, 230, 0.45);
-    margin: 0;
-    text-shadow: 0 0 20px rgba(0,0,0,0.9);
-  }
-
-  .hero-cta {
-    display: inline-block;
-    border: 1px solid rgba(240, 237, 230, 0.3);
-    border-bottom-color: rgba(200, 146, 42, 0.5);
-    color: rgba(240, 237, 230, 0.9);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.25em;
-    padding: 1rem 2.5rem;
-    text-decoration: none;
-    transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
-    animation: ctaPulse 2.8s ease-in-out infinite;
-    background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(8px);
-    box-shadow: 0 0 30px rgba(240,237,230,0.08), 0 0 60px rgba(200,146,42,0.06);
-  }
-
-  .hero-cta:hover {
-    border-color: rgba(240, 237, 230, 0.8);
-    border-bottom-color: rgba(200, 146, 42, 1);
-    color: #F0EDE6;
-    box-shadow: 0 0 50px rgba(240,237,230,0.18), 0 0 100px rgba(200,146,42,0.14);
-  }
-
-  .hero-cta:hover {
-    border-color: rgba(240, 237, 230, 0.6);
-    border-bottom-color: rgba(200, 146, 42, 0.8);
-    color: #F0EDE6;
-  }
-
-  @keyframes ctaPulse {
-    0%, 100% { border-bottom-color: rgba(200, 146, 42, 0.15); }
-    50%       { border-bottom-color: rgba(200, 146, 42, 0.65); }
   }
 
   .scroll-indicator {
@@ -226,7 +91,7 @@
     display: block;
     width: 1px;
     height: 40px;
-    background: linear-gradient(to bottom, transparent, rgba(240,237,230,0.3));
+    background: linear-gradient(to bottom, transparent, rgba(240, 237, 230, 0.3));
   }
 
   .scroll-label {
@@ -314,7 +179,7 @@
     width: 56px;
     height: 56px;
     object-fit: contain;
-    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
     transform: rotate(-6deg);
     flex-shrink: 0;
     opacity: 0.85;
