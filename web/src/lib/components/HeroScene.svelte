@@ -455,8 +455,9 @@
     window.addEventListener('resize', resize);
 
     function onMouseMove(e: MouseEvent) {
-      targetX =  (e.clientX / w - 0.5) * 2;
-      targetY = -((e.clientY / h - 0.5) * 2); // invert: mouse up → look up
+      // 2.5x amplification — mouse only needs to reach ~30% from top for full reveal
+      targetX = Math.max(-1, Math.min(1,  (e.clientX / w - 0.5) * 2.5));
+      targetY = Math.max(-1, Math.min(1, -((e.clientY / h - 0.5) * 2.5)));
     }
 
     function onMouseLeave() {
