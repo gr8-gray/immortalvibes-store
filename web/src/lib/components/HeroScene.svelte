@@ -366,7 +366,6 @@
 
   let mwPhotoEl: HTMLElement;
   let mortalEl: HTMLElement;
-  let riseEl: HTMLElement;
   let ctaEl: HTMLAnchorElement;
   let frameCount = 0;
   let milkyWayOffsetY = 0;
@@ -383,7 +382,8 @@
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
     // Mouse UP → camY +1 → horizon drops far down → sky dominates
-    const horizonY = h * (0.50 + camY * 0.60);
+    // coeff 0.78 → ground exits at camY ≈ 0.64, nearly gone by button hover zone
+    const horizonY = h * (0.50 + camY * 0.78);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
@@ -398,14 +398,9 @@
       mortalEl.style.opacity = String(Math.max(0, 1 - camY * 2.8));
     }
 
-    // "RISE BEYOND" — reveals at deep tilt
-    if (riseEl) {
-      riseEl.style.opacity = String(Math.max(0, (camY - 0.55) * 4));
-    }
-
-    // CTA button — appears after "RISE BEYOND" reads
+    // CTA button — pure MW + button state when visible, ground nearly gone
     if (ctaEl) {
-      const ctaOpacity = Math.max(0, (camY - 0.65) * 5);
+      const ctaOpacity = Math.max(0, (camY - 0.48) * 5);
       ctaEl.style.opacity = String(ctaOpacity);
       ctaEl.style.pointerEvents = ctaOpacity < 0.1 ? 'none' : 'all';
     }
@@ -494,14 +489,6 @@
   THE MORTAL PLANE
 </div>
 
-<div
-  bind:this={riseEl}
-  aria-hidden="true"
-  class="text-rise"
->
-  RISE BEYOND
-</div>
-
 <a
   bind:this={ctaEl}
   href="/shop"
@@ -554,26 +541,9 @@
     will-change: transform;
   }
 
-  .text-rise {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.8rem;
-    font-weight: 300;
-    letter-spacing: 0.4em;
-    color: rgba(240, 237, 230, 0.90);
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 5;
-    opacity: 0;
-    text-shadow: 0 0 40px rgba(240, 237, 230, 0.2);
-  }
-
   .text-cta {
     position: fixed;
-    top: calc(50% + 2.5rem);
+    top: 22%;
     left: 50%;
     transform: translateX(-50%);
     z-index: 5;
