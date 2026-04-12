@@ -1,0 +1,4 @@
+name = "immortalvibes"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "web/.svelte-kit/cloudflare"
