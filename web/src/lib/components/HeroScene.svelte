@@ -16,6 +16,8 @@
   let camY = 0;    // -1 (down/ground) to +1 (up/sky)
   let targetX = 0;
   let targetY = 0;
+  let velY = 0;    // flick momentum — decays each frame
+  let isMobile = false;
 
   // Stars in virtual world space
   interface Star {
@@ -403,7 +405,7 @@
       const img = figureImgs.get(fig.key);
       if (!img) continue;
 
-      const figH = h * fig.hFrac;
+      const figH = h * fig.hFrac * (isMobile ? 0.62 : 1);
       const figW = (img.naturalWidth / img.naturalHeight) * figH;
       const footY = horizonY + (h - horizonY) * fig.footFrac;
       const cx = fig.cxFrac * w - panPx * fig.depth * 0.6;
@@ -502,6 +504,14 @@
   function draw(): void {
     if (!ctx || !canvas) return;
 
+    // Flick momentum — decay velocity into targetY each frame
+    if (Math.abs(velY) > 0.0005) {
+      targetY = Math.max(-0.5, Math.min(1, targetY + velY));
+      velY *= 0.88;
+    } else {
+      velY = 0;
+    }
+
     // Neck-tilt feel — fast enough to feel physical
     camX += (targetX - camX) * 0.20;
     camY += (targetY - camY) * 0.20;
@@ -595,22 +605,38 @@
     let touchStartX = 0;
     let touchBaseY  = 0;
     let touchBaseX  = 0;
+    let lastTouchY  = 0;
+    let lastTouchT  = 0;
 
     function onTouchStart(e: TouchEvent) {
       touchStartY = e.touches[0].clientY;
       touchStartX = e.touches[0].clientX;
       touchBaseY  = targetY;
       touchBaseX  = targetX;
+      lastTouchY  = touchStartY;
+      lastTouchT  = Date.now();
+      velY = 0;
     }
 
     function onTouchMove(e: TouchEvent) {
-      const dy = (e.touches[0].clientY - touchStartY) / h;
-      const dx = (e.touches[0].clientX - touchStartX) / w;
-      targetY = Math.max(-0.5, Math.min(1, touchBaseY - dy * 2.2));
+      const now = Date.now();
+      const cy  = e.touches[0].clientY;
+      const dy  = (cy - touchStartY) / h;
+      const dx  = (e.touches[0].clientX - touchStartX) / w;
+      // Drag DOWN (dy > 0) = look up — natural scroll direction
+      targetY = Math.max(-0.5, Math.min(1, touchBaseY + dy * 2.2));
       targetX = Math.max(-1,   Math.min(1, touchBaseX + dx * 2.0));
+      // Track instantaneous velocity for flick
+      const dt = Math.max(1, now - lastTouchT);
+      velY = ((cy - lastTouchY) / h) * (16 / dt) * 0.3;
+      lastTouchY = cy;
+      lastTouchT = now;
     }
 
-    function onTouchEnd() { /* keep position — don't snap back */ }
+    function onTouchEnd() {
+      // velY carries into draw loop for momentum — clamped to avoid overshoot
+      velY = Math.max(-0.04, Math.min(0.04, velY));
+    }
 
     // ── Device orientation (gyroscope) ───────────────────────────────────
     let gyroActive = false;
@@ -645,7 +671,7 @@
       }
     }
 
-    const isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseleave', onMouseLeave);
