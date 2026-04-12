@@ -1,15 +1,14 @@
-import { browser } from '$app/environment';
-import { PUBLIC_API_URL } from '$env/static/public';
-
 /**
  * Returns the Go API base URL.
  * In dev: http://localhost:8080
- * In prod: value of PUBLIC_API_URL env var (the CF Worker URL)
+ * In prod: PUBLIC_API_URL env var (CF Worker URL) set in CF Pages environment variables
  */
 export function getApiBase(): string {
-  if (!browser && typeof PUBLIC_API_URL === 'undefined') {
-    // SSR build-time fallback — adapter-cloudflare will use the env var at runtime
-    return 'http://localhost:8080';
-  }
-  return PUBLIC_API_URL ?? 'http://localhost:8080';
+  // Use dynamic env so the build doesn't fail if the var isn't set at build time
+  try {
+    // @ts-ignore — dynamic import resolves at runtime on CF Pages
+    const url = import.meta.env.PUBLIC_API_URL;
+    if (url) return url;
+  } catch { /* noop */ }
+  return 'http://localhost:8080';
 }
