@@ -619,6 +619,7 @@
     }
 
     function onTouchMove(e: TouchEvent) {
+      e.preventDefault(); // block pull-to-refresh and browser scroll
       const now = Date.now();
       const cy  = e.touches[0].clientY;
       const dy  = (cy - touchStartY) / h;
@@ -677,8 +678,9 @@
     window.addEventListener('mouseleave', onMouseLeave);
 
     if (isMobile) {
+      document.body.style.overscrollBehavior = 'none'; // kill pull-to-refresh
       window.addEventListener('touchstart', onTouchStart, { passive: true });
-      window.addEventListener('touchmove',  onTouchMove,  { passive: true });
+      window.addEventListener('touchmove',  onTouchMove,  { passive: false });
       window.addEventListener('touchend',   onTouchEnd);
       tryGyro();
     }
@@ -699,6 +701,7 @@
       window.removeEventListener('mouseleave', onMouseLeave);
       window.removeEventListener('resize', resize);
       if (isMobile) {
+        document.body.style.overscrollBehavior = '';
         window.removeEventListener('touchstart', onTouchStart);
         window.removeEventListener('touchmove',  onTouchMove);
         window.removeEventListener('touchend',   onTouchEnd);
