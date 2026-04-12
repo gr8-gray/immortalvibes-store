@@ -18,7 +18,7 @@
       <!-- Email placeholder — owner to supply -->
       <div class="channel">
         <span class="channel-label">Email</span>
-        <span class="channel-value coming">Coming soon</span>
+        <a href="mailto:immortalvibesco@gmail.com" class="channel-value">immortalvibesco@gmail.com</a>
       </div>
 
       <!-- Social placeholder — owner to supply -->
