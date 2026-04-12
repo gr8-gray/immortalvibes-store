@@ -14,6 +14,7 @@
 
   // Hide chrome on immersive pages
   const immersive = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
+  const isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   let { children } = $props();
 
@@ -57,7 +58,7 @@
   }
 </script>
 
-<MagneticCursor />
+{#if !isMobile}<MagneticCursor />{/if}
 <StarField />
 <TransitionOverlay bind:this={overlayComponent} />
 {#if !immersive}<Nav />{/if}
