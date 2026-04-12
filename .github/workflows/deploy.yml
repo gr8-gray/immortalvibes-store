@@ -23,7 +23,7 @@ jobs:
         run: cd web && npm run build
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy web/.svelte-kit/cloudflare --project-name immortalvibes --commit-dirty=true
+        run: npx wrangler pages deploy web/.svelte-kit/cloudflare --project-name immortalvibes-store --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
