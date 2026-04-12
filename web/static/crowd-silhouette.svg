@@ -1,0 +1,563 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080">
+  <!-- White background -->
+  <rect width="1920" height="1080" fill="white"/>
+
+  <!-- Crowd silhouettes occupy bottom ~50% of frame (y=540 to y=1080) -->
+  <!-- Dense crowd of varied figures: standing, arms raised, pointing -->
+
+  <!-- Far background crowd layer (shorter, more compressed) -->
+  <g fill="black">
+    <!-- Figure 1: standing, slight lean -->
+    <ellipse cx="60" cy="610" rx="18" ry="20"/>
+    <rect x="48" y="628" width="24" height="60" rx="4"/>
+    <rect x="44" y="630" width="12" height="8" rx="3"/>
+    <rect x="64" y="630" width="12" height="8" rx="3"/>
+    <rect x="50" y="685" width="10" height="55" rx="3"/>
+    <rect x="62" y="685" width="10" height="55" rx="3"/>
+
+    <!-- Figure 2: arms raised -->
+    <ellipse cx="110" cy="605" rx="17" ry="19"/>
+    <rect x="99" y="622" width="22" height="58" rx="4"/>
+    <rect x="83" y="608" width="10" height="38" rx="3" transform="rotate(-40 83 608)"/>
+    <rect x="119" y="608" width="10" height="38" rx="3" transform="rotate(40 119 608)"/>
+    <rect x="101" y="678" width="9" height="52" rx="3"/>
+    <rect x="112" y="678" width="9" height="52" rx="3"/>
+
+    <!-- Figure 3: pointing up -->
+    <ellipse cx="160" cy="600" rx="16" ry="18"/>
+    <rect x="150" y="616" width="20" height="60" rx="4"/>
+    <rect x="130" y="598" width="9" height="5" rx="2"/>
+    <rect x="163" y="580" width="8" height="36" rx="3" transform="rotate(-20 163 580)"/>
+    <rect x="152" y="674" width="9" height="54" rx="3"/>
+    <rect x="163" y="674" width="9" height="54" rx="3"/>
+
+    <!-- Figure 4: standing -->
+    <ellipse cx="205" cy="612" rx="17" ry="19"/>
+    <rect x="194" y="629" width="22" height="60" rx="4"/>
+    <rect x="188" y="632" width="11" height="9" rx="3"/>
+    <rect x="208" y="632" width="11" height="9" rx="3"/>
+    <rect x="196" y="687" width="9" height="53" rx="3"/>
+    <rect x="207" y="687" width="9" height="53" rx="3"/>
+
+    <!-- Figure 5: arms raised high -->
+    <ellipse cx="255" cy="598" rx="16" ry="18"/>
+    <rect x="245" y="614" width="20" height="58" rx="4"/>
+    <rect x="222" y="595" width="9" height="44" rx="3" transform="rotate(-55 222 595)"/>
+    <rect x="262" y="578" width="9" height="44" rx="3" transform="rotate(55 262 578)"/>
+    <rect x="247" y="670" width="9" height="52" rx="3"/>
+    <rect x="258" y="670" width="9" height="52" rx="3"/>
+
+    <!-- Figure 6 -->
+    <ellipse cx="300" cy="608" rx="18" ry="20"/>
+    <rect x="288" y="626" width="24" height="60" rx="4"/>
+    <rect x="280" y="628" width="12" height="9" rx="3"/>
+    <rect x="304" y="628" width="12" height="9" rx="3"/>
+    <rect x="290" y="684" width="10" height="54" rx="3"/>
+    <rect x="302" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 7: arms raised -->
+    <ellipse cx="348" cy="602" rx="16" ry="18"/>
+    <rect x="338" y="618" width="20" height="58" rx="4"/>
+    <rect x="315" y="600" width="9" height="40" rx="3" transform="rotate(-45 315 600)"/>
+    <rect x="355" y="585" width="9" height="40" rx="3" transform="rotate(45 355 585)"/>
+    <rect x="340" y="674" width="9" height="52" rx="3"/>
+    <rect x="351" y="674" width="9" height="52" rx="3"/>
+
+    <!-- Figure 8 -->
+    <ellipse cx="395" cy="610" rx="17" ry="19"/>
+    <rect x="384" y="627" width="22" height="60" rx="4"/>
+    <rect x="378" y="630" width="11" height="8" rx="3"/>
+    <rect x="397" y="630" width="11" height="8" rx="3"/>
+    <rect x="386" y="685" width="9" height="53" rx="3"/>
+    <rect x="397" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 9: pointing -->
+    <ellipse cx="442" cy="603" rx="16" ry="18"/>
+    <rect x="432" y="619" width="20" height="58" rx="4"/>
+    <rect x="445" y="583" width="8" height="36" rx="3" transform="rotate(-15 445 583)"/>
+    <rect x="418" y="618" width="10" height="8" rx="3"/>
+    <rect x="434" y="675" width="9" height="53" rx="3"/>
+    <rect x="445" y="675" width="9" height="53" rx="3"/>
+
+    <!-- Figure 10 -->
+    <ellipse cx="490" cy="607" rx="18" ry="20"/>
+    <rect x="478" y="625" width="24" height="60" rx="4"/>
+    <rect x="470" y="628" width="12" height="9" rx="3"/>
+    <rect x="494" y="628" width="12" height="9" rx="3"/>
+    <rect x="480" y="683" width="10" height="55" rx="3"/>
+    <rect x="492" y="683" width="10" height="55" rx="3"/>
+
+    <!-- Figure 11: arms raised -->
+    <ellipse cx="538" cy="600" rx="16" ry="18"/>
+    <rect x="528" y="616" width="20" height="58" rx="4"/>
+    <rect x="505" y="598" width="9" height="42" rx="3" transform="rotate(-50 505 598)"/>
+    <rect x="545" y="582" width="9" height="42" rx="3" transform="rotate(50 545 582)"/>
+    <rect x="530" y="672" width="9" height="52" rx="3"/>
+    <rect x="541" y="672" width="9" height="52" rx="3"/>
+
+    <!-- Figure 12 -->
+    <ellipse cx="585" cy="610" rx="17" ry="19"/>
+    <rect x="574" y="627" width="22" height="60" rx="4"/>
+    <rect x="568" y="630" width="11" height="8" rx="3"/>
+    <rect x="587" y="630" width="11" height="8" rx="3"/>
+    <rect x="576" y="685" width="9" height="53" rx="3"/>
+    <rect x="587" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 13: tall, pointing up -->
+    <ellipse cx="632" cy="595" rx="16" ry="18"/>
+    <rect x="622" y="611" width="20" height="65" rx="4"/>
+    <rect x="636" y="572" width="8" height="40" rx="3" transform="rotate(-10 636 572)"/>
+    <rect x="610" y="610" width="10" height="8" rx="3"/>
+    <rect x="624" y="674" width="9" height="56" rx="3"/>
+    <rect x="635" y="674" width="9" height="56" rx="3"/>
+
+    <!-- Figure 14 -->
+    <ellipse cx="680" cy="608" rx="18" ry="20"/>
+    <rect x="668" y="626" width="24" height="60" rx="4"/>
+    <rect x="660" y="628" width="12" height="9" rx="3"/>
+    <rect x="684" y="628" width="12" height="9" rx="3"/>
+    <rect x="670" y="684" width="10" height="54" rx="3"/>
+    <rect x="682" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 15: arms raised -->
+    <ellipse cx="728" cy="600" rx="16" ry="18"/>
+    <rect x="718" y="616" width="20" height="58" rx="4"/>
+    <rect x="695" y="597" width="9" height="42" rx="3" transform="rotate(-48 695 597)"/>
+    <rect x="735" y="582" width="9" height="42" rx="3" transform="rotate(48 735 582)"/>
+    <rect x="720" y="672" width="9" height="52" rx="3"/>
+    <rect x="731" y="672" width="9" height="52" rx="3"/>
+
+    <!-- Figure 16 -->
+    <ellipse cx="775" cy="610" rx="17" ry="19"/>
+    <rect x="764" y="627" width="22" height="60" rx="4"/>
+    <rect x="758" y="630" width="11" height="8" rx="3"/>
+    <rect x="777" y="630" width="11" height="8" rx="3"/>
+    <rect x="766" y="685" width="9" height="53" rx="3"/>
+    <rect x="777" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 17: pointing -->
+    <ellipse cx="820" cy="603" rx="16" ry="18"/>
+    <rect x="810" y="619" width="20" height="58" rx="4"/>
+    <rect x="823" y="580" width="8" height="40" rx="3" transform="rotate(-18 823 580)"/>
+    <rect x="796" y="618" width="10" height="8" rx="3"/>
+    <rect x="812" y="675" width="9" height="53" rx="3"/>
+    <rect x="823" y="675" width="9" height="53" rx="3"/>
+
+    <!-- Figure 18 -->
+    <ellipse cx="868" cy="608" rx="18" ry="20"/>
+    <rect x="856" y="626" width="24" height="60" rx="4"/>
+    <rect x="848" y="628" width="12" height="9" rx="3"/>
+    <rect x="872" y="628" width="12" height="9" rx="3"/>
+    <rect x="858" y="684" width="10" height="54" rx="3"/>
+    <rect x="870" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 19: arms raised -->
+    <ellipse cx="916" cy="600" rx="16" ry="18"/>
+    <rect x="906" y="616" width="20" height="58" rx="4"/>
+    <rect x="883" y="597" width="9" height="42" rx="3" transform="rotate(-50 883 597)"/>
+    <rect x="923" y="582" width="9" height="42" rx="3" transform="rotate(50 923 582)"/>
+    <rect x="908" y="672" width="9" height="52" rx="3"/>
+    <rect x="919" y="672" width="9" height="52" rx="3"/>
+
+    <!-- Figure 20 -->
+    <ellipse cx="963" cy="610" rx="17" ry="19"/>
+    <rect x="952" y="627" width="22" height="60" rx="4"/>
+    <rect x="946" y="630" width="11" height="8" rx="3"/>
+    <rect x="965" y="630" width="11" height="8" rx="3"/>
+    <rect x="954" y="685" width="9" height="53" rx="3"/>
+    <rect x="965" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 21: tall arms raised -->
+    <ellipse cx="1010" cy="595" rx="17" ry="19"/>
+    <rect x="999" y="612" width="22" height="65" rx="4"/>
+    <rect x="974" y="592" width="9" height="46" rx="3" transform="rotate(-55 974 592)"/>
+    <rect x="1018" y="574" width="9" height="46" rx="3" transform="rotate(55 1018 574)"/>
+    <rect x="1001" y="675" width="9" height="53" rx="3"/>
+    <rect x="1012" y="675" width="9" height="53" rx="3"/>
+
+    <!-- Figure 22 -->
+    <ellipse cx="1058" cy="608" rx="18" ry="20"/>
+    <rect x="1046" y="626" width="24" height="60" rx="4"/>
+    <rect x="1038" y="628" width="12" height="9" rx="3"/>
+    <rect x="1062" y="628" width="12" height="9" rx="3"/>
+    <rect x="1048" y="684" width="10" height="54" rx="3"/>
+    <rect x="1060" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 23: pointing up-right -->
+    <ellipse cx="1105" cy="602" rx="16" ry="18"/>
+    <rect x="1095" y="618" width="20" height="60" rx="4"/>
+    <rect x="1110" y="578" width="8" height="42" rx="3" transform="rotate(20 1110 578)"/>
+    <rect x="1082" y="617" width="10" height="8" rx="3"/>
+    <rect x="1097" y="676" width="9" height="53" rx="3"/>
+    <rect x="1108" y="676" width="9" height="53" rx="3"/>
+
+    <!-- Figure 24 -->
+    <ellipse cx="1152" cy="610" rx="17" ry="19"/>
+    <rect x="1141" y="627" width="22" height="60" rx="4"/>
+    <rect x="1135" y="630" width="11" height="8" rx="3"/>
+    <rect x="1154" y="630" width="11" height="8" rx="3"/>
+    <rect x="1143" y="685" width="9" height="53" rx="3"/>
+    <rect x="1154" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 25: arms raised -->
+    <ellipse cx="1200" cy="600" rx="16" ry="18"/>
+    <rect x="1190" y="616" width="20" height="58" rx="4"/>
+    <rect x="1167" y="598" width="9" height="42" rx="3" transform="rotate(-48 1167 598)"/>
+    <rect x="1207" y="582" width="9" height="42" rx="3" transform="rotate(48 1207 582)"/>
+    <rect x="1192" y="672" width="9" height="52" rx="3"/>
+    <rect x="1203" y="672" width="9" height="52" rx="3"/>
+
+    <!-- Figure 26 -->
+    <ellipse cx="1248" cy="608" rx="18" ry="20"/>
+    <rect x="1236" y="626" width="24" height="60" rx="4"/>
+    <rect x="1228" y="628" width="12" height="9" rx="3"/>
+    <rect x="1252" y="628" width="12" height="9" rx="3"/>
+    <rect x="1238" y="684" width="10" height="54" rx="3"/>
+    <rect x="1250" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 27: pointing -->
+    <ellipse cx="1295" cy="603" rx="16" ry="18"/>
+    <rect x="1285" y="619" width="20" height="58" rx="4"/>
+    <rect x="1298" y="580" width="8" height="38" rx="3" transform="rotate(-12 1298 580)"/>
+    <rect x="1272" y="618" width="10" height="8" rx="3"/>
+    <rect x="1287" y="675" width="9" height="53" rx="3"/>
+    <rect x="1298" y="675" width="9" height="53" rx="3"/>
+
+    <!-- Figure 28 -->
+    <ellipse cx="1342" cy="610" rx="17" ry="19"/>
+    <rect x="1331" y="627" width="22" height="60" rx="4"/>
+    <rect x="1325" y="630" width="11" height="8" rx="3"/>
+    <rect x="1344" y="630" width="11" height="8" rx="3"/>
+    <rect x="1333" y="685" width="9" height="53" rx="3"/>
+    <rect x="1344" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 29: arms raised high -->
+    <ellipse cx="1390" cy="598" rx="16" ry="18"/>
+    <rect x="1380" y="614" width="20" height="60" rx="4"/>
+    <rect x="1356" y="595" width="9" height="46" rx="3" transform="rotate(-55 1356 595)"/>
+    <rect x="1397" y="578" width="9" height="46" rx="3" transform="rotate(55 1397 578)"/>
+    <rect x="1382" y="672" width="9" height="54" rx="3"/>
+    <rect x="1393" y="672" width="9" height="54" rx="3"/>
+
+    <!-- Figure 30 -->
+    <ellipse cx="1438" cy="608" rx="18" ry="20"/>
+    <rect x="1426" y="626" width="24" height="60" rx="4"/>
+    <rect x="1418" y="628" width="12" height="9" rx="3"/>
+    <rect x="1442" y="628" width="12" height="9" rx="3"/>
+    <rect x="1428" y="684" width="10" height="54" rx="3"/>
+    <rect x="1440" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 31: standing tall -->
+    <ellipse cx="1485" cy="600" rx="17" ry="19"/>
+    <rect x="1474" y="617" width="22" height="65" rx="4"/>
+    <rect x="1468" y="620" width="11" height="9" rx="3"/>
+    <rect x="1487" y="620" width="11" height="9" rx="3"/>
+    <rect x="1476" y="680" width="9" height="55" rx="3"/>
+    <rect x="1487" y="680" width="9" height="55" rx="3"/>
+
+    <!-- Figure 32: arms raised -->
+    <ellipse cx="1533" cy="600" rx="16" ry="18"/>
+    <rect x="1523" y="616" width="20" height="58" rx="4"/>
+    <rect x="1500" y="598" width="9" height="42" rx="3" transform="rotate(-48 1500 598)"/>
+    <rect x="1540" y="582" width="9" height="42" rx="3" transform="rotate(48 1540 582)"/>
+    <rect x="1525" y="672" width="9" height="52" rx="3"/>
+    <rect x="1536" y="672" width="9" height="52" rx="3"/>
+
+    <!-- Figure 33 -->
+    <ellipse cx="1580" cy="610" rx="17" ry="19"/>
+    <rect x="1569" y="627" width="22" height="60" rx="4"/>
+    <rect x="1563" y="630" width="11" height="8" rx="3"/>
+    <rect x="1582" y="630" width="11" height="8" rx="3"/>
+    <rect x="1571" y="685" width="9" height="53" rx="3"/>
+    <rect x="1582" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 34: pointing -->
+    <ellipse cx="1626" cy="603" rx="16" ry="18"/>
+    <rect x="1616" y="619" width="20" height="58" rx="4"/>
+    <rect x="1629" y="580" width="8" height="40" rx="3" transform="rotate(-18 1629 580)"/>
+    <rect x="1603" y="618" width="10" height="8" rx="3"/>
+    <rect x="1618" y="675" width="9" height="53" rx="3"/>
+    <rect x="1629" y="675" width="9" height="53" rx="3"/>
+
+    <!-- Figure 35 -->
+    <ellipse cx="1674" cy="608" rx="18" ry="20"/>
+    <rect x="1662" y="626" width="24" height="60" rx="4"/>
+    <rect x="1654" y="628" width="12" height="9" rx="3"/>
+    <rect x="1678" y="628" width="12" height="9" rx="3"/>
+    <rect x="1664" y="684" width="10" height="54" rx="3"/>
+    <rect x="1676" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 36: arms raised -->
+    <ellipse cx="1722" cy="598" rx="16" ry="18"/>
+    <rect x="1712" y="614" width="20" height="60" rx="4"/>
+    <rect x="1689" y="596" width="9" height="44" rx="3" transform="rotate(-52 1689 596)"/>
+    <rect x="1729" y="578" width="9" height="44" rx="3" transform="rotate(52 1729 578)"/>
+    <rect x="1714" y="672" width="9" height="54" rx="3"/>
+    <rect x="1725" y="672" width="9" height="54" rx="3"/>
+
+    <!-- Figure 37 -->
+    <ellipse cx="1770" cy="610" rx="17" ry="19"/>
+    <rect x="1759" y="627" width="22" height="60" rx="4"/>
+    <rect x="1753" y="630" width="11" height="8" rx="3"/>
+    <rect x="1772" y="630" width="11" height="8" rx="3"/>
+    <rect x="1761" y="685" width="9" height="53" rx="3"/>
+    <rect x="1772" y="685" width="9" height="53" rx="3"/>
+
+    <!-- Figure 38: pointing -->
+    <ellipse cx="1817" cy="602" rx="16" ry="18"/>
+    <rect x="1807" y="618" width="20" height="60" rx="4"/>
+    <rect x="1820" y="578" width="8" height="42" rx="3" transform="rotate(-20 1820 578)"/>
+    <rect x="1794" y="617" width="10" height="8" rx="3"/>
+    <rect x="1809" y="676" width="9" height="53" rx="3"/>
+    <rect x="1820" y="676" width="9" height="53" rx="3"/>
+
+    <!-- Figure 39 -->
+    <ellipse cx="1864" cy="608" rx="18" ry="20"/>
+    <rect x="1852" y="626" width="24" height="60" rx="4"/>
+    <rect x="1844" y="628" width="12" height="9" rx="3"/>
+    <rect x="1868" y="628" width="12" height="9" rx="3"/>
+    <rect x="1854" y="684" width="10" height="54" rx="3"/>
+    <rect x="1866" y="684" width="10" height="54" rx="3"/>
+
+    <!-- Figure 40: arms raised -->
+    <ellipse cx="1910" cy="600" rx="16" ry="18"/>
+    <rect x="1900" y="616" width="20" height="60" rx="4"/>
+    <rect x="1880" y="597" width="9" height="44" rx="3" transform="rotate(-50 1880 597)"/>
+    <rect x="1917" y="582" width="9" height="44" rx="3" transform="rotate(50 1917 582)"/>
+    <rect x="1902" y="674" width="9" height="54" rx="3"/>
+    <rect x="1913" y="674" width="9" height="54" rx="3"/>
+
+  </g>
+
+  <!-- Foreground crowd layer (taller, closer, more detailed) -->
+  <g fill="black">
+    <!-- FG Figure 1: standing, leaning back -->
+    <ellipse cx="80" cy="720" rx="22" ry="24"/>
+    <rect x="64" y="742" width="32" height="80" rx="5"/>
+    <rect x="52" y="745" width="16" height="12" rx="4"/>
+    <rect x="80" y="745" width="16" height="12" rx="4"/>
+    <rect x="66" y="820" width="13" height="70" rx="4"/>
+    <rect x="81" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 2: arms fully raised -->
+    <ellipse cx="148" cy="705" rx="21" ry="23"/>
+    <rect x="133" y="726" width="30" height="78" rx="5"/>
+    <rect x="102" y="700" width="12" height="55" rx="4" transform="rotate(-60 102 700)"/>
+    <rect x="162" y="678" width="12" height="55" rx="4" transform="rotate(60 162 678)"/>
+    <rect x="135" y="802" width="12" height="68" rx="4"/>
+    <rect x="149" y="802" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 3: pointing up -->
+    <ellipse cx="215" cy="715" rx="20" ry="22"/>
+    <rect x="201" y="735" width="28" height="78" rx="5"/>
+    <rect x="220" y="688" width="10" height="50" rx="4" transform="rotate(-15 220 688)"/>
+    <rect x="185" y="734" width="14" height="12" rx="4"/>
+    <rect x="203" y="811" width="12" height="68" rx="4"/>
+    <rect x="217" y="811" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 4: standing -->
+    <ellipse cx="280" cy="722" rx="22" ry="24"/>
+    <rect x="264" y="744" width="32" height="80" rx="5"/>
+    <rect x="252" y="747" width="16" height="12" rx="4"/>
+    <rect x="278" y="747" width="16" height="12" rx="4"/>
+    <rect x="266" y="822" width="13" height="70" rx="4"/>
+    <rect x="281" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 5: arms raised -->
+    <ellipse cx="348" cy="708" rx="21" ry="23"/>
+    <rect x="333" y="729" width="30" height="78" rx="5"/>
+    <rect x="302" y="703" width="12" height="52" rx="4" transform="rotate(-58 302 703)"/>
+    <rect x="358" y="682" width="12" height="52" rx="4" transform="rotate(58 358 682)"/>
+    <rect x="335" y="805" width="12" height="68" rx="4"/>
+    <rect x="349" y="805" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 6 -->
+    <ellipse cx="415" cy="720" rx="22" ry="24"/>
+    <rect x="399" y="742" width="32" height="80" rx="5"/>
+    <rect x="387" y="745" width="16" height="12" rx="4"/>
+    <rect x="413" y="745" width="16" height="12" rx="4"/>
+    <rect x="401" y="820" width="13" height="70" rx="4"/>
+    <rect x="416" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 7: pointing -->
+    <ellipse cx="482" cy="712" rx="20" ry="22"/>
+    <rect x="468" y="732" width="28" height="78" rx="5"/>
+    <rect x="487" y="685" width="10" height="50" rx="4" transform="rotate(10 487 685)"/>
+    <rect x="455" y="731" width="14" height="12" rx="4"/>
+    <rect x="470" y="808" width="12" height="68" rx="4"/>
+    <rect x="484" y="808" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 8 -->
+    <ellipse cx="548" cy="722" rx="22" ry="24"/>
+    <rect x="532" y="744" width="32" height="80" rx="5"/>
+    <rect x="520" y="747" width="16" height="12" rx="4"/>
+    <rect x="546" y="747" width="16" height="12" rx="4"/>
+    <rect x="534" y="822" width="13" height="70" rx="4"/>
+    <rect x="549" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 9: arms raised -->
+    <ellipse cx="615" cy="706" rx="21" ry="23"/>
+    <rect x="600" y="727" width="30" height="78" rx="5"/>
+    <rect x="570" y="700" width="12" height="54" rx="4" transform="rotate(-60 570 700)"/>
+    <rect x="625" y="680" width="12" height="54" rx="4" transform="rotate(60 625 680)"/>
+    <rect x="602" y="803" width="12" height="68" rx="4"/>
+    <rect x="616" y="803" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 10 -->
+    <ellipse cx="682" cy="720" rx="22" ry="24"/>
+    <rect x="666" y="742" width="32" height="80" rx="5"/>
+    <rect x="654" y="745" width="16" height="12" rx="4"/>
+    <rect x="680" y="745" width="16" height="12" rx="4"/>
+    <rect x="668" y="820" width="13" height="70" rx="4"/>
+    <rect x="683" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 11: pointing up-right -->
+    <ellipse cx="748" cy="712" rx="20" ry="22"/>
+    <rect x="734" y="732" width="28" height="78" rx="5"/>
+    <rect x="753" y="683" width="10" height="52" rx="4" transform="rotate(18 753 683)"/>
+    <rect x="720" y="731" width="14" height="12" rx="4"/>
+    <rect x="736" y="808" width="12" height="68" rx="4"/>
+    <rect x="750" y="808" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 12 -->
+    <ellipse cx="815" cy="722" rx="22" ry="24"/>
+    <rect x="799" y="744" width="32" height="80" rx="5"/>
+    <rect x="787" y="747" width="16" height="12" rx="4"/>
+    <rect x="813" y="747" width="16" height="12" rx="4"/>
+    <rect x="801" y="822" width="13" height="70" rx="4"/>
+    <rect x="816" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 13: arms raised high -->
+    <ellipse cx="882" cy="702" rx="21" ry="23"/>
+    <rect x="867" y="723" width="30" height="82" rx="5"/>
+    <rect x="835" y="696" width="12" height="58" rx="4" transform="rotate(-65 835 696)"/>
+    <rect x="892" y="672" width="12" height="58" rx="4" transform="rotate(65 892 672)"/>
+    <rect x="869" y="803" width="12" height="68" rx="4"/>
+    <rect x="883" y="803" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 14 -->
+    <ellipse cx="948" cy="720" rx="22" ry="24"/>
+    <rect x="932" y="742" width="32" height="80" rx="5"/>
+    <rect x="920" y="745" width="16" height="12" rx="4"/>
+    <rect x="946" y="745" width="16" height="12" rx="4"/>
+    <rect x="934" y="820" width="13" height="70" rx="4"/>
+    <rect x="949" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 15: pointing -->
+    <ellipse cx="1015" cy="712" rx="20" ry="22"/>
+    <rect x="1001" y="732" width="28" height="78" rx="5"/>
+    <rect x="1018" y="684" width="10" height="50" rx="4" transform="rotate(-12 1018 684)"/>
+    <rect x="985" y="731" width="14" height="12" rx="4"/>
+    <rect x="1003" y="808" width="12" height="68" rx="4"/>
+    <rect x="1017" y="808" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 16 -->
+    <ellipse cx="1082" cy="722" rx="22" ry="24"/>
+    <rect x="1066" y="744" width="32" height="80" rx="5"/>
+    <rect x="1054" y="747" width="16" height="12" rx="4"/>
+    <rect x="1080" y="747" width="16" height="12" rx="4"/>
+    <rect x="1068" y="822" width="13" height="70" rx="4"/>
+    <rect x="1083" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 17: arms raised -->
+    <ellipse cx="1148" cy="706" rx="21" ry="23"/>
+    <rect x="1133" y="727" width="30" height="78" rx="5"/>
+    <rect x="1103" y="700" width="12" height="54" rx="4" transform="rotate(-58 1103 700)"/>
+    <rect x="1158" y="680" width="12" height="54" rx="4" transform="rotate(58 1158 680)"/>
+    <rect x="1135" y="803" width="12" height="68" rx="4"/>
+    <rect x="1149" y="803" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 18 -->
+    <ellipse cx="1215" cy="720" rx="22" ry="24"/>
+    <rect x="1199" y="742" width="32" height="80" rx="5"/>
+    <rect x="1187" y="745" width="16" height="12" rx="4"/>
+    <rect x="1213" y="745" width="16" height="12" rx="4"/>
+    <rect x="1201" y="820" width="13" height="70" rx="4"/>
+    <rect x="1216" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 19: pointing up -->
+    <ellipse cx="1282" cy="710" rx="20" ry="22"/>
+    <rect x="1268" y="730" width="28" height="80" rx="5"/>
+    <rect x="1285" y="681" width="10" height="52" rx="4" transform="rotate(-8 1285 681)"/>
+    <rect x="1252" y="729" width="14" height="12" rx="4"/>
+    <rect x="1270" y="808" width="12" height="68" rx="4"/>
+    <rect x="1284" y="808" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 20 -->
+    <ellipse cx="1348" cy="722" rx="22" ry="24"/>
+    <rect x="1332" y="744" width="32" height="80" rx="5"/>
+    <rect x="1320" y="747" width="16" height="12" rx="4"/>
+    <rect x="1346" y="747" width="16" height="12" rx="4"/>
+    <rect x="1334" y="822" width="13" height="70" rx="4"/>
+    <rect x="1349" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 21: arms raised -->
+    <ellipse cx="1415" cy="705" rx="21" ry="23"/>
+    <rect x="1400" y="726" width="30" height="80" rx="5"/>
+    <rect x="1368" y="699" width="12" height="56" rx="4" transform="rotate(-62 1368 699)"/>
+    <rect x="1425" y="677" width="12" height="56" rx="4" transform="rotate(62 1425 677)"/>
+    <rect x="1402" y="804" width="12" height="68" rx="4"/>
+    <rect x="1416" y="804" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 22 -->
+    <ellipse cx="1482" cy="720" rx="22" ry="24"/>
+    <rect x="1466" y="742" width="32" height="80" rx="5"/>
+    <rect x="1454" y="745" width="16" height="12" rx="4"/>
+    <rect x="1480" y="745" width="16" height="12" rx="4"/>
+    <rect x="1468" y="820" width="13" height="70" rx="4"/>
+    <rect x="1483" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 23: pointing -->
+    <ellipse cx="1548" cy="713" rx="20" ry="22"/>
+    <rect x="1534" y="733" width="28" height="78" rx="5"/>
+    <rect x="1551" y="684" width="10" height="52" rx="4" transform="rotate(15 1551 684)"/>
+    <rect x="1520" y="732" width="14" height="12" rx="4"/>
+    <rect x="1536" y="809" width="12" height="68" rx="4"/>
+    <rect x="1550" y="809" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 24 -->
+    <ellipse cx="1615" cy="722" rx="22" ry="24"/>
+    <rect x="1599" y="744" width="32" height="80" rx="5"/>
+    <rect x="1587" y="747" width="16" height="12" rx="4"/>
+    <rect x="1613" y="747" width="16" height="12" rx="4"/>
+    <rect x="1601" y="822" width="13" height="70" rx="4"/>
+    <rect x="1616" y="822" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 25: arms raised -->
+    <ellipse cx="1682" cy="706" rx="21" ry="23"/>
+    <rect x="1667" y="727" width="30" height="78" rx="5"/>
+    <rect x="1637" y="700" width="12" height="54" rx="4" transform="rotate(-58 1637 700)"/>
+    <rect x="1692" y="680" width="12" height="54" rx="4" transform="rotate(58 1692 680)"/>
+    <rect x="1669" y="803" width="12" height="68" rx="4"/>
+    <rect x="1683" y="803" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 26 -->
+    <ellipse cx="1748" cy="720" rx="22" ry="24"/>
+    <rect x="1732" y="742" width="32" height="80" rx="5"/>
+    <rect x="1720" y="745" width="16" height="12" rx="4"/>
+    <rect x="1746" y="745" width="16" height="12" rx="4"/>
+    <rect x="1734" y="820" width="13" height="70" rx="4"/>
+    <rect x="1749" y="820" width="13" height="70" rx="4"/>
+
+    <!-- FG Figure 27: pointing up -->
+    <ellipse cx="1815" cy="710" rx="20" ry="22"/>
+    <rect x="1801" y="730" width="28" height="80" rx="5"/>
+    <rect x="1818" y="681" width="10" height="52" rx="4" transform="rotate(-10 1818 681)"/>
+    <rect x="1785" y="729" width="14" height="12" rx="4"/>
+    <rect x="1803" y="808" width="12" height="68" rx="4"/>
+    <rect x="1817" y="808" width="12" height="68" rx="4"/>
+
+    <!-- FG Figure 28 -->
+    <ellipse cx="1882" cy="722" rx="22" ry="24"/>
+    <rect x="1866" y="744" width="32" height="80" rx="5"/>
+    <rect x="1854" y="747" width="16" height="12" rx="4"/>
+    <rect x="1880" y="747" width="16" height="12" rx="4"/>
+    <rect x="1868" y="822" width="13" height="70" rx="4"/>
+    <rect x="1883" y="822" width="13" height="70" rx="4"/>
+
+  </g>
+
+  <!-- Ground fill — solid base connecting all figures -->
+  <rect x="0" y="870" width="1920" height="210" fill="black"/>
+
+</svg>

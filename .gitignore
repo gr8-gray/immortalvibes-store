@@ -1,21 +1,17 @@
-# Go
-api/*.exe
-api/server
-api/.env
+# Claude local settings
+.claude/settings.local.json
 
-# Node / Worker
-worker/node_modules/
-worker/.wrangler/
-worker/dist/
+# Python scripts
+gen_silhouette.py
 
-# SvelteKit (Plan 3)
-web/node_modules/
-web/.svelte-kit/
-web/build/
-
-# Brainstorm artifacts
-.superpowers/
+# Design scratch files
+superdesign/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Dependencies
+web/node_modules/
+worker/node_modules/
+api/vendor/

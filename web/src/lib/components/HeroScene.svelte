@@ -38,14 +38,124 @@
   // Time progression — golden hour → night over 90 seconds
   let startTime = 0;
 
-  // Drift particles — warm embers floating upward
-  interface Particle { x: number; y: number; speed: number; alpha: number; r: number; }
-  const PARTICLES: Particle[] = Array.from({ length: 55 }, () => ({
+  // Silhouette figures — Stitch-generated PNGs with per-pose animation
+  interface FigureConfig {
+    key: string;
+    cxFrac: number;              // horizontal center as fraction of w
+    hFrac: number;               // height as fraction of h
+    flip: boolean;
+    depth: number;               // 0=front (no pan), 1=far (pans with world)
+    anim: 'strain' | 'claw' | 'slump' | 'sway-weighted' | 'sway' | 'bob' | 'bounce' | 'awe-snap';
+    phase: number;               // time phase offset for variety
+    freq: number;                // animation speed
+    footFrac: number;            // 1.0=screen bottom, 0.0=horizonY, 0.5=midpoint
+  }
+
+  // JJK-quality animation engine — anticipation, overshoot, eased settle
+  function easeOut3(t: number): number { return 1 - Math.pow(1 - t, 3); }
+  function easeIn2(t: number): number  { return t * t; }
+
+  function animFrame(anim: FigureConfig['anim'], t: number, freq: number, figH: number): { dy: number; rot: number } {
+    const p = ((t * freq) % 1 + 1) % 1; // 0-1 cycle phase
+    switch (anim) {
+      case 'strain': {
+        // Anticipate back → snap lunge up → overshoot → fall → rest
+        let v: number;
+        if      (p < 0.08) v = -(p / 0.08) * 0.2;
+        else if (p < 0.30) v = easeIn2((p - 0.08) / 0.22);
+        else if (p < 0.42) v = 1.0 + Math.sin((p - 0.30) / 0.12 * Math.PI) * 0.18;
+        else if (p < 0.62) v = easeOut3(1 - (p - 0.42) / 0.20);
+        else               v = Math.max(0, 0.15 * (1 - (p - 0.62) / 0.38));
+        return { dy: -v * figH * 0.09, rot: -v * 0.045 };
+      }
+      case 'claw': {
+        // Faster, no rest — continuous urgent clawing with snap overshoot
+        let v: number;
+        if      (p < 0.12) v = -(p / 0.12) * 0.15;
+        else if (p < 0.38) v = easeIn2((p - 0.12) / 0.26);
+        else if (p < 0.50) v = 1.0 + Math.sin((p - 0.38) / 0.12 * Math.PI) * 0.22;
+        else               v = easeOut3(1 - (p - 0.50) / 0.50);
+        return { dy: -v * figH * 0.08, rot: -v * 0.04 };
+      }
+      case 'slump': {
+        // Defeated slow cycle — lean forward, half-hearted reach, slump back
+        const lean = (Math.sin(t * freq) + 1) * 0.5;
+        return { dy: lean * figH * 0.015, rot: lean * 0.07 - 0.02 };
+      }
+      case 'sway-weighted': {
+        return { dy: 0, rot: Math.sin(t * freq) * 0.04 };
+      }
+      case 'sway':      return { dy: 0,                                           rot: Math.sin(t * freq) * 0.033 };
+      case 'bob':       return { dy: -Math.abs(Math.sin(t * freq)) * figH * 0.045, rot: 0 };
+      case 'bounce':    return { dy: -Math.abs(Math.sin(t * freq)) * figH * 0.08,  rot: 0 };
+      case 'awe-snap': {
+        const snap = Math.max(0, Math.sin(t * freq * 3.1)) * 0.018;
+        return { dy: 0, rot: Math.sin(t * freq) * 0.038 - snap };
+      }
+    }
+  }
+
+  const FIGURES: FigureConfig[] = [
+    // All feet at horizonY (footFrac=0.0) — depth communicated by size only
+    // ── CLOSE — tallest, heads well above horizon ──
+    { key: 'p', cxFrac: 0.07,  hFrac: 0.42, flip: false, depth: 0,   anim: 'strain',        phase: 0.0, freq: 0.8,  footFrac: 0.0 },
+    { key: 'r', cxFrac: 0.21,  hFrac: 0.35, flip: true,  depth: 0,   anim: 'slump',         phase: 1.8, freq: 0.4,  footFrac: 0.0 },
+    { key: 's', cxFrac: 0.50,  hFrac: 0.40, flip: false, depth: 0,   anim: 'strain',        phase: 3.1, freq: 0.9,  footFrac: 0.0 },
+    { key: 'w', cxFrac: 0.73,  hFrac: 0.37, flip: true,  depth: 0,   anim: 'sway-weighted', phase: 2.4, freq: 0.5,  footFrac: 0.0 },
+    { key: 't', cxFrac: 0.91,  hFrac: 0.40, flip: false, depth: 0,   anim: 'awe-snap',      phase: 0.7, freq: 0.7,  footFrac: 0.0 },
+    // ── MID-CLOSE ──
+    { key: 'n', cxFrac: 0.13,  hFrac: 0.30, flip: false, depth: 0.2, anim: 'strain',        phase: 1.1, freq: 1.4,  footFrac: 0.0 },
+    { key: 'f', cxFrac: 0.30,  hFrac: 0.28, flip: false, depth: 0.2, anim: 'claw',          phase: 2.2, freq: 1.8,  footFrac: 0.0 },
+    { key: 'q', cxFrac: 0.46,  hFrac: 0.27, flip: true,  depth: 0.2, anim: 'claw',          phase: 0.9, freq: 1.6,  footFrac: 0.0 },
+    { key: 'u', cxFrac: 0.64,  hFrac: 0.29, flip: false, depth: 0.2, anim: 'claw',          phase: 0.4, freq: 1.5,  footFrac: 0.0 },
+    { key: 'v', cxFrac: 0.82,  hFrac: 0.31, flip: false, depth: 0.2, anim: 'strain',        phase: 1.6, freq: 1.1,  footFrac: 0.0 },
+    // ── MID ──
+    { key: 'm', cxFrac: 0.05,  hFrac: 0.20, flip: true,  depth: 0.4, anim: 'strain',        phase: 2.9, freq: 1.0,  footFrac: 0.0 },
+    { key: 'e', cxFrac: 0.22,  hFrac: 0.16, flip: false, depth: 0.4, anim: 'slump',         phase: 0.6, freq: 0.35, footFrac: 0.0 },
+    { key: 'o', cxFrac: 0.40,  hFrac: 0.19, flip: false, depth: 0.4, anim: 'sway-weighted', phase: 1.4, freq: 0.55, footFrac: 0.0 },
+    { key: 'i', cxFrac: 0.60,  hFrac: 0.18, flip: true,  depth: 0.4, anim: 'strain',        phase: 3.5, freq: 0.85, footFrac: 0.0 },
+    { key: 'b', cxFrac: 0.78,  hFrac: 0.20, flip: true,  depth: 0.4, anim: 'claw',          phase: 2.0, freq: 1.6,  footFrac: 0.0 },
+    { key: 'c', cxFrac: 0.94,  hFrac: 0.16, flip: false, depth: 0.4, anim: 'claw',          phase: 0.3, freq: 1.9,  footFrac: 0.0 },
+    // ── FAR — small bumps at the horizon ──
+    { key: 'k', cxFrac: 0.09,  hFrac: 0.12, flip: false, depth: 0.7, anim: 'sway-weighted', phase: 1.2, freq: 0.8,  footFrac: 0.0 },
+    { key: 'l', cxFrac: 0.26,  hFrac: 0.11, flip: true,  depth: 0.7, anim: 'strain',        phase: 2.7, freq: 1.1,  footFrac: 0.0 },
+    { key: 'h', cxFrac: 0.44,  hFrac: 0.14, flip: false, depth: 0.7, anim: 'claw',          phase: 0.9, freq: 1.3,  footFrac: 0.0 },
+    { key: 'd', cxFrac: 0.62,  hFrac: 0.13, flip: true,  depth: 0.7, anim: 'claw',          phase: 1.5, freq: 1.2,  footFrac: 0.0 },
+    { key: 'f', cxFrac: 0.80,  hFrac: 0.12, flip: true,  depth: 0.7, anim: 'strain',        phase: 3.8, freq: 0.9,  footFrac: 0.0 },
+  ];
+
+  const figureImgs = new Map<string, HTMLImageElement>();
+
+  function loadFigures(): Promise<void[]> {
+    return Promise.all(['e','f','h','d','i','c','b','k','l','m','n','o','p','q','r','s','t','u','v','w'].map(key =>
+      new Promise<void>(resolve => {
+        const img = new Image();
+        img.onload  = () => { figureImgs.set(key, img); resolve(); };
+        img.onerror = () => resolve();
+        img.src = `/fig-${key}.png`;
+      })
+    ));
+  }
+
+  // Drift particles — upward soul-light streams
+  interface Particle {
+    x: number; y: number; speed: number; alpha: number; r: number;
+    type: 'ember' | 'wisp' | 'streak';
+    phase: number; wobble: number;
+  }
+  const PARTICLES: Particle[] = Array.from({ length: 180 }, (_, i) => ({
     x: Math.random(),
     y: Math.random(),
-    speed: 0.15 + Math.random() * 0.45,
-    alpha: 0.15 + Math.random() * 0.5,
-    r: 0.5 + Math.random() * 1.2
+    speed: i < 60  ? 0.08 + Math.random() * 0.18   // slow drifters
+          : i < 120 ? 0.22 + Math.random() * 0.35   // mid-speed
+                    : 0.45 + Math.random() * 0.70,   // fast streaks
+    alpha: 0.12 + Math.random() * 0.65,
+    r: i < 60  ? 1.2 + Math.random() * 2.0          // large wisps
+       : i < 120 ? 0.6 + Math.random() * 1.2         // medium embers
+                 : 0.25 + Math.random() * 0.6,        // tiny sparks
+    type: i < 60 ? 'wisp' : i < 140 ? 'ember' : 'streak',
+    phase: Math.random() * Math.PI * 2,
+    wobble: 0.002 + Math.random() * 0.006,
   }));
 
   function lerpN(a: number, b: number, t: number): number { return a + (b - a) * t; }
@@ -215,157 +325,179 @@
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Landscape silhouettes
-    drawLandscape(horizonY, panPx);
   }
 
-  function drawLandscape(horizonY: number, panPx: number): void {
-    const dark = 'rgba(2,4,9,0.97)';
-    ctx.fillStyle = dark;
 
-    // ── LEFT: Desert mesa/ridge — slides in as you look left ──
-    const mesaX = w * 0.08 - panPx * 1.5;
-    ctx.beginPath();
-    ctx.moveTo(mesaX - 120, h);
-    ctx.lineTo(mesaX - 120, horizonY + 6);
-    ctx.lineTo(mesaX - 50,  horizonY + 1);
-    ctx.lineTo(mesaX,       horizonY - 24);
-    ctx.lineTo(mesaX + 55,  horizonY - 30);
-    ctx.lineTo(mesaX + 110, horizonY - 20);
-    ctx.lineTo(mesaX + 185, horizonY - 8);
-    ctx.lineTo(mesaX + 260, horizonY - 3);
-    ctx.lineTo(mesaX + 340, horizonY + 2);
-    ctx.lineTo(mesaX + 420, h);
-    ctx.closePath();
-    ctx.fill();
-
-    // Smaller rock outcrop — further left
-    const rock2X = mesaX - 280;
-    ctx.beginPath();
-    ctx.moveTo(rock2X,        h);
-    ctx.lineTo(rock2X,        horizonY + 3);
-    ctx.lineTo(rock2X + 30,   horizonY - 10);
-    ctx.lineTo(rock2X + 70,   horizonY - 14);
-    ctx.lineTo(rock2X + 110,  horizonY - 6);
-    ctx.lineTo(rock2X + 150,  h);
-    ctx.closePath();
-    ctx.fill();
-
-    // ── RIGHT: Launch tower — slides in as you look right ──
-    const towerX = w * 0.92 - panPx * 1.7;
-    ctx.fillStyle = dark;
-
-    // Tower body
-    ctx.fillRect(towerX - 7,  horizonY - 200, 14, 200 + (h - horizonY));
-
-    // Upper truss
-    ctx.fillRect(towerX - 5,  horizonY - 170, 10, 170);
-
-    // Horizontal cross-arm
-    ctx.fillRect(towerX - 55, horizonY - 150, 55, 7);
-    // Cross-arm support
-    ctx.beginPath();
-    ctx.moveTo(towerX - 55, horizonY - 143);
-    ctx.lineTo(towerX - 7,  horizonY - 150);
-    ctx.lineTo(towerX - 7,  horizonY - 135);
-    ctx.closePath();
-    ctx.fill();
-
-    // Upper arm
-    ctx.fillRect(towerX - 38, horizonY - 110, 38, 5);
-
-    // Antenna spike
-    ctx.fillRect(towerX - 1,  horizonY - 248, 2, 48);
-
-    // Red warning light glow
-    const lightGrd = ctx.createRadialGradient(
-      towerX, horizonY - 248, 0,
-      towerX, horizonY - 248, 10
-    );
-    lightGrd.addColorStop(0, 'rgba(255,50,30,0.8)');
-    lightGrd.addColorStop(0.5, 'rgba(255,50,30,0.2)');
-    lightGrd.addColorStop(1, 'rgba(255,50,30,0)');
-    ctx.fillStyle = lightGrd;
-    ctx.beginPath();
-    ctx.arc(towerX, horizonY - 248, 10, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Subtle ground lines — flat arid terrain lines
-    ctx.strokeStyle = 'rgba(8,18,38,0.5)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 3; i++) {
-      const ly = horizonY + (h - horizonY) * (0.12 + i * 0.22);
-      ctx.beginPath();
-      ctx.moveTo(0, ly);
-      ctx.lineTo(w, ly);
-      ctx.stroke();
-    }
-  }
-
-  function drawParticles(horizonY: number, progress: number): void {
-    const intensity = Math.max(0, (progress - 0.1) * 1.1);
-    if (intensity < 0.02) return;
+  function drawParticles(horizonY: number, progress: number, t: number): void {
+    const intensity = Math.max(0, (progress - 0.05) * 1.2);
+    if (intensity < 0.01) return;
 
     PARTICLES.forEach(p => {
-      p.y -= p.speed / h;
-      if (p.y < 0) { p.y = (horizonY / h) * 0.98; p.x = Math.random(); }
+      // Rise upward — faster particles rise faster
+      p.y -= p.speed * 0.0004;
+      // Gentle horizontal wobble
+      p.phase += p.wobble;
+      const wobbleX = Math.sin(p.phase) * 0.003;
+
+      // Reset when off the top — respawn near horizon
+      if (p.y < 0) {
+        p.y = (horizonY / h) * (0.85 + Math.random() * 0.15);
+        p.x = Math.random();
+        p.phase = Math.random() * Math.PI * 2;
+      }
+
+      const px = (p.x + wobbleX) * w;
       const py = p.y * h;
-      if (py > horizonY) return;
-      ctx.beginPath();
-      ctx.arc(p.x * w, py, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,210,120,${p.alpha * intensity * 0.7})`;
-      ctx.fill();
+      if (py > horizonY || py < 0) return;
+
+      // Fade out near top of sky, fade in from horizon
+      const skyFrac = 1 - (py / horizonY);
+      const edgeFade = Math.min(skyFrac * 4, 1) * Math.min((1 - skyFrac) * 6, 1);
+      const a = p.alpha * intensity * edgeFade;
+      if (a < 0.01) return;
+
+      if (p.type === 'streak') {
+        // Vertical streak — thin rising line
+        const len = p.r * 8 + p.speed * 18;
+        const grad = ctx.createLinearGradient(px, py, px, py + len);
+        grad.addColorStop(0, `rgba(255,235,180,${a})`);
+        grad.addColorStop(1, `rgba(255,200,100,0)`);
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + Math.sin(p.phase) * 1.5, py + len);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = p.r * 0.8;
+        ctx.stroke();
+      } else if (p.type === 'wisp') {
+        // Large soft glow orb
+        const grd = ctx.createRadialGradient(px, py, 0, px, py, p.r * 3.5);
+        grd.addColorStop(0,   `rgba(255,240,200,${a * 0.9})`);
+        grd.addColorStop(0.4, `rgba(255,210,130,${a * 0.5})`);
+        grd.addColorStop(1,   `rgba(255,180,80,0)`);
+        ctx.beginPath();
+        ctx.arc(px, py, p.r * 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = grd;
+        ctx.fill();
+      } else {
+        // Crisp ember dot
+        ctx.beginPath();
+        ctx.arc(px, py, p.r, 0, Math.PI * 2);
+        const warm = Math.random() < 0.15;
+        ctx.fillStyle = warm
+          ? `rgba(200,230,255,${a})`
+          : `rgba(255,215,130,${a})`;
+        ctx.fill();
+      }
     });
   }
 
-  function drawFigures(horizonY: number, panPx: number): void {
-    const dark = 'rgba(3,5,10,0.94)';
+  function drawSilhouettes(horizonY: number, panPx: number, t: number): void {
+    // Crowd fades as camY rises toward RISE BEYOND — sync with text fade-in at 0.35
+    const crowdAlpha = Math.max(0, Math.min(1, 1 - (camY - 0.32) / 0.26));
+    if (crowdAlpha <= 0) return;
 
-    function figure(x: number, sz: number): void {
-      ctx.fillStyle = dark;
-      // Head
-      ctx.beginPath();
-      ctx.arc(x, horizonY - sz * 0.92, sz * 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      // Torso
-      ctx.beginPath();
-      ctx.moveTo(x - sz*0.13, horizonY - sz*0.78);
-      ctx.lineTo(x - sz*0.17, horizonY - sz*0.38);
-      ctx.lineTo(x + sz*0.17, horizonY - sz*0.38);
-      ctx.lineTo(x + sz*0.13, horizonY - sz*0.78);
-      ctx.closePath();
-      ctx.fill();
-      // Legs
-      ctx.beginPath();
-      ctx.moveTo(x - sz*0.13, horizonY - sz*0.38);
-      ctx.lineTo(x - sz*0.15, horizonY);
-      ctx.lineTo(x - sz*0.03, horizonY);
-      ctx.lineTo(x,           horizonY - sz*0.32);
-      ctx.lineTo(x + sz*0.03, horizonY);
-      ctx.lineTo(x + sz*0.15, horizonY);
-      ctx.lineTo(x + sz*0.13, horizonY - sz*0.38);
-      ctx.closePath();
-      ctx.fill();
+    // Painter's algorithm: draw smallest (far) first, largest (close) on top
+    const sorted = [...FIGURES].sort((a, b) => a.hFrac - b.hFrac);
+
+    for (const fig of sorted) {
+      const img = figureImgs.get(fig.key);
+      if (!img) continue;
+
+      const figH = h * fig.hFrac;
+      const figW = (img.naturalWidth / img.naturalHeight) * figH;
+      const footY = horizonY + (h - horizonY) * fig.footFrac;
+      const cx = fig.cxFrac * w - panPx * fig.depth * 0.6;
+
+      ctx.save();
+      ctx.globalAlpha = crowdAlpha;
+
+      // Warm ground-fire backlight — embers glow up from below
+      ctx.shadowBlur  = 22 + fig.hFrac * 20;
+      ctx.shadowColor = `rgba(210, 120, 30, ${0.55 * crowdAlpha})`;
+
+      ctx.translate(cx, footY);
+      if (fig.flip) ctx.scale(-1, 1);
+      ctx.drawImage(img, -figW / 2, -figH, figW, figH);
+
+      // Second pass — cool blue atmosphere at shoulders/top (offset upward)
+      ctx.shadowBlur  = 14;
+      ctx.shadowColor = `rgba(79, 195, 247, ${0.22 * crowdAlpha})`;
+      ctx.globalAlpha = crowdAlpha * 0.35;
+      ctx.drawImage(img, -figW / 2, -figH - figH * 0.08, figW, figH);
+
+      ctx.restore();
     }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur  = 0;
+    ctx.shadowColor = 'transparent';
+  }
 
-    // Congregation near launch tower (right side, pans with scene)
-    const towerX = w * 0.92 - panPx * 1.7;
-    figure(towerX - 80, h * 0.078);
-    figure(towerX - 55, h * 0.068);
-    figure(towerX - 35, h * 0.082);
-    figure(towerX - 18, h * 0.072);
-    figure(towerX + 40, h * 0.065);
+  // Mission planet orbs — appear in sky when tilted up
+  function drawMissionOrbits(horizonY: number, panPx: number, t: number): void {
+    const orbAlpha = Math.max(0, Math.min(1, (camY - 0.28) / 0.30));
+    if (orbAlpha < 0.01) return;
 
-    // Scattered — left side
-    const mesaX = w * 0.08 - panPx * 1.5;
-    figure(mesaX + 160, h * 0.060);
-    figure(mesaX + 320, h * 0.055);
+    const orbs = [
+      { xFrac: 0.22, yFrac: 0.18, r: 5,  color: [79,  195, 247], pan: -0.15 }, // LEO — blue
+      { xFrac: 0.50, yFrac: 0.10, r: 4,  color: [200, 184, 154], pan:  0.00 }, // Lunar — warm gray
+      { xFrac: 0.78, yFrac: 0.16, r: 5,  color: [185,  60, 255], pan:  0.15 }, // Nebula — bright violet
+    ];
+
+    orbs.forEach(({ xFrac, yFrac, r, color, pan }) => {
+      const ox = xFrac * w - panPx * pan;
+      const oy = horizonY * yFrac;
+      const pulse = 0.75 + 0.25 * Math.sin(t * 0.8 + xFrac * 6);
+      const a = orbAlpha * pulse;
+      const [cr, cg, cb] = color;
+
+      // Dark backdrop — punches through the Milky Way so orb reads clearly
+      const dark = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 12);
+      dark.addColorStop(0,   `rgba(0,0,4,${a * 0.72})`);
+      dark.addColorStop(0.4, `rgba(0,0,4,${a * 0.40})`);
+      dark.addColorStop(1,   'rgba(0,0,4,0)');
+      ctx.beginPath();
+      ctx.arc(ox, oy, r * 12, 0, Math.PI * 2);
+      ctx.fillStyle = dark;
+      ctx.fill();
+
+      // Outer diffuse color glow
+      const grd = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 8);
+      grd.addColorStop(0,   `rgba(${cr},${cg},${cb},${a * 0.55})`);
+      grd.addColorStop(0.35,`rgba(${cr},${cg},${cb},${a * 0.22})`);
+      grd.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
+      ctx.beginPath();
+      ctx.arc(ox, oy, r * 8, 0, Math.PI * 2);
+      ctx.fillStyle = grd;
+      ctx.fill();
+
+      // Orbit ring — thin circle, unmistakably a destination not a star
+      ctx.beginPath();
+      ctx.arc(ox, oy, r * 3.2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${a * 0.55})`;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Inner glow + hard core
+      const mid = ctx.createRadialGradient(ox, oy, 0, ox, oy, r * 2);
+      mid.addColorStop(0,   `rgba(${cr},${cg},${cb},${a * 0.95})`);
+      mid.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
+      ctx.beginPath();
+      ctx.arc(ox, oy, r * 2, 0, Math.PI * 2);
+      ctx.fillStyle = mid;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(ox, oy, r * 0.8, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${a * 0.95})`;
+      ctx.fill();
+    });
   }
 
   let mwPhotoEl: HTMLElement;
   let mortalEl: HTMLElement;
   let riseEl: HTMLElement;
   let ctaEl: HTMLAnchorElement;
+  let logoEl: HTMLImageElement;
 
   function draw(): void {
     if (!ctx || !canvas) return;
@@ -378,14 +510,21 @@
     const progress = Math.min(1, (Date.now() - startTime) / 90000);
 
     // Neutral shows 65% sky. Ground exits at camY≈0.49 — exactly at button threshold.
-    const horizonY = h * (0.65 + camY * 0.72);
+    const horizonY = h * (0.68 + camY * 0.72);
     const panPx    = camX * w * 0.40;
 
     ctx.clearRect(0, 0, w, h);
+    const t = (Date.now() - startTime) / 1000;
     drawSky(horizonY, panPx, progress);
+    drawMissionOrbits(horizonY, panPx, t);
     drawGround(horizonY, panPx);
-    drawFigures(horizonY, panPx);
-    drawParticles(horizonY, progress);
+    drawSilhouettes(horizonY, panPx, t);
+    drawParticles(horizonY, progress, t);
+
+    // IV logo — visible at neutral, fades as you look up
+    if (logoEl) {
+      logoEl.style.opacity = String(Math.max(0, 1 - camY * 3.5));
+    }
 
     // "THE MORTAL PLANE" — anchored just above the horizon, fades early in tilt
     if (mortalEl) {
@@ -440,22 +579,83 @@
 
     buildStars();
     buildMilkyWay(w * WORLD_SCALE, h * 1.25);
+    loadFigures();
 
     window.addEventListener('resize', resize);
 
     function onMouseMove(e: MouseEvent) {
-      // 2.5x amplification — mouse only needs to reach ~30% from top for full reveal
       targetX = Math.max(-1, Math.min(1,  (e.clientX / w - 0.5) * 2.5));
       targetY = Math.max(-0.5, Math.min(1, -((e.clientY / h - 0.5) * 2.5)));
     }
 
-    function onMouseLeave() {
-      targetX = 0;
-      targetY = 0;
+    function onMouseLeave() { targetX = 0; targetY = 0; }
+
+    // ── Touch drag ────────────────────────────────────────────────────────
+    let touchStartY = 0;
+    let touchStartX = 0;
+    let touchBaseY  = 0;
+    let touchBaseX  = 0;
+
+    function onTouchStart(e: TouchEvent) {
+      touchStartY = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
+      touchBaseY  = targetY;
+      touchBaseX  = targetX;
     }
+
+    function onTouchMove(e: TouchEvent) {
+      const dy = (e.touches[0].clientY - touchStartY) / h;
+      const dx = (e.touches[0].clientX - touchStartX) / w;
+      targetY = Math.max(-0.5, Math.min(1, touchBaseY - dy * 2.2));
+      targetX = Math.max(-1,   Math.min(1, touchBaseX + dx * 2.0));
+    }
+
+    function onTouchEnd() { /* keep position — don't snap back */ }
+
+    // ── Device orientation (gyroscope) ───────────────────────────────────
+    let gyroActive = false;
+
+    function onDeviceOrientation(e: DeviceOrientationEvent) {
+      if (e.beta === null || e.gamma === null) return;
+      // beta: 0=flat, 90=upright portrait. Tilt back = look up.
+      const tiltY = -((e.beta - 75) / 40);  // 0 at neutral upright, +1 tilted back
+      const tiltX = (e.gamma ?? 0) / 35;
+      targetY = Math.max(-0.5, Math.min(1, tiltY));
+      targetX = Math.max(-1,   Math.min(1, tiltX));
+    }
+
+    async function tryGyro() {
+      if (typeof DeviceOrientationEvent === 'undefined') return;
+      const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+      if (typeof DOE.requestPermission === 'function') {
+        // iOS 13+ — needs user gesture; we attach to first touch
+        const handler = async () => {
+          const perm = await DOE.requestPermission!();
+          if (perm === 'granted') {
+            window.addEventListener('deviceorientation', onDeviceOrientation);
+            gyroActive = true;
+          }
+          window.removeEventListener('touchstart', handler);
+        };
+        window.addEventListener('touchstart', handler, { once: true });
+      } else {
+        // Android / non-gated
+        window.addEventListener('deviceorientation', onDeviceOrientation);
+        gyroActive = true;
+      }
+    }
+
+    const isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseleave', onMouseLeave);
+
+    if (isMobile) {
+      window.addEventListener('touchstart', onTouchStart, { passive: true });
+      window.addEventListener('touchmove',  onTouchMove,  { passive: true });
+      window.addEventListener('touchend',   onTouchEnd);
+      tryGyro();
+    }
 
     // Entry reveal — fade canvas in
     gsap.fromTo(canvas,
@@ -472,9 +672,24 @@
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseleave', onMouseLeave);
       window.removeEventListener('resize', resize);
+      if (isMobile) {
+        window.removeEventListener('touchstart', onTouchStart);
+        window.removeEventListener('touchmove',  onTouchMove);
+        window.removeEventListener('touchend',   onTouchEnd);
+        if (gyroActive) window.removeEventListener('deviceorientation', onDeviceOrientation);
+      }
     };
   });
 </script>
+
+<!-- IV logo — top center, fades as you tilt up -->
+<img
+  bind:this={logoEl}
+  src="/logo-bare.png"
+  alt="Immortal Vibes"
+  class="hero-logo"
+  aria-hidden="true"
+/>
 
 <!-- THE MORTAL PLANE text — anchored to the horizon -->
 <div
@@ -517,6 +732,20 @@
 ></canvas>
 
 <style>
+  .hero-logo {
+    position: fixed;
+    top: 1.4rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 1;
+    will-change: opacity;
+  }
+
   .text-mortal {
     position: fixed;
     left: 50%;
@@ -574,8 +803,8 @@
     border-bottom-color: rgba(200, 146, 42, 0.5);
     color: rgba(240, 237, 230, 0.9);
     font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.25em;
+    font-size: 0.60rem;
+    letter-spacing: 0.22em;
     padding: 1rem 2.5rem;
     text-decoration: none;
     background: rgba(0, 0, 0, 0.4);

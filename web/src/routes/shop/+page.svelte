@@ -1,372 +1,316 @@
 <!-- web/src/routes/shop/+page.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { browser } from '$app/environment';
+  import MissionPlanet from '$lib/components/MissionPlanet.svelte';
 
-  let canvas: HTMLCanvasElement;
+  const R2 = 'https://pub-75a66fca0ddd4d93b3bb53bda5d6a29c.r2.dev';
 
-  onMount(() => {
-    if (!browser || !canvas) return;
-    const ctx = canvas.getContext('2d')!;
-    let rafId: number;
-    let w = window.innerWidth;
-    let h = window.innerHeight;
-    canvas.width = w;
-    canvas.height = h;
-
-    // Stars
-    const stars = Array.from({ length: 800 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      r: Math.random() < 0.04 ? 1.6 + Math.random() * 0.8 :
-         Math.random() < 0.15 ? 0.8 + Math.random() * 0.6 : 0.3 + Math.random() * 0.4,
-      a: 0.1 + Math.random() * 0.85,
-      twinkleSpeed: 0.004 + Math.random() * 0.012,
-      twinklePhase: Math.random() * Math.PI * 2,
-    }));
-
-    function draw() {
-      ctx.clearRect(0, 0, w, h);
-
-      // Nebula background
-      const bg = ctx.createRadialGradient(w*0.5, h*0.45, 0, w*0.5, h*0.45, w*0.7);
-      bg.addColorStop(0,   'rgba(35,18,8,1)');
-      bg.addColorStop(0.3, 'rgba(22,10,18,1)');
-      bg.addColorStop(0.7, 'rgba(8,5,14,1)');
-      bg.addColorStop(1,   'rgba(3,2,8,1)');
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, w, h);
-
-      // Warm nebula cloud — center-left
-      const n1 = ctx.createRadialGradient(w*0.3, h*0.4, 0, w*0.3, h*0.4, w*0.45);
-      n1.addColorStop(0,   'rgba(120,55,15,0.22)');
-      n1.addColorStop(0.4, 'rgba(80,30,8,0.12)');
-      n1.addColorStop(1,   'rgba(0,0,0,0)');
-      ctx.fillStyle = n1; ctx.fillRect(0,0,w,h);
-
-      // Purple nebula — upper right
-      const n2 = ctx.createRadialGradient(w*0.75, h*0.25, 0, w*0.75, h*0.25, w*0.38);
-      n2.addColorStop(0,   'rgba(70,20,80,0.18)');
-      n2.addColorStop(0.5, 'rgba(40,10,55,0.08)');
-      n2.addColorStop(1,   'rgba(0,0,0,0)');
-      ctx.fillStyle = n2; ctx.fillRect(0,0,w,h);
-
-      // Amber nebula — bottom center
-      const n3 = ctx.createRadialGradient(w*0.5, h*0.8, 0, w*0.5, h*0.8, w*0.5);
-      n3.addColorStop(0,   'rgba(100,45,10,0.15)');
-      n3.addColorStop(0.5, 'rgba(60,20,5,0.07)');
-      n3.addColorStop(1,   'rgba(0,0,0,0)');
-      ctx.fillStyle = n3; ctx.fillRect(0,0,w,h);
-
-      // Stars
-      stars.forEach(s => {
-        s.twinklePhase += s.twinkleSpeed;
-        const a = s.a * (0.65 + 0.35 * Math.sin(s.twinklePhase));
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(230,225,245,${a})`;
-        ctx.fill();
-      });
-
-      // Thin orbital arc lines (SVG-style, drawn in canvas)
-      ctx.strokeStyle = 'rgba(180,140,80,0.08)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.ellipse(w*0.5, h*0.52, w*0.38, h*0.30, -0.15, 0, Math.PI * 2);
-      ctx.stroke();
-
-      rafId = requestAnimationFrame(draw);
-    }
-
-    draw();
-
-    const onResize = () => {
-      w = window.innerWidth; h = window.innerHeight;
-      canvas.width = w; canvas.height = h;
-    };
-    window.addEventListener('resize', onResize);
-    return () => { cancelAnimationFrame(rafId); window.removeEventListener('resize', onResize); };
-  });
+  const missions = [
+    {
+      num: '001',
+      name: 'Warped Reality Beanie',
+      env: 'Low Earth Orbit',
+      slug: 'warped-reality-beanie',
+      planetType: 'leo',
+      product: '/photos/product-beanie.png',
+      productScale: 0.75,
+      glow: '#4FC3F7',
+      speed: 0.0018,
+      tilt: 0.22,
+    },
+    {
+      num: '002',
+      name: 'Vanguard Trucker Hat',
+      env: 'Lunar Surface',
+      slug: 'vanguard-trucker-hat',
+      planetType: 'lunar',
+      product: '/photos/product-hat.png',
+      productScale: 1.5,
+      planetScale: 0.72,
+      planetOffsetY: 0.04,
+      glow: '#C8B89A',
+      speed: 0.0011,
+      tilt: 0.08,
+    },
+    {
+      num: '003',
+      name: 'Racerback Tanktop',
+      env: 'Stellar Nursery',
+      slug: 'racerback-tanktop',
+      planetType: 'nebula',
+      product: '/photos/product-tank.png',
+      productScale: 0.75,
+      spriteBlending: 'additive',
+      glow: '#6B0FCC',
+      speed: 0.0022,
+      tilt: 0.32,
+    },
+  ];
 </script>
 
 <svelte:head>
   <title>Immortal Vibes — Select Your Mission</title>
 </svelte:head>
 
-<!-- Nebula canvas background -->
-<canvas
-  bind:this={canvas}
-  aria-hidden="true"
-  style="position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:2;"
-></canvas>
+<a href="/" class="shop-logo" aria-label="Immortal Vibes home">
+  <img src="/logo-bare.png" alt="Immortal Vibes" />
+</a>
 
-<!-- Space UI layer -->
-<div class="space-ui">
+<div class="shop">
 
-  <!-- Header label -->
-  <div class="destinations-label">MISSION SELECT</div>
+  <header class="top-bar">
+    <span class="select-label">MISSION SELECT</span>
+  </header>
 
-  <!-- Planet grid -->
-  <div class="planets">
+  <div class="planets-row">
+    {#each missions as m}
+      <a href="/shop/{m.slug}" class="mission-slot">
 
-    <!-- Mission 001 — Beanie — Blue-white LEO planet -->
-    <div class="mission-slot slot-001">
-      <a href="/shop/warped-reality-beanie" class="planet-link">
-        <div class="planet planet-leo">
-          <div class="planet-glow planet-glow-leo"></div>
+        <div class="planet-wrap">
+          <MissionPlanet
+            planetType={m.planetType}
+            productUrl={m.product}
+            productScale={m.planetScale ?? m.productScale ?? 1.0}
+            productOffsetY={m.planetOffsetY ?? 0}
+            productBlending={m.spriteBlending ?? 'normal'}
+            glowColor={m.glow}
+            rotationSpeed={m.speed}
+            axialTilt={m.tilt}
+          />
+          <div class="planet-halo" style="--glow:{m.glow}"></div>
         </div>
-        <img src="/photos/blue-beanie.jpeg" alt="Warped Reality Beanie" class="product-float" />
+
         <div class="mission-label">
-          <span class="mission-num">001</span>
-          <span class="mission-name">Warped Reality Beanie</span>
-          <span class="mission-loc">Low Earth Orbit</span>
+          <span class="num">{m.num}</span>
+          <span class="name">{m.name}</span>
+          <span class="env">{m.env}</span>
         </div>
-      </a>
-    </div>
 
-    <!-- Mission 002 — Hat — Lunar grey planet -->
-    <div class="mission-slot slot-002">
-      <a href="/shop/vanguard-trucker-hat" class="planet-link">
-        <div class="planet planet-lunar">
-          <div class="planet-glow planet-glow-lunar"></div>
-        </div>
-        <div class="product-float product-tbd">NO PHOTO YET</div>
-        <div class="mission-label">
-          <span class="mission-num">002</span>
-          <span class="mission-name">Vanguard Trucker Hat</span>
-          <span class="mission-loc">Lunar Surface</span>
-        </div>
       </a>
-    </div>
-
-    <!-- Mission 003 — Tank — Warm orange nebula planet -->
-    <div class="mission-slot slot-003">
-      <a href="/shop/racerback-tanktop" class="planet-link">
-        <div class="planet planet-nursery">
-          <div class="planet-glow planet-glow-nursery"></div>
-        </div>
-        <img src="/photos/tank-front.png" alt="Racerback Tanktop" class="product-float" />
-        <div class="mission-label">
-          <span class="mission-num">003</span>
-          <span class="mission-name">Racerback Tanktop</span>
-          <span class="mission-loc">Stellar Nursery</span>
-        </div>
-      </a>
-    </div>
-
+    {/each}
   </div>
 
-  <!-- Earth at bottom — where you came from -->
-  <div class="earth-anchor">
-    <div class="earth-orb"></div>
+  <footer class="bottom-bar">
+    <!-- Clicking the Earth returns home -->
+    <a href="/" class="earth-link" aria-label="Return to Earth">
+      <div class="earth-wrap">
+        <MissionPlanet
+          planetType="earth"
+          photoUrl="/planet-leo.jpg"
+          glowColor="#4FC3F7"
+          rotationSpeed={0.0008}
+          axialTilt={0.41}
+        />
+        <div class="earth-halo"></div>
+      </div>
+    </a>
     <span class="earth-label">EARTH</span>
     <a href="/" class="return-btn">↓ RETURN TO EARTH</a>
-  </div>
+  </footer>
 
 </div>
 
 <style>
   :global(body) { overflow: hidden; }
 
-  .space-ui {
-    position: relative;
-    z-index: 10;
-    width: 100vw;
-    height: 100vh;
+  .shop-logo {
+    position: fixed;
+    top: 1.2rem;
+    left: 1.8rem;
+    z-index: 20;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  .shop-logo:hover { opacity: 1; }
+
+  .shop-logo img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+  }
+
+  .shop {
+    position: fixed;
+    inset: 0;
+    background: #000005;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 3rem 2rem 2.5rem;
-    pointer-events: none;
+    z-index: 10;
+    padding: 2rem 3rem 2.5rem;
   }
 
-  .destinations-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.5em;
-    color: rgba(200, 146, 42, 0.7);
-    text-transform: uppercase;
-  }
-
-  /* ── Planet grid ── */
-  .planets {
+  /* ── Header ── */
+  .top-bar {
+    width: 100%;
     display: flex;
-    align-items: flex-end;
     justify-content: center;
-    gap: clamp(3rem, 8vw, 7rem);
+  }
+
+  .select-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.55rem;
+    letter-spacing: 0.55em;
+    color: rgba(200, 146, 42, 0.65);
+  }
+
+  /* ── Planets row ── */
+  .planets-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(3rem, 7vw, 7rem);
     flex: 1;
-    padding: 2rem 0;
+    width: 100%;
+  }
+
+  @media (min-width: 641px) {
+    .mission-slot:nth-child(1) { transform: translateY(-3vh); }
+    .mission-slot:nth-child(2) { transform: translateY(2vh);  }
+    .mission-slot:nth-child(3) { transform: translateY(-2vh); }
+  }
+
+  @media (max-width: 640px) {
+    :global(body) { overflow-y: auto; }
+    .shop { position: relative; min-height: 100dvh; padding: 5rem 1.5rem 3rem; justify-content: flex-start; }
+    .planets-row { flex-direction: column; gap: 2rem; align-items: center; justify-content: flex-start; flex: unset; padding: 1.5rem 0 2rem; }
+    .planet-wrap { width: clamp(150px, 60vw, 220px); height: clamp(150px, 60vw, 220px); }
+    .mission-slot:hover { transform: none !important; }
+    .shop-logo { top: 0.9rem; left: 1rem; }
+    .shop-logo img { width: 40px; height: 40px; }
+    .bottom-bar { margin-top: 1rem; }
   }
 
   .mission-slot {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1.2rem;
-    pointer-events: all;
-  }
-
-  /* Stagger heights for Destiny arc feel */
-  .slot-001 { transform: translateY(-2vh); }
-  .slot-002 { transform: translateY(3vh); }
-  .slot-003 { transform: translateY(-1vh); }
-
-  .planet-link {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
+    gap: 1.4rem;
     text-decoration: none;
     cursor: pointer;
-    transition: transform 0.4s ease;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
-  .planet-link:hover { transform: scale(1.06) translateY(-6px); }
-  .planet-link:hover .planet { box-shadow: var(--planet-hover-shadow); }
+  .mission-slot:hover { transform: translateY(-8px) !important; }
 
-  /* ── Planet orbs ── */
-  .planet {
-    width: clamp(120px, 14vw, 175px);
-    height: clamp(120px, 14vw, 175px);
-    border-radius: 50%;
+  /* ── Planet + overlay ── */
+  .planet-wrap {
     position: relative;
-    transition: box-shadow 0.4s ease;
+    width: clamp(160px, 18vw, 260px);
+    height: clamp(160px, 18vw, 260px);
   }
 
-  .planet-leo {
-    background: radial-gradient(circle at 38% 32%,
-      #d8eeff 0%, #7ab8ec 18%, #3a80cc 38%, #1a52a8 58%, #0c2860 78%, #050f30 95%
-    );
-    box-shadow: 0 0 50px rgba(79,195,247,0.22), inset -22px -18px 45px rgba(0,0,20,0.55);
-    --planet-hover-shadow: 0 0 80px rgba(79,195,247,0.45), inset -22px -18px 45px rgba(0,0,20,0.55);
-  }
 
-  .planet-lunar {
-    background: radial-gradient(circle at 40% 35%,
-      #e8e4de 0%, #b8b0a4 20%, #8a8278 40%, #5e5850 60%, #3a352e 80%, #1a1610 95%
-    );
-    box-shadow: 0 0 40px rgba(200,190,180,0.15), inset -20px -16px 40px rgba(0,0,0,0.6);
-    --planet-hover-shadow: 0 0 65px rgba(200,190,180,0.35), inset -20px -16px 40px rgba(0,0,0,0.6);
-  }
-
-  .planet-nursery {
-    background: radial-gradient(circle at 36% 30%,
-      #ffd0a0 0%, #e8904a 18%, #c05a18 38%, #882808 58%, #4a1004 78%, #1c0402 95%
-    );
-    box-shadow: 0 0 50px rgba(220,120,40,0.22), inset -22px -18px 45px rgba(20,5,0,0.55);
-    --planet-hover-shadow: 0 0 80px rgba(220,120,40,0.45), inset -22px -18px 45px rgba(20,5,0,0.55);
-  }
-
-  /* Atmosphere rim glow on each planet */
-  .planet-glow {
+  /* Diffuse outer glow */
+  .planet-halo {
     position: absolute;
-    inset: -3px;
+    inset: -40%;
     border-radius: 50%;
-    opacity: 0.5;
-  }
-  .planet-glow-leo     { box-shadow: inset 0 0 20px rgba(79,195,247,0.4); }
-  .planet-glow-lunar   { box-shadow: inset 0 0 20px rgba(180,170,160,0.3); }
-  .planet-glow-nursery { box-shadow: inset 0 0 20px rgba(255,150,60,0.4); }
-
-  /* ── Product photos ── */
-  .product-float {
-    width: clamp(48px, 6vw, 72px);
-    height: clamp(48px, 6vw, 72px);
-    object-fit: contain;
-    filter: drop-shadow(0 4px 16px rgba(0,0,0,0.7));
-    transform: rotate(-5deg) translateY(-8px);
-    transition: transform 0.3s ease;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--glow) 28%, transparent) 0%,
+      color-mix(in srgb, var(--glow) 10%, transparent) 35%,
+      transparent 68%
+    );
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    opacity: 0.55;
+    z-index: -1;
   }
 
-  .planet-link:hover .product-float { transform: rotate(-2deg) translateY(-14px) scale(1.1); }
+  .mission-slot:hover .planet-halo { opacity: 0.95; }
 
-  .product-tbd {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: clamp(48px, 6vw, 72px);
-    height: clamp(48px, 6vw, 72px);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.45rem;
-    letter-spacing: 0.15em;
-    color: rgba(240,237,230,0.2);
-    text-align: center;
-  }
-
-  /* ── Mission label ── */
+  /* ── Labels ── */
   .mission-label {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.3rem;
+    text-align: center;
   }
 
-  .mission-num {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.55rem;
-    letter-spacing: 0.3em;
-    color: rgba(200,146,42,0.6);
-  }
-
-  .mission-name {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(0.9rem, 1.5vw, 1.2rem);
-    font-weight: 300;
-    color: #F0EDE6;
-    letter-spacing: 0.05em;
-  }
-
-  .mission-loc {
+  .num {
     font-family: 'Inter', sans-serif;
     font-size: 0.5rem;
-    letter-spacing: 0.2em;
-    color: rgba(240,237,230,0.3);
+    letter-spacing: 0.35em;
+    color: rgba(200, 146, 42, 0.6);
+  }
+
+  .name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(0.9rem, 1.4vw, 1.25rem);
+    font-weight: 300;
+    color: #F0EDE6;
+    letter-spacing: 0.04em;
+  }
+
+  .env {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.46rem;
+    letter-spacing: 0.22em;
+    color: rgba(240, 237, 230, 0.3);
     text-transform: uppercase;
   }
 
-  /* ── Earth at bottom ── */
-  .earth-anchor {
+  /* ── Footer / Earth ── */
+  .bottom-bar {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
-    pointer-events: all;
+    gap: 0.5rem;
   }
 
-  .earth-orb {
-    width: clamp(60px, 7vw, 90px);
-    height: clamp(60px, 7vw, 90px);
+  .earth-link {
+    display: block;
+    text-decoration: none;
+    transition: transform 0.3s ease;
+  }
+
+  .earth-link:hover { transform: scale(1.12); }
+
+  .earth-wrap {
+    position: relative;
+    width: clamp(44px, 5vw, 64px);
+    height: clamp(44px, 5vw, 64px);
+  }
+
+  .earth-halo {
+    position: absolute;
+    inset: -50%;
     border-radius: 50%;
-    background: radial-gradient(circle at 38% 32%,
-      #a0d4f0 0%, #4494cc 18%, #2266aa 35%, #1a5e3a 48%,
-      #124e2e 58%, #1a4a8c 68%, #0d2d5e 82%, #050f22 95%
+    background: radial-gradient(
+      circle,
+      rgba(79,195,247,0.22) 0%,
+      rgba(79,195,247,0.06) 40%,
+      transparent 68%
     );
-    box-shadow: 0 0 30px rgba(79,195,247,0.2), inset -10px -8px 25px rgba(0,0,20,0.5);
+    pointer-events: none;
+    z-index: -1;
   }
 
   .earth-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.5rem;
+    font-size: 0.46rem;
     letter-spacing: 0.35em;
-    color: rgba(240,237,230,0.3);
+    color: rgba(240,237,230,0.25);
   }
 
   .return-btn {
     font-family: 'Inter', sans-serif;
-    font-size: 0.6rem;
+    font-size: 0.55rem;
     letter-spacing: 0.22em;
-    color: rgba(240,237,230,0.45);
+    color: rgba(240,237,230,0.4);
     text-decoration: none;
-    border: 1px solid rgba(240,237,230,0.15);
+    border: 1px solid rgba(240,237,230,0.12);
     padding: 0.6rem 1.6rem;
-    transition: color 0.2s, border-color 0.2s;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.4);
     backdrop-filter: blur(4px);
+    transition: color 0.2s, border-color 0.2s;
   }
 
   .return-btn:hover {
     color: #F0EDE6;
-    border-color: rgba(240,237,230,0.45);
+    border-color: rgba(240,237,230,0.4);
   }
 </style>

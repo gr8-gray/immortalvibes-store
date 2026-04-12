@@ -17,6 +17,50 @@
 
   export let data: PageData;
 
+  $: product     = data.product;
+  $: variants    = product.variants ?? [];
+  $: hasVariants = variants.length > 0;
+
+  // Active variant & gallery state
+  let activeVariantIdx = 0;
+  let activeGalleryIdx = 0;
+
+  // Reset state on navigation (next/prev mission)
+  let _lastSlug = '';
+  $: if (product.slug !== _lastSlug) {
+    _lastSlug = product.slug;
+    activeVariantIdx = 0;
+    activeGalleryIdx = (product.variants?.[0]?.gallery?.length ?? 0) > 0 ? 0 : -1;
+  }
+
+  $: activeVariant  = hasVariants ? variants[activeVariantIdx] : null;
+  $: galleryImages  = activeVariant?.gallery ?? [];
+
+  // If no gallery images, fall back to standalone
+  $: effectiveIdx = galleryImages.length > 0 ? activeGalleryIdx : -1;
+
+  // Main displayed image — gallery first, standalone last
+  $: mainImage = effectiveIdx >= 0
+    ? galleryImages[effectiveIdx]
+    : (activeVariant?.productImage ?? product.image_url);
+
+  $: isProductShot = effectiveIdx < 0;
+
+  function selectVariant(idx: number) {
+    activeVariantIdx = idx;
+    // Reset to first model shot for new variant (or standalone if no gallery)
+    activeGalleryIdx = variants[idx]?.gallery?.length > 0 ? 0 : -1;
+  }
+
+  function selectGallery(idx: number) {
+    activeGalleryIdx = idx;
+  }
+
+  function showStandalone() {
+    activeGalleryIdx = -1;
+  }
+
+  // Mission nav
   $: currentIndex = MISSION_ORDER.indexOf(product.slug ?? '');
   $: prevSlug = currentIndex > 0 ? MISSION_ORDER[currentIndex - 1] : null;
   $: nextSlug = currentIndex < MISSION_ORDER.length - 1 ? MISSION_ORDER[currentIndex + 1] : null;
@@ -25,15 +69,14 @@
     goto(`/shop/${slug}`, { noScroll: true });
   }
 
-  $: product = data.product;
   $: missionNumber = product.mission_number;
 
   let selectedSize = '';
   let burst: ParticleBurst;
-  let productImage: HTMLImageElement;
+  let productImageEl: HTMLImageElement;
   let heroContent: HTMLDivElement;
-  let addCartBtn: HTMLButtonElement;
   let cartError = '';
+  let floatTween: gsap.core.Tween | null = null;
 
   const missionLabels: Record<string, string> = {
     '001': 'Low Earth Orbit',
@@ -43,80 +86,60 @@
   };
 
   function formatPrice(cents: number, currency: string): string {
-    const symbol = currency === 'gbp' ? '£' : '$';
-    return `${symbol}${(cents / 100).toFixed(2)}`;
+    return `${currency === 'gbp' ? '£' : '$'}${(cents / 100).toFixed(2)}`;
   }
 
   function getDisplayPrice(): string {
-    if (product.currency === 'gbp') return formatPrice(product.price_gbp, 'gbp');
-    return formatPrice(product.price_usd, 'usd');
+    return product.currency === 'gbp'
+      ? formatPrice(product.price_gbp, 'gbp')
+      : formatPrice(product.price_usd, 'usd');
+  }
+
+  // Float animation — only on standalone product shot
+  $: if (productImageEl) {
+    floatTween?.kill();
+    if (isProductShot) {
+      floatTween = gsap.to(productImageEl, {
+        y: -12, rotation: 1.5, duration: 4,
+        ease: 'sine.inOut', repeat: -1, yoyo: true,
+      });
+    } else {
+      gsap.set(productImageEl, { y: 0, rotation: 0 });
+    }
   }
 
   async function handleAddToCart(e: MouseEvent) {
     if (!selectedSize) {
       cartError = 'Please select a size.';
-      // Shake the size selector
-      gsap.to('.size-selector', {
-        x: [-6, 6, -4, 4, 0],
-        duration: 0.35,
-        ease: 'none',
-      });
+      gsap.to('.size-selector', { x: [-6, 6, -4, 4, 0], duration: 0.35, ease: 'none' });
       return;
     }
     cartError = '';
-
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     burst.trigger(rect.left + rect.width / 2, rect.top);
 
-    // Build CartItem from product data
     const variantId = `${product.id}_${selectedSize}`;
     const unitPrice = product.currency === 'gbp' ? product.price_gbp : product.price_usd;
     const newItem: CartItem = {
-      variantId,
-      productId: product.id,
+      variantId, productId: product.id,
       title: `${product.name} / ${selectedSize}`,
-      quantity: 1,
-      unitPrice,
-      currency: product.currency ?? 'usd',
+      quantity: 1, unitPrice, currency: product.currency ?? 'usd',
     };
 
     try {
       let cartId = $cart.id;
-
       if (!cartId) {
-        // No cart yet — create one via API
-        const existingToken = typeof localStorage !== 'undefined'
-          ? localStorage.getItem('iv_cart_token')
-          : null;
-
-        if (existingToken) {
-          cartId = existingToken;
-        } else {
-          const newCart = await createCart();
-          cartId = newCart.id;
-          localStorage.setItem('iv_cart_token', cartId);
-        }
+        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('iv_cart_token') : null;
+        if (token) { cartId = token; }
+        else { const c = await createCart(); cartId = c.id; localStorage.setItem('iv_cart_token', cartId); }
       }
-
-      // Merge new item into current items list
       const currentItems = $cart.items;
-      const existing = currentItems.find((i) => i.variantId === variantId);
+      const existing = currentItems.find(i => i.variantId === variantId);
       const updatedItems = existing
-        ? currentItems.map((i) =>
-            i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i
-          )
+        ? currentItems.map(i => i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i)
         : [...currentItems, newItem];
-
-      // Push to API
-      await updateCart(cartId, updatedItems.map((i) => ({
-        variantId: i.variantId,
-        quantity: i.quantity,
-      })));
-
-      // Update local store
+      await updateCart(cartId, updatedItems.map(i => ({ variantId: i.variantId, quantity: i.quantity })));
       cart.setCart(cartId, updatedItems);
-
-      // Open drawer
       openCart();
     } catch (err) {
       cartError = err instanceof Error ? err.message : 'Failed to add to cart.';
@@ -124,22 +147,9 @@
   }
 
   onMount(() => {
-    // Floating product image animation
-    if (productImage) {
-      gsap.to(productImage, {
-        y: -12,
-        rotation: 1.5,
-        duration: 4,
-        ease: 'sine.inOut',
-        repeat: -1,
-        yoyo: true,
-      });
-    }
-
-    // Hero content reveal
     if (heroContent) {
-      const children = heroContent.querySelectorAll<HTMLElement>('.reveal-child');
-      children.forEach((el, i) => revealOnScroll(el, i * 0.08));
+      heroContent.querySelectorAll<HTMLElement>('.reveal-child')
+        .forEach((el, i) => revealOnScroll(el, i * 0.08));
     }
   });
 </script>
@@ -153,7 +163,8 @@
 
 <MissionScene missionNumber={missionNumber}>
   <div class="product-page">
-    <!-- Mission label top-left -->
+
+    <!-- Mission label -->
     <div class="mission-tag reveal-child">
       <span class="mission-number">{missionNumber}</span>
       <span class="mission-name">{missionLabels[missionNumber]}</span>
@@ -163,24 +174,12 @@
     {#if prevSlug || nextSlug}
       <div class="mission-nav">
         {#if prevSlug}
-          <button
-            class="mission-nav-btn"
-            on:click={() => prevSlug && navigateMission(prevSlug)}
-            aria-label="Previous mission"
-            data-magnetic
-          >
+          <button class="mission-nav-btn" on:click={() => prevSlug && navigateMission(prevSlug)} aria-label="Previous mission">
             ← PREV MISSION
           </button>
-        {:else}
-          <span></span>
-        {/if}
+        {:else}<span></span>{/if}
         {#if nextSlug}
-          <button
-            class="mission-nav-btn"
-            on:click={() => nextSlug && navigateMission(nextSlug)}
-            aria-label="Next mission"
-            data-magnetic
-          >
+          <button class="mission-nav-btn" on:click={() => nextSlug && navigateMission(nextSlug)} aria-label="Next mission">
             NEXT MISSION →
           </button>
         {/if}
@@ -188,56 +187,93 @@
     {/if}
 
     <div class="product-layout">
-      <!-- Left: product image -->
+
+      <!-- ── Left: image display ── -->
       <div class="image-col">
-        {#if product.image_url}
+        <!-- Main image -->
+        <div class="main-image-wrap" class:product-shot={isProductShot}>
           <img
-            bind:this={productImage}
-            class="product-hero-image"
-            src={product.image_url}
+            bind:this={productImageEl}
+            class="main-image"
+            src={mainImage}
             alt={product.name}
+            style={isProductShot && activeVariant?.imageScale
+              ? `transform: scale(${activeVariant.imageScale})`
+              : ''}
           />
-        {:else}
-          <div class="image-placeholder"></div>
+        </div>
+
+        <!-- Thumbnail strip: model shots first, standalone last -->
+        {#if hasVariants && (activeVariant?.productImage || galleryImages.length > 0)}
+          <div class="thumb-strip">
+            <!-- Model / gallery shots first -->
+            {#each galleryImages as img, i}
+              <button
+                class="thumb"
+                class:active={effectiveIdx === i}
+                on:click={() => selectGallery(i)}
+                aria-label="Gallery image {i + 1}"
+              >
+                <img src={img} alt="gallery {i + 1}" />
+              </button>
+            {/each}
+
+            <!-- Standalone product shot last -->
+            {#if activeVariant?.productImage}
+              <button
+                class="thumb"
+                class:active={isProductShot}
+                on:click={showStandalone}
+                aria-label="Product standalone"
+              >
+                <img src={activeVariant.productImage} alt="standalone" />
+              </button>
+            {/if}
+          </div>
         {/if}
       </div>
 
-      <!-- Right: product details -->
+      <!-- ── Right: product details ── -->
       <div bind:this={heroContent} class="details-col">
-        <p class="reveal-child product-category">
-          MISSION {missionNumber} · IMMORTAL VIBES
-        </p>
+        <p class="reveal-child product-category">MISSION {missionNumber} · IMMORTAL VIBES</p>
 
         <h1 class="reveal-child product-name">{product.name}</h1>
 
         <p class="reveal-child product-price">{getDisplayPrice()}</p>
+
+        <!-- Color variant swatches -->
+        {#if variants.length > 1}
+          <div class="reveal-child variant-section">
+            <p class="field-label">COLOR — {activeVariant?.colorName ?? ''}</p>
+            <div class="swatches">
+              {#each variants as v, i}
+                <button
+                  class="swatch"
+                  class:active={activeVariantIdx === i}
+                  style="--c:{v.hex}"
+                  on:click={() => selectVariant(i)}
+                  aria-label={v.colorName}
+                  title={v.colorName}
+                ></button>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         <p class="reveal-child product-description">{product.description}</p>
 
         {#if product.status === 'available'}
           <div class="reveal-child">
             <p class="field-label">SELECT SIZE</p>
-            <SizeSelector
-              sizes={product.sizes}
-              bind:selected={selectedSize}
-            />
-            {#if cartError}
-              <p class="cart-error">{cartError}</p>
-            {/if}
+            <SizeSelector sizes={product.sizes} bind:selected={selectedSize} />
+            {#if cartError}<p class="cart-error">{cartError}</p>{/if}
           </div>
 
-          <button
-            bind:this={addCartBtn}
-            class="reveal-child add-to-cart"
-            on:click={handleAddToCart}
-            data-magnetic
-          >
+          <button class="reveal-child add-to-cart" on:click={handleAddToCart} data-magnetic>
             ADD TO CART
           </button>
         {:else}
-          <div class="reveal-child">
-            <StockBadge status={product.status} />
-          </div>
+          <div class="reveal-child"><StockBadge status={product.status} /></div>
         {/if}
       </div>
     </div>
@@ -245,6 +281,8 @@
 </MissionScene>
 
 <style>
+  :global(body) { overflow-y: auto; }
+
   .product-page {
     min-height: 100vh;
     padding: 2rem;
@@ -259,26 +297,21 @@
     padding: 1.5rem 0 3rem;
   }
 
-  .mission-number {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.3em;
-    color: rgba(240, 237, 230, 0.35);
-  }
-
+  .mission-number,
   .mission-name {
     font-family: 'Inter', sans-serif;
-    font-size: 0.65rem;
-    letter-spacing: 0.2em;
+    font-size: 0.60rem;
+    letter-spacing: 0.30em;
     color: rgba(240, 237, 230, 0.35);
     text-transform: uppercase;
   }
 
+  /* ── Layout ── */
   .product-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 6rem;
-    align-items: center;
+    align-items: start;
     flex: 1;
     max-width: 1200px;
     margin: 0 auto;
@@ -287,43 +320,97 @@
   }
 
   @media (max-width: 768px) {
-    .product-layout {
-      grid-template-columns: 1fr;
-      gap: 3rem;
-    }
+    .product-layout { grid-template-columns: 1fr; gap: 2rem; }
+    .image-col { position: relative; top: 0; height: auto; }
+    .main-image-wrap { min-height: 280px; }
+    .main-image { max-height: 50vh; }
+    .thumb { width: 52px; height: 52px; }
+    .details-col { padding-top: 0; }
   }
 
+  /* ── Image column ── */
   .image-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    position: sticky;
+    top: 4rem;
+  }
+
+  .main-image-wrap {
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 420px;
   }
 
-  .product-hero-image {
+  .main-image {
     max-width: 100%;
-    max-height: 70vh;
+    max-height: 65vh;
     object-fit: contain;
-    filter: drop-shadow(0 24px 80px rgba(0, 0, 0, 0.6));
+    filter: drop-shadow(0 24px 80px rgba(0,0,0,0.6));
     will-change: transform;
+    transition: opacity 0.2s ease;
   }
 
-  .image-placeholder {
-    width: 300px;
-    height: 400px;
-    border: 1px solid rgba(240, 237, 230, 0.06);
+  /* Standalone product shot gets extra drop shadow glow */
+  .product-shot .main-image {
+    filter: drop-shadow(0 24px 80px rgba(0,0,0,0.6))
+            drop-shadow(0 0 40px rgba(255,255,255,0.04));
   }
 
+  /* ── Thumbnail strip ── */
+  .thumb-strip {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 100%;
+  }
+
+  .thumb {
+    width: 56px;
+    height: 56px;
+    border: 1px solid rgba(240,237,230,0.1);
+    background: rgba(0,0,0,0.4);
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 20%;
+    display: block;
+  }
+
+  .thumb.active {
+    border-color: rgba(240,237,230,0.55);
+  }
+
+  .thumb:hover:not(.active) {
+    border-color: rgba(240,237,230,0.28);
+  }
+
+  /* ── Details column ── */
   .details-col {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    padding-top: 1rem;
   }
 
   .product-category {
     font-family: 'Inter', sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.25em;
-    color: rgba(240, 237, 230, 0.35);
+    font-size: 0.55rem;
+    letter-spacing: 0.28em;
+    color: rgba(240,237,230,0.35);
     margin: 0;
   }
 
@@ -344,27 +431,52 @@
     letter-spacing: 0.02em;
   }
 
+  /* ── Color swatches ── */
+  .variant-section { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .swatches { display: flex; gap: 0.6rem; align-items: center; }
+
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--c);
+    border: 1px solid rgba(240,237,230,0.15);
+    cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    padding: 0;
+  }
+
+  .swatch:hover { transform: scale(1.15); }
+
+  .swatch.active {
+    border-color: rgba(240,237,230,0.7);
+    box-shadow: 0 0 0 2px rgba(240,237,230,0.18);
+    transform: scale(1.1);
+  }
+
+  /* ── Rest of details ── */
   .product-description {
     font-family: 'Inter', sans-serif;
     font-size: 0.875rem;
     line-height: 1.7;
-    color: rgba(240, 237, 230, 0.55);
+    color: rgba(240,237,230,0.55);
     margin: 0;
     max-width: 38ch;
   }
 
   .field-label {
     font-family: 'Inter', sans-serif;
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    color: rgba(240, 237, 230, 0.35);
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
+    color: rgba(240,237,230,0.35);
     margin: 0 0 0.75rem;
   }
 
   .cart-error {
     font-family: 'Inter', sans-serif;
     font-size: 0.7rem;
-    color: rgba(240, 237, 230, 0.45);
+    color: rgba(240,237,230,0.45);
     margin: 0.5rem 0 0;
   }
 
@@ -377,21 +489,16 @@
     color: #030308;
     border: none;
     font-family: 'Inter', sans-serif;
-    font-size: 0.7rem;
-    letter-spacing: 0.2em;
+    font-size: 0.60rem;
+    letter-spacing: 0.22em;
     cursor: none;
     transition: background 0.2s, transform 0.1s;
   }
 
-  .add-to-cart:hover {
-    background: #ffffff;
-    transform: translateY(-1px);
-  }
+  .add-to-cart:hover { background: #ffffff; transform: translateY(-1px); }
+  .add-to-cart:active { transform: translateY(0); }
 
-  .add-to-cart:active {
-    transform: translateY(0);
-  }
-
+  /* ── Mission nav ── */
   .mission-nav {
     display: flex;
     justify-content: space-between;
@@ -404,8 +511,8 @@
 
   .mission-nav-btn {
     font-family: 'Inter', sans-serif;
-    font-size: 0.62rem;
-    letter-spacing: 0.2em;
+    font-size: 0.55rem;
+    letter-spacing: 0.22em;
     color: rgba(240,237,230,0.35);
     background: none;
     border: 1px solid rgba(240,237,230,0.1);

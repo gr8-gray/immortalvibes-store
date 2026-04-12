@@ -1,12 +1,11 @@
 // web/src/routes/shop/[slug]/+page.ts
 import type { PageLoad } from './$types';
-import type { Product } from '../+page.js';
+import { MOCK_PRODUCTS } from '$lib/types/shop';
+import type { Product } from '$lib/types/shop';
 
 export interface PageData {
   product: Product;
 }
-
-import { MOCK_PRODUCTS } from '../+page.js';
 
 export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
   const apiBase = import.meta.env.VITE_API_BASE_URL ?? '';
