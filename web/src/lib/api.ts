@@ -41,11 +41,10 @@ export interface Cart {
 }
 
 export interface CheckoutSession {
-  id: string;
-  cartId: string;
-  currency: string;
-  url: string;          // redirect URL for payment provider
-  expiresAt: string;    // ISO 8601
+  client_secret: string;
+  order_id:      string;
+  currency:      string;
+  total_amount:  number;  // cents
 }
 
 export interface Order {
@@ -115,36 +114,70 @@ export function getProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/api/v1/products/${id}`);
 }
 
-// ─── Cart Endpoints ───────────────────────────────────────
+// ─── Go Cart Types ────────────────────────────────────────
 
-/** Create a new empty cart */
-export function createCart(): Promise<Cart> {
-  return apiFetch<Cart>('/api/v1/carts', { method: 'POST' });
+export interface GoLineItem {
+  price_id:   string;
+  product_id: string;
+  name:       string;
+  image_url:  string;
+  currency:   string;
+  amount:     number;  // cents
+  quantity:   number;
 }
 
-/** Fetch a cart by ID */
-export function getCart(id: string): Promise<Cart> {
-  return apiFetch<Cart>(`/api/v1/carts/${id}`);
+export interface GoCart {
+  token:      string;
+  line_items: GoLineItem[];
+}
+
+export interface AddItemPayload {
+  price_id:   string;
+  product_id: string;
+  name:       string;
+  image_url:  string;
+  currency:   string;
+  amount:     number;
+  quantity:   number;
+}
+
+// ─── Cart Endpoints ───────────────────────────────────────
+
+/**
+ * Add an item to the cart (or increment quantity if price_id already exists).
+ * The Go API auto-creates the cart on first call and sets a cart_token cookie.
+ * Returns the full cart including the cart token.
+ */
+export function addItemToCart(item: AddItemPayload): Promise<GoCart> {
+  return apiFetch<GoCart>('/api/cart', {
+    method: 'POST',
+    body: JSON.stringify(item),
+  });
+}
+
+/** Fetch a cart by token */
+export function getCart(token: string): Promise<GoCart> {
+  return apiFetch<GoCart>(`/api/cart/${token}`);
 }
 
 /**
- * Replace the line items in a cart.
- * Pass the full desired item list — server replaces, not merges.
+ * Set the quantity of a specific line item. Pass quantity=0 to remove.
+ * Requires the cart_token cookie to match the token in the URL.
  */
-export function updateCart(id: string, items: LineItem[]): Promise<Cart> {
-  return apiFetch<Cart>(`/api/v1/carts/${id}`, {
+export function updateCartItem(token: string, price_id: string, quantity: number): Promise<GoCart> {
+  return apiFetch<GoCart>(`/api/cart/${token}`, {
     method: 'PUT',
-    body: JSON.stringify({ items })
+    body: JSON.stringify({ price_id, quantity }),
   });
 }
 
 // ─── Checkout Endpoints ───────────────────────────────────
 
-/** Create a checkout session for the given cart */
-export function createCheckout(cartId: string, currency: string): Promise<CheckoutSession> {
-  return apiFetch<CheckoutSession>('/api/v1/checkout', {
+/** Create a Stripe PaymentIntent for the current cart */
+export function createCheckout(cartToken: string, email: string): Promise<CheckoutSession> {
+  return apiFetch<CheckoutSession>('/api/checkout', {
     method: 'POST',
-    body: JSON.stringify({ cartId, currency })
+    body: JSON.stringify({ cart_token: cartToken, email }),
   });
 }
 
@@ -152,5 +185,5 @@ export function createCheckout(cartId: string, currency: string): Promise<Checko
 
 /** Fetch a completed order by ID */
 export function getOrder(id: string): Promise<Order> {
-  return apiFetch<Order>(`/api/v1/orders/${id}`);
+  return apiFetch<Order>(`/api/order/${id}`);
 }

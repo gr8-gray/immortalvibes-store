@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { browser } from '$app/environment';
   import { cartCount } from '$lib/stores/cart';
+  import { openCart } from '$lib/stores/cartDrawer';
   import { page } from '$app/stores';
 
   let scrolled = false;
@@ -46,7 +47,7 @@
 
     <!-- Right side: cart + hamburger -->
     <div class="nav__right">
-      <a href="/cart" class="nav__cart" aria-label="Cart ({$cartCount} items)">
+      <button on:click={openCart} class="nav__cart" aria-label="Cart ({$cartCount} items)">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="1.5"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -57,7 +58,7 @@
         {#if $cartCount > 0}
           <span class="nav__cart-badge" aria-hidden="true">{$cartCount}</span>
         {/if}
-      </a>
+      </button>
 
       <!-- Hamburger — mobile only -->
       <button
@@ -162,6 +163,10 @@
     color: rgba(240,237,230,0.6);
     text-decoration: none;
     transition: color 0.2s ease;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: none;
   }
   .nav__cart:hover { color: rgba(240,237,230,1); }
 

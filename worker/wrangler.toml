@@ -21,8 +21,7 @@ id = "2340c492e3b241d98e737ca7ac8019b5"
 binding = "IMAGES"
 bucket_name = "immortalvibes-images"
 
-# Custom domain routes added in Task 9
-# routes = [
-#   { pattern = "theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" },
-#   { pattern = "www.theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" }
-# ]
+routes = [
+  { pattern = "theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" },
+  { pattern = "www.theimmortalvibes.com/api/*", zone_name = "theimmortalvibes.com" }
+]

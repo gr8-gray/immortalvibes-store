@@ -45,7 +45,7 @@
 {/if}
 
 <!-- Drawer -->
-<aside
+<div
   class="drawer"
   class:open={$isCartOpen}
   aria-label="Shopping cart"
@@ -105,7 +105,7 @@
       </button>
     </div>
   {/if}
-</aside>
+</div>
 
 <style>
   .backdrop {

@@ -14,6 +14,7 @@
   let mountNode: HTMLDivElement;
 
   let orderId = '';
+  let email = '';
   let loading = true;
   let submitting = false;
   let errorMsg = '';
@@ -26,34 +27,32 @@
     stripe = await loadStripe(pubKey);
     if (!stripe) {
       errorMsg = 'Failed to load payment processor.';
-      loading = false;
-      return;
     }
 
-    // Create checkout session
+    if (!$cart.id) {
+      errorMsg = 'No active cart. Add items before checking out.';
+    }
+
+    loading = false;
+  });
+
+  async function initPayment() {
+    if (!stripe || !email || submitting) return;
+    submitting = true;
+    errorMsg = '';
     try {
-      const cartId = $cart.id;
-      if (!cartId) {
-        errorMsg = 'No active cart. Add items before checking out.';
-        loading = false;
-        return;
-      }
-
-      const session = await createCheckout(cartId, 'usd');
-      // session.url is used as clientSecret in our integration
-      // The worker returns { clientSecret, orderId } — map accordingly
-      const clientSecret = (session as unknown as { clientSecret: string }).clientSecret;
-      orderId = (session as unknown as { orderId: string }).orderId ?? session.id;
-
-      elements = stripe.elements({ clientSecret });
+      const session = await createCheckout($cart.id!, email);
+      const clientSecret = session.client_secret;
+      orderId = session.order_id;
+      elements = stripe!.elements({ clientSecret });
       paymentElement = elements.create('payment');
       paymentElement.mount(mountNode);
     } catch (e: unknown) {
       errorMsg = e instanceof Error ? e.message : 'Failed to initialise checkout.';
     } finally {
-      loading = false;
+      submitting = false;
     }
-  });
+  }
 
   onDestroy(() => {
     paymentElement?.destroy();
@@ -106,6 +105,24 @@
       {/each}
     </div>
 
+    <!-- Email step -->
+    {#if !elements}
+      <div class="email-step">
+        <label class="field-label" for="email">EMAIL</label>
+        <input
+          id="email"
+          type="email"
+          bind:value={email}
+          placeholder="your@email.com"
+          class="email-input"
+          required
+        />
+        <button class="pay-btn" on:click={initPayment} disabled={submitting || !email}>
+          {submitting ? 'PREPARING…' : 'CONTINUE TO PAYMENT'}
+        </button>
+      </div>
+    {/if}
+
     <!-- Stripe Payment Element -->
     <form on:submit={handleSubmit} class="payment-form">
       <div bind:this={mountNode} class="payment-element-mount"></div>
@@ -114,9 +131,11 @@
         <p class="error-msg">{errorMsg}</p>
       {/if}
 
-      <button type="submit" class="pay-btn" disabled={submitting}>
-        {submitting ? 'PROCESSING…' : 'PAY NOW'}
-      </button>
+      {#if elements}
+        <button type="submit" class="pay-btn" disabled={submitting}>
+          {submitting ? 'PROCESSING…' : 'PAY NOW'}
+        </button>
+      {/if}
     </form>
   {/if}
 </div>
@@ -186,6 +205,34 @@
     font-size: 0.95rem;
     color: #C8922A;
   }
+
+  .email-step {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .field-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.55rem;
+    letter-spacing: 0.2em;
+    color: rgba(240, 237, 230, 0.4);
+  }
+
+  .email-input {
+    width: 100%;
+    background: rgba(240, 237, 230, 0.04);
+    border: 1px solid rgba(240, 237, 230, 0.15);
+    color: #F0EDE6;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.8rem 1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .email-input:focus { border-color: rgba(240, 237, 230, 0.4); }
+  .email-input::placeholder { color: rgba(240, 237, 230, 0.25); }
 
   .payment-form {
     display: flex;

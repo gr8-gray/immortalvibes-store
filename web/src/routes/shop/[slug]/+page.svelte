@@ -10,7 +10,7 @@
   import { revealOnScroll } from '$lib/animations/reveal';
   import { cart } from '$lib/stores/cart';
   import { openCart } from '$lib/stores/cartDrawer';
-  import { createCart, updateCart } from '$lib/api';
+  import { addItemToCart } from '$lib/api';
   import type { CartItem } from '$lib/stores/cart';
   import { MISSION_ORDER } from '$lib/stores/transition';
   import { goto } from '$app/navigation';
@@ -118,28 +118,28 @@
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     burst.trigger(rect.left + rect.width / 2, rect.top);
 
-    const variantId = `${product.id}_${selectedSize}`;
-    const unitPrice = product.currency === 'gbp' ? product.price_gbp : product.price_usd;
-    const newItem: CartItem = {
-      variantId, productId: product.id,
-      title: `${product.name} / ${selectedSize}`,
-      quantity: 1, unitPrice, currency: product.currency ?? 'usd',
-    };
-
     try {
-      let cartId = $cart.id;
-      if (!cartId) {
-        const token = typeof localStorage !== 'undefined' ? localStorage.getItem('iv_cart_token') : null;
-        if (token) { cartId = token; }
-        else { const c = await createCart(); cartId = c.id; localStorage.setItem('iv_cart_token', cartId); }
-      }
-      const currentItems = $cart.items;
-      const existing = currentItems.find(i => i.variantId === variantId);
-      const updatedItems = existing
-        ? currentItems.map(i => i.variantId === variantId ? { ...i, quantity: i.quantity + 1 } : i)
-        : [...currentItems, newItem];
-      await updateCart(cartId, updatedItems.map(i => ({ variantId: i.variantId, quantity: i.quantity })));
-      cart.setCart(cartId, updatedItems);
+      const goCart = await addItemToCart({
+        price_id:   product.price_id,
+        product_id: product.id,
+        name:       `${product.name} / ${selectedSize}`,
+        image_url:  product.image_url ?? '',
+        currency:   'usd',
+        amount:     product.price_usd,
+        quantity:   1,
+      });
+
+      // Map Go line items → CartItem[] for the store
+      const items: CartItem[] = goCart.line_items.map(li => ({
+        variantId:  li.price_id,
+        productId:  li.product_id,
+        title:      li.name,
+        quantity:   li.quantity,
+        unitPrice:  li.amount,
+        currency:   li.currency,
+      }));
+
+      cart.setCart(goCart.token, items);
       openCart();
     } catch (err) {
       cartError = err instanceof Error ? err.message : 'Failed to add to cart.';

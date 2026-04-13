@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -111,7 +112,8 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.kv.SetCart(r.Context(), cart); err != nil {
-		http.Error(w, "failed to save cart", http.StatusInternalServerError)
+		log.Printf("cart: SetCart failed: %v", err)
+		http.Error(w, "failed to save cart: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -180,7 +182,8 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 	cart.LineItems = updated
 
 	if err := h.kv.SetCart(r.Context(), cart); err != nil {
-		http.Error(w, "failed to save cart", http.StatusInternalServerError)
+		log.Printf("cart: SetCart failed: %v", err)
+		http.Error(w, "failed to save cart: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
