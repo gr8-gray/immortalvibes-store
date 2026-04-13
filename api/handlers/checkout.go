@@ -44,8 +44,15 @@ func DetectCurrency(r *http.Request) string {
 
 // CheckoutRequest is the JSON body for POST /api/checkout.
 type CheckoutRequest struct {
-	CartToken string `json:"cart_token"`
-	Email     string `json:"email"`
+	CartToken    string `json:"cart_token"`
+	Email        string `json:"email"`
+	ShippingName string `json:"shipping_name"`
+	Line1        string `json:"line1"`
+	Line2        string `json:"line2"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	PostalCode   string `json:"postal_code"`
+	Country      string `json:"country"`
 }
 
 // CheckoutResponse is returned to the SvelteKit frontend.
@@ -109,6 +116,11 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.ShippingName == "" || req.Line1 == "" || req.City == "" || req.State == "" || req.PostalCode == "" || req.Country == "" {
+		http.Error(w, "shipping address required", http.StatusBadRequest)
+		return
+	}
+
 	currency := DetectCurrency(r)
 	total := cart.Total()
 
@@ -135,6 +147,13 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		Currency:        currency,
 		TotalAmount:     total,
 		Status:          "pending",
+		ShippingName:    req.ShippingName,
+		Line1:           req.Line1,
+		Line2:           req.Line2,
+		City:            req.City,
+		State:           req.State,
+		PostalCode:      req.PostalCode,
+		Country:         req.Country,
 	}); err != nil {
 		http.Error(w, "failed to save order", http.StatusInternalServerError)
 		return

@@ -17,6 +17,14 @@ type Config struct {
 	CFAPIToken          string
 	DBUrl               string
 	ResendAPIKey        string
+	ShippoAPIKey        string
+	ShippoFromName      string
+	ShippoFromStreet1   string
+	ShippoFromCity      string
+	ShippoFromState     string
+	ShippoFromZip       string
+	ShippoFromCountry   string
+	OwnerEmail          string
 }
 
 func Load() (*Config, error) {
@@ -32,6 +40,14 @@ func Load() (*Config, error) {
 		CFAPIToken:          os.Getenv("CF_API_TOKEN"),
 		DBUrl:               os.Getenv("DATABASE_URL"),
 		ResendAPIKey:        os.Getenv("RESEND_API_KEY"),
+		ShippoAPIKey:        os.Getenv("SHIPPO_API_KEY"),
+		ShippoFromName:      os.Getenv("SHIPPO_FROM_NAME"),
+		ShippoFromStreet1:   os.Getenv("SHIPPO_FROM_STREET1"),
+		ShippoFromCity:      os.Getenv("SHIPPO_FROM_CITY"),
+		ShippoFromState:     os.Getenv("SHIPPO_FROM_STATE"),
+		ShippoFromZip:       os.Getenv("SHIPPO_FROM_ZIP"),
+		ShippoFromCountry:   getEnv("SHIPPO_FROM_COUNTRY", "US"),
+		OwnerEmail:          os.Getenv("OWNER_EMAIL"),
 	}
 
 	var missing []string
@@ -64,6 +80,27 @@ func Load() (*Config, error) {
 	}
 	if c.ResendAPIKey == "" {
 		missing = append(missing, "RESEND_API_KEY")
+	}
+	if c.ShippoAPIKey == "" {
+		missing = append(missing, "SHIPPO_API_KEY")
+	}
+	if c.ShippoFromName == "" {
+		missing = append(missing, "SHIPPO_FROM_NAME")
+	}
+	if c.ShippoFromStreet1 == "" {
+		missing = append(missing, "SHIPPO_FROM_STREET1")
+	}
+	if c.ShippoFromCity == "" {
+		missing = append(missing, "SHIPPO_FROM_CITY")
+	}
+	if c.ShippoFromState == "" {
+		missing = append(missing, "SHIPPO_FROM_STATE")
+	}
+	if c.ShippoFromZip == "" {
+		missing = append(missing, "SHIPPO_FROM_ZIP")
+	}
+	if c.OwnerEmail == "" {
+		missing = append(missing, "OWNER_EMAIL")
 	}
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("missing required env vars: %v", missing)

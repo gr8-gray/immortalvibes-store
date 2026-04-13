@@ -28,6 +28,18 @@ type OrderRow struct {
 	TotalAmount     int64
 	Status          string
 	CreatedAt       time.Time
+	// Shipping address — collected at checkout
+	ShippingName string
+	Line1        string
+	Line2        string
+	City         string
+	State        string
+	PostalCode   string
+	Country      string
+	// Set by webhook after label purchase
+	TrackingNumber string
+	Carrier        string
+	LabelURL       string
 }
 
 // Open connects to Postgres and runs migrations. Returns a ready-to-use DB.
@@ -74,6 +86,22 @@ func (d *DB) migrate() error {
 			status            TEXT NOT NULL DEFAULT 'pending',
 			created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
+	`)
+	if err != nil {
+		return err
+	}
+	// Shipping columns — idempotent, safe to run on every boot.
+	_, err = d.db.Exec(`
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_name   TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS line1           TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS line2           TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS city            TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS state           TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS postal_code     TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS country         TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier         TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS label_url       TEXT;
 	`)
 	return err
 }
@@ -127,9 +155,11 @@ func (d *DB) DecrementStock(ctx context.Context, productID string, qty int) erro
 // SaveOrder inserts a new order row. PaymentIntentID must be unique.
 func (d *DB) SaveOrder(ctx context.Context, o OrderRow) error {
 	_, err := d.db.ExecContext(ctx, `
-		INSERT INTO orders (id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-	`, o.ID, o.PaymentIntentID, o.CartToken, o.Email, o.Currency, o.TotalAmount, o.Status)
+		INSERT INTO orders (id, payment_intent_id, cart_token, email, currency, total_amount, status,
+		                    shipping_name, line1, line2, city, state, postal_code, country, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+	`, o.ID, o.PaymentIntentID, o.CartToken, o.Email, o.Currency, o.TotalAmount, o.Status,
+		o.ShippingName, o.Line1, o.Line2, o.City, o.State, o.PostalCode, o.Country)
 	return err
 }
 
@@ -137,9 +167,15 @@ func (d *DB) SaveOrder(ctx context.Context, o OrderRow) error {
 func (d *DB) GetOrder(ctx context.Context, id string) (*OrderRow, error) {
 	var o OrderRow
 	err := d.db.QueryRowContext(ctx, `
-		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at
+		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
+		       shipping_name, line1, line2, city, state, postal_code, country,
+		       tracking_number, carrier, label_url
 		FROM orders WHERE id = $1
-	`, id).Scan(&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt)
+	`, id).Scan(
+		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
+		&o.ShippingName, &o.Line1, &o.Line2, &o.City, &o.State, &o.PostalCode, &o.Country,
+		&o.TrackingNumber, &o.Carrier, &o.LabelURL,
+	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotFound
 	}
@@ -153,9 +189,15 @@ func (d *DB) GetOrder(ctx context.Context, id string) (*OrderRow, error) {
 func (d *DB) GetOrderByPaymentIntent(ctx context.Context, paymentIntentID string) (*OrderRow, error) {
 	var o OrderRow
 	err := d.db.QueryRowContext(ctx, `
-		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at
+		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
+		       shipping_name, line1, line2, city, state, postal_code, country,
+		       tracking_number, carrier, label_url
 		FROM orders WHERE payment_intent_id = $1
-	`, paymentIntentID).Scan(&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt)
+	`, paymentIntentID).Scan(
+		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
+		&o.ShippingName, &o.Line1, &o.Line2, &o.City, &o.State, &o.PostalCode, &o.Country,
+		&o.TrackingNumber, &o.Carrier, &o.LabelURL,
+	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotFound
 	}
@@ -163,6 +205,14 @@ func (d *DB) GetOrderByPaymentIntent(ctx context.Context, paymentIntentID string
 		return nil, err
 	}
 	return &o, nil
+}
+
+// UpdateOrderShipping sets the tracking and label fields after a label is purchased.
+func (d *DB) UpdateOrderShipping(ctx context.Context, id, trackingNumber, carrier, labelURL string) error {
+	_, err := d.db.ExecContext(ctx, `
+		UPDATE orders SET tracking_number=$2, carrier=$3, label_url=$4 WHERE id=$1
+	`, id, trackingNumber, carrier, labelURL)
+	return err
 }
 
 // UpdateOrderStatus sets the status field for an order by ID.

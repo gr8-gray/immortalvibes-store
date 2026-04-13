@@ -3,14 +3,22 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/webhook"
 )
+
+// ShippoClient rate-shops and purchases shipping labels.
+type ShippoClient interface {
+	RateShop(ctx context.Context, to shippo.Address) (rateID string, err error)
+	BuyLabel(ctx context.Context, rateID string) (trackingNumber, carrier, labelURL string, err error)
+}
 
 // WebhookKV is the cart-clearing subset of CartKV.
 type WebhookKV interface {
@@ -26,20 +34,26 @@ type WebhookStock interface {
 type WebhookOrderStore interface {
 	GetOrderByPaymentIntent(ctx context.Context, paymentIntentID string) (*store.OrderRow, error)
 	UpdateOrderStatus(ctx context.Context, id, status string) error
+	UpdateOrderShipping(ctx context.Context, id, trackingNumber, carrier, labelURL string) error
 }
 
 // EmailSender dispatches transactional email.
 type EmailSender interface {
 	SendOrderConfirmation(ctx context.Context, toEmail, orderID string, totalAmount int64, currency string) error
+	SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier string) error
+	SendTrackingUpdate(ctx context.Context, customerEmail, orderID, trackingNum, carrier string) error
+	SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error
 }
 
 // WebhookHandler handles POST /api/webhooks/stripe.
 type WebhookHandler struct {
-	secret  string
-	kv      WebhookKV
-	stock   WebhookStock
-	db      WebhookOrderStore
-	emailer EmailSender
+	secret     string
+	kv         WebhookKV
+	stock      WebhookStock
+	db         WebhookOrderStore
+	emailer    EmailSender
+	shipper    ShippoClient
+	ownerEmail string
 }
 
 // NewWebhookHandler constructs a WebhookHandler.
@@ -49,13 +63,17 @@ func NewWebhookHandler(
 	stock WebhookStock,
 	db WebhookOrderStore,
 	emailer EmailSender,
+	shipper ShippoClient,
+	ownerEmail string,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		secret:  secret,
-		kv:      kv,
-		stock:   stock,
-		db:      db,
-		emailer: emailer,
+		secret:     secret,
+		kv:         kv,
+		stock:      stock,
+		db:         db,
+		emailer:    emailer,
+		shipper:    shipper,
+		ownerEmail: ownerEmail,
 	}
 }
 
@@ -80,7 +98,6 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	case "payment_intent.succeeded":
 		h.handlePaymentIntentSucceeded(w, r, event)
 	default:
-		// Acknowledge unknown events.
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -102,7 +119,6 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 	cartToken := pi.Metadata["cart_token"]
 	email := pi.Metadata["email"]
 
-	// Look up the pending order.
 	order, err := h.db.GetOrderByPaymentIntent(r.Context(), pi.ID)
 	if err != nil {
 		log.Printf("webhook: GetOrderByPaymentIntent(%s): %v", pi.ID, err)
@@ -111,24 +127,71 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 		return
 	}
 
-	// Mark order complete.
 	if err := h.db.UpdateOrderStatus(r.Context(), order.ID, "complete"); err != nil {
 		log.Printf("webhook: UpdateOrderStatus(%s): %v", order.ID, err)
 	}
 
-	// Clear the cart from KV.
 	if cartToken != "" {
 		if err := h.kv.DeleteCart(r.Context(), cartToken); err != nil {
 			log.Printf("webhook: DeleteCart(%s): %v", cartToken, err)
 		}
 	}
 
-	// Send confirmation email (non-fatal if it fails).
 	if email != "" {
 		if err := h.emailer.SendOrderConfirmation(r.Context(), email, order.ID, pi.Amount, pi.Currency); err != nil {
 			log.Printf("webhook: SendOrderConfirmation(%s): %v", email, err)
 		}
 	}
 
+	// Shipping runs in a goroutine — Stripe gets a fast 200 immediately.
+	orderCopy := *order
+	go h.processShipping(&orderCopy)
+
 	w.WriteHeader(http.StatusOK)
+}
+
+func (h *WebhookHandler) processShipping(order *store.OrderRow) {
+	toAddr := shippo.Address{
+		Name:    order.ShippingName,
+		Street1: order.Line1,
+		Street2: order.Line2,
+		City:    order.City,
+		State:   order.State,
+		Zip:     order.PostalCode,
+		Country: order.Country,
+	}
+
+	rateID, err := h.shipper.RateShop(context.Background(), toAddr)
+	if err != nil {
+		log.Printf("webhook: Shippo.RateShop(%s): %v", order.ID, err)
+		h.notifyShippingFailure(order, err.Error())
+		return
+	}
+
+	trackingNum, carrier, labelURL, err := h.shipper.BuyLabel(context.Background(), rateID)
+	if err != nil {
+		log.Printf("webhook: Shippo.BuyLabel(%s): %v", order.ID, err)
+		h.notifyShippingFailure(order, err.Error())
+		return
+	}
+
+	if err := h.db.UpdateOrderShipping(context.Background(), order.ID, trackingNum, carrier, labelURL); err != nil {
+		log.Printf("webhook: UpdateOrderShipping(%s): %v", order.ID, err)
+	}
+
+	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier); err != nil {
+		log.Printf("webhook: SendShippingLabel: %v", err)
+	}
+
+	if err := h.emailer.SendTrackingUpdate(context.Background(), order.Email, order.ID, trackingNum, carrier); err != nil {
+		log.Printf("webhook: SendTrackingUpdate: %v", err)
+	}
+}
+
+func (h *WebhookHandler) notifyShippingFailure(order *store.OrderRow, errMsg string) {
+	addr := fmt.Sprintf("%s\n%s\n%s, %s %s\n%s",
+		order.ShippingName, order.Line1, order.City, order.State, order.PostalCode, order.Country)
+	if err := h.emailer.SendShippingFailure(context.Background(), h.ownerEmail, order.ID, order.Email, addr, errMsg); err != nil {
+		log.Printf("webhook: SendShippingFailure: %v", err)
+	}
 }

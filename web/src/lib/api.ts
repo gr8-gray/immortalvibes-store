@@ -175,11 +175,21 @@ export function updateCartItem(token: string, price_id: string, quantity: number
 
 // ─── Checkout Endpoints ───────────────────────────────────
 
+export interface ShippingAddress {
+  shipping_name: string;
+  line1:         string;
+  line2?:        string;
+  city:          string;
+  state:         string;
+  postal_code:   string;
+  country:       string;
+}
+
 /** Create a Stripe PaymentIntent for the current cart */
-export function createCheckout(cartToken: string, email: string): Promise<CheckoutSession> {
+export function createCheckout(cartToken: string, email: string, address: ShippingAddress): Promise<CheckoutSession> {
   return apiFetch<CheckoutSession>('/api/checkout', {
     method: 'POST',
-    body: JSON.stringify({ cart_token: cartToken, email }),
+    body: JSON.stringify({ cart_token: cartToken, email, ...address }),
   });
 }
 

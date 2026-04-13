@@ -7,6 +7,7 @@
   import { cart } from '$lib/stores/cart';
   import { createCheckout } from '$lib/api';
   import type { Stripe, StripeElements } from '@stripe/stripe-js';
+  import type { ShippingAddress } from '$lib/api';
 
   let stripe: Stripe | null = null;
   let elements: StripeElements | null = null;
@@ -15,6 +16,13 @@
 
   let orderId = '';
   let email = '';
+  let shippingName = '';
+  let line1 = '';
+  let line2 = '';
+  let city = '';
+  let addrState = '';
+  let postalCode = '';
+  let country = 'US';
   let loading = true;
   let submitting = false;
   let errorMsg = '';
@@ -38,10 +46,23 @@
 
   async function initPayment() {
     if (!stripe || !email || submitting) return;
+    if (!shippingName || !line1 || !city || !addrState || !postalCode || !country) {
+      errorMsg = 'Please complete your shipping address.';
+      return;
+    }
     submitting = true;
     errorMsg = '';
+    const address: ShippingAddress = {
+      shipping_name: shippingName,
+      line1,
+      line2: line2 || undefined,
+      city,
+      state: addrState,
+      postal_code: postalCode,
+      country,
+    };
     try {
-      const session = await createCheckout($cart.id!, email);
+      const session = await createCheckout($cart.id!, email, address);
       const clientSecret = session.client_secret;
       orderId = session.order_id;
       elements = stripe!.elements({ clientSecret });
@@ -117,6 +138,62 @@
           class="email-input"
           required
         />
+
+        <p class="field-label" style="margin-top:1.25rem">SHIPPING ADDRESS</p>
+
+        <input
+          type="text"
+          bind:value={shippingName}
+          placeholder="Full name"
+          class="email-input"
+          required
+        />
+        <input
+          type="text"
+          bind:value={line1}
+          placeholder="Address line 1"
+          class="email-input"
+          required
+        />
+        <input
+          type="text"
+          bind:value={line2}
+          placeholder="Apartment, suite, etc. (optional)"
+          class="email-input"
+        />
+        <div class="addr-row">
+          <input
+            type="text"
+            bind:value={city}
+            placeholder="City"
+            class="email-input"
+            required
+          />
+          <input
+            type="text"
+            bind:value={addrState}
+            placeholder="State"
+            class="email-input addr-state"
+            required
+          />
+        </div>
+        <div class="addr-row">
+          <input
+            type="text"
+            bind:value={postalCode}
+            placeholder="ZIP / Postal code"
+            class="email-input"
+            required
+          />
+          <input
+            type="text"
+            bind:value={country}
+            placeholder="Country"
+            class="email-input addr-country"
+            required
+          />
+        </div>
+
         <button class="pay-btn" on:click={initPayment} disabled={submitting || !email}>
           {submitting ? 'PREPARING…' : 'CONTINUE TO PAYMENT'}
         </button>
@@ -233,6 +310,15 @@
 
   .email-input:focus { border-color: rgba(240, 237, 230, 0.4); }
   .email-input::placeholder { color: rgba(240, 237, 230, 0.25); }
+
+  .addr-row {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .addr-row .email-input { flex: 1; }
+  .addr-row .addr-state  { flex: 0 0 5rem; }
+  .addr-row .addr-country { flex: 0 0 5rem; }
 
   .payment-form {
     display: flex;

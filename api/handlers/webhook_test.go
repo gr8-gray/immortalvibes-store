@@ -14,6 +14,7 @@ import (
 
 	"github.com/immortalvibes/api/handlers"
 	"github.com/immortalvibes/api/models"
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 )
 
@@ -41,6 +42,29 @@ type stubEmailSender struct {
 func (s *stubEmailSender) SendOrderConfirmation(ctx context.Context, toEmail, orderID string, totalAmount int64, currency string) error {
 	s.sent = append(s.sent, toEmail)
 	return nil
+}
+
+func (s *stubEmailSender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier string) error {
+	return nil
+}
+
+func (s *stubEmailSender) SendTrackingUpdate(ctx context.Context, customerEmail, orderID, trackingNum, carrier string) error {
+	return nil
+}
+
+func (s *stubEmailSender) SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error {
+	return nil
+}
+
+// stubShippoClient returns a fixed label without making network calls.
+type stubShippoClient struct{}
+
+func (s *stubShippoClient) RateShop(ctx context.Context, to shippo.Address) (string, error) {
+	return "rate_stub_001", nil
+}
+
+func (s *stubShippoClient) BuyLabel(ctx context.Context, rateID string) (string, string, string, error) {
+	return "TRACK123", "USPS", "https://shippo.example.com/label.pdf", nil
 }
 
 func signWebhookPayload(t *testing.T, secret string, payload []byte) string {
@@ -106,7 +130,7 @@ func TestWebhookPaymentIntentSucceeded(t *testing.T) {
 	// Seed stock.
 	stubs.stock.stock["prod_1"] = 10
 
-	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer)
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubShippoClient{}, "owner@test.com")
 
 	payload := []byte(`{
 		"type": "payment_intent.succeeded",
@@ -149,7 +173,7 @@ func TestWebhookPaymentIntentSucceeded(t *testing.T) {
 func TestWebhookInvalidSignature(t *testing.T) {
 	stubs := newWebhookStubs()
 	emailer := &stubEmailSender{}
-	h := handlers.NewWebhookHandler("real_secret", stubs.kv, stubs.stock, stubs.db, emailer)
+	h := handlers.NewWebhookHandler("real_secret", stubs.kv, stubs.stock, stubs.db, emailer, &stubShippoClient{}, "owner@test.com")
 
 	payload := []byte(`{"type":"payment_intent.succeeded"}`)
 

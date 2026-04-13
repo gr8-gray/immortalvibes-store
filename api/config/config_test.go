@@ -19,6 +19,13 @@ func setAllEnv(t *testing.T) {
 	t.Setenv("CF_API_TOKEN", "tok123")
 	t.Setenv("DATABASE_URL", "postgres://localhost/test")
 	t.Setenv("RESEND_API_KEY", "re_123")
+	t.Setenv("SHIPPO_API_KEY", "shippo_test")
+	t.Setenv("SHIPPO_FROM_NAME", "Test Sender")
+	t.Setenv("SHIPPO_FROM_STREET1", "123 Test St")
+	t.Setenv("SHIPPO_FROM_CITY", "Testville")
+	t.Setenv("SHIPPO_FROM_STATE", "CA")
+	t.Setenv("SHIPPO_FROM_ZIP", "90210")
+	t.Setenv("OWNER_EMAIL", "owner@example.com")
 }
 
 func TestLoad_defaults(t *testing.T) {

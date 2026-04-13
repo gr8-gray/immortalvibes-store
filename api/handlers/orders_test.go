@@ -31,6 +31,15 @@ func (s *stubOrderStore) GetOrder(ctx context.Context, id string) (*store.OrderR
 	return o, nil
 }
 
+func (s *stubOrderStore) UpdateOrderShipping(ctx context.Context, id, trackingNumber, carrier, labelURL string) error {
+	if o, ok := s.orders[id]; ok {
+		o.TrackingNumber = trackingNumber
+		o.Carrier = carrier
+		o.LabelURL = labelURL
+	}
+	return nil
+}
+
 func TestGetOrder(t *testing.T) {
 	ss := newStubOrderStore()
 	ss.orders["ord-001"] = &store.OrderRow{
