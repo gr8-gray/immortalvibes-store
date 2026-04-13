@@ -10,11 +10,11 @@
     <!-- Sticky photo — left column -->
     <div class="photo-col">
       <img
-        src="/photos/brand/owner-bio-japan-cropped.jpg"
-        alt="Immortal Vibes — Dotonbori, Osaka"
+        src="/photos/brand/owner-bape-store.jpg"
+        alt="Immortal Vibes"
         class="owner-photo"
       />
-      <div class="photo-caption">Dotonbori, Osaka · 2025</div>
+      <div class="photo-caption">Rise Beyond the Mortal Plane</div>
     </div>
 
     <!-- Scrollable copy — right column -->

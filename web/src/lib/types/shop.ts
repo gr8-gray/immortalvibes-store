@@ -20,6 +20,7 @@ export interface Product {
   description: string;
   price_usd: number;    // cents
   price_gbp: number;    // cents
+  price_id: string;     // Stripe Price ID (USD) — populated from API
   currency: string;     // 'usd' | 'gbp'
   status: 'available' | 'sold_out' | 'coming_soon';
   sizes: string[];
@@ -38,8 +39,9 @@ export const MOCK_PRODUCTS: Product[] = [
     slug: 'warped-reality-beanie',
     name: 'Warped Reality Beanie',
     description: 'Knit for those who drift between dimensions. One size, infinite orbits.',
-    price_usd: 3500,
-    price_gbp: 2800,
+    price_usd: 2000,
+    price_gbp: 1600,
+    price_id: '',
     currency: 'usd',
     status: 'available',
     sizes: ['OS'],
@@ -76,8 +78,9 @@ export const MOCK_PRODUCTS: Product[] = [
     slug: 'vanguard-trucker-hat',
     name: 'Vanguard Trucker Hat',
     description: 'Engineered for the lunar surface. Structured front, breathable mesh, mission-ready.',
-    price_usd: 3800,
-    price_gbp: 3000,
+    price_usd: 2000,
+    price_gbp: 1600,
+    price_id: '',
     currency: 'usd',
     status: 'available',
     sizes: ['OS'],
@@ -92,7 +95,8 @@ export const MOCK_PRODUCTS: Product[] = [
         planetScale: 0.9,
         planetOffsetY: 0.18,
         gallery: [
-          `${R2}/hat/model-dramatic-trucker-tank-lighter.jpg`,
+          `${R2}/hat/model-restaurant-olive.jpg`,
+          `${R2}/hat/owner-night-audi-standing.jpg`,
         ],
       },
     ],
@@ -102,8 +106,9 @@ export const MOCK_PRODUCTS: Product[] = [
     slug: 'racerback-tanktop',
     name: 'Racerback Tanktop',
     description: 'Born in the stellar nursery. Lightweight, orbital-grade, built to move.',
-    price_usd: 3200,
-    price_gbp: 2500,
+    price_usd: 2200,
+    price_gbp: 1750,
+    price_id: '',
     currency: 'usd',
     status: 'available',
     sizes: ['XS', 'S', 'M', 'L', 'XL'],

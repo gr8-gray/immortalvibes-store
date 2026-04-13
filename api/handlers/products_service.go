@@ -67,7 +67,7 @@ func (s *StripeProductService) enrichProduct(ctx context.Context, p *stripe.Prod
 
 	imageURL := ""
 	if len(p.Images) > 0 {
-		imageURL = fmt.Sprintf("%s/%s", s.r2BaseURL, p.Images[0])
+		imageURL = p.Images[0]
 	}
 
 	stock, err := s.db.GetStock(ctx, p.ID)

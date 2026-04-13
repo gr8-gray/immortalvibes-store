@@ -30,6 +30,7 @@
       glow: '#C8B89A',
       speed: 0.0011,
       tilt: 0.08,
+      condemned: true, // sold out — flip to false when restocked
     },
     {
       num: '003',
@@ -77,12 +78,33 @@
             axialTilt={m.tilt}
           />
           <div class="planet-halo" style="--glow:{m.glow}"></div>
+
+          {#if m.condemned}
+            <!-- rings sit outside the clipping shell -->
+            <div class="ring-outer"></div>
+            <div class="ring-inner"></div>
+            <div class="alert-dot"></div>
+            <!-- shell clips tape + overlays to the circle -->
+            <div class="condemned-shell">
+              <div class="condemned-dim"></div>
+              <div class="scanlines"></div>
+              <div class="danger-atmo"></div>
+              <div class="tape tape-1"></div>
+              <div class="tape tape-2"></div>
+              <div class="tape-text">CONDEMNED</div>
+            </div>
+          {/if}
         </div>
 
-        <div class="mission-label">
+        <div class="mission-label" class:is-condemned={m.condemned}>
           <span class="num">{m.num}</span>
           <span class="name">{m.name}</span>
-          <span class="env">{m.env}</span>
+          {#if m.condemned}
+            <div class="condemned-badge">Condemned</div>
+            <span class="mission-terminated">Mission Terminated</span>
+          {:else}
+            <span class="env">{m.env}</span>
+          {/if}
         </div>
 
       </a>
@@ -250,6 +272,159 @@
     font-size: 0.46rem;
     letter-spacing: 0.22em;
     color: rgba(240, 237, 230, 0.3);
+    text-transform: uppercase;
+  }
+
+  /* ── Condemned overlay ── */
+  .condemned-shell {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .condemned-dim {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    border-radius: 50%;
+  }
+
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px, transparent 3px,
+      rgba(0, 0, 0, 0.18) 3px, rgba(0, 0, 0, 0.18) 4px
+    );
+    border-radius: 50%;
+  }
+
+  .danger-atmo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%,
+      transparent 40%, rgba(160, 30, 30, 0.22) 100%);
+  }
+
+  .tape {
+    position: absolute;
+    width: 230%;
+    height: 14px;
+    left: -65%;
+    transform-origin: center center;
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(14, 14, 0, 0.72) 0px,  rgba(14, 14, 0, 0.72) 14px,
+      rgba(200, 146, 42, 0.65) 14px, rgba(200, 146, 42, 0.65) 28px
+    );
+  }
+
+  .tape-1 { top: calc(50% - 7px); transform: rotate(-33deg); }
+  .tape-2 { top: calc(50% - 7px); transform: rotate(33deg); }
+
+  .tape-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-33deg);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.38rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    color: rgba(14, 14, 0, 0.85);
+    background: rgba(200, 146, 42, 0.75);
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+
+  .ring-outer {
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(190, 45, 45, 0.55);
+    box-shadow: 0 0 12px rgba(190,45,45,0.25), inset 0 0 10px rgba(190,45,45,0.08);
+    pointer-events: none;
+    animation: flicker 2.6s ease-in-out infinite;
+  }
+
+  .ring-inner {
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1px solid rgba(190, 45, 45, 0.18);
+    pointer-events: none;
+    animation: flicker 2.6s ease-in-out infinite reverse;
+  }
+
+  .alert-dot {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #cc2222;
+    box-shadow: 0 0 8px rgba(200,30,30,0.9);
+    z-index: 10;
+    pointer-events: none;
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes flicker {
+    0%, 100% { opacity: 0.4; }
+    30%       { opacity: 1; }
+    65%       { opacity: 0.6; }
+    80%       { opacity: 0.9; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.1; }
+  }
+
+  .mission-label.is-condemned .name { color: rgba(240, 237, 230, 0.25); }
+  .mission-label.is-condemned .num  { color: rgba(200, 146, 42, 0.25); }
+
+  .condemned-badge {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.46rem;
+    letter-spacing: 0.28em;
+    color: rgba(190, 45, 45, 0.7);
+    border: 1px solid rgba(190, 45, 45, 0.3);
+    padding: 0.2rem 0.8rem;
+    text-transform: uppercase;
+    position: relative;
+  }
+
+  .condemned-badge::before,
+  .condemned-badge::after {
+    content: '';
+    position: absolute;
+    width: 5px;
+    height: 5px;
+  }
+  .condemned-badge::before {
+    top: -1px; left: -1px;
+    border-top: 1px solid rgba(190,45,45,0.55);
+    border-left: 1px solid rgba(190,45,45,0.55);
+  }
+  .condemned-badge::after {
+    bottom: -1px; right: -1px;
+    border-bottom: 1px solid rgba(190,45,45,0.55);
+    border-right: 1px solid rgba(190,45,45,0.55);
+  }
+
+  .mission-terminated {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.4rem;
+    letter-spacing: 0.2em;
+    color: rgba(240, 237, 230, 0.18);
     text-transform: uppercase;
   }
 

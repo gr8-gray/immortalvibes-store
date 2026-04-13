@@ -7,17 +7,43 @@ export interface PageData {
   product: Product;
 }
 
+interface ApiPrice {
+  price_id: string;
+  currency: string;
+  amount: number;
+}
+
+interface ApiProduct {
+  id: string;
+  name: string;
+  stock_count: number;
+  prices: ApiPrice[];
+}
+
 export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
+  const mock = MOCK_PRODUCTS.find((p) => p.slug === params.slug);
+  if (!mock) throw new Error(`Product not found: ${params.slug}`);
+
   const apiBase = import.meta.env.VITE_API_BASE_URL ?? '';
   try {
-    const res = await fetch(`${apiBase}/api/products/${params.slug}`);
-    if (res.status === 404) throw new Error('not_found');
+    const res = await fetch(`${apiBase}/api/products`);
     if (!res.ok) throw new Error(`${res.status}`);
-    const product: Product = await res.json();
-    return { product };
-  } catch (err) {
-    const mock = MOCK_PRODUCTS.find((p) => p.slug === params.slug);
-    if (!mock) throw new Error(`Product not found: ${params.slug}`);
+    const apiProducts: ApiProduct[] = await res.json();
+
+    const live = apiProducts.find((p) => p.name === mock.name);
+    if (!live) return { product: mock };
+
+    const usdPrice = live.prices.find((p) => p.currency === 'usd');
+    return {
+      product: {
+        ...mock,
+        id: live.id,
+        price_id: usdPrice?.price_id ?? '',
+        price_usd: usdPrice?.amount ?? mock.price_usd,
+        status: live.stock_count > 0 ? 'available' : 'sold_out',
+      },
+    };
+  } catch {
     return { product: mock };
   }
 };
