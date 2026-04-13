@@ -14,7 +14,7 @@
   async function fetchOrder() {
     try {
       order = await getOrder(orderId);
-      if (order.status === 'paid' || order.status === 'fulfilled') {
+      if (order.status === 'paid' || order.status === 'fulfilled' || order.status === 'complete') {
         status = 'paid';
         if (pollTimer) clearInterval(pollTimer);
       } else {
@@ -66,24 +66,15 @@
       <h1 class="confirm-title">Thank you.</h1>
       <p class="order-id-label">ORDER · {order.id.slice(0, 8).toUpperCase()}</p>
 
-      <div class="order-items">
-        {#each order.items as item}
-          <div class="order-row">
-            <span class="order-variant">{item.variantId}</span>
-            <span class="order-qty">× {item.quantity}</span>
-          </div>
-        {/each}
-      </div>
-
       <div class="order-total-row">
         <span class="total-label">TOTAL</span>
         <span class="total-amount">
-          {formatPrice(order.total.amount, order.total.currency)}
+          {formatPrice(order.total_amount, order.currency)}
         </span>
       </div>
 
       <p class="fulfillment-note">
-        Your gear is being prepared for launch. A confirmation email will follow.
+        Your gear is being prepared for launch. A confirmation email has been sent to {order.email}.
       </p>
 
       <a href="/shop" class="continue-link">CONTINUE SHOPPING</a>

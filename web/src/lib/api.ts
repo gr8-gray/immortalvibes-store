@@ -48,12 +48,14 @@ export interface CheckoutSession {
 }
 
 export interface Order {
-  id: string;
-  status: 'pending' | 'paid' | 'fulfilled' | 'cancelled';
-  items: LineItem[];
-  total: Price;
-  createdAt: string;
-  updatedAt: string;
+  id:               string;
+  payment_intent_id: string;
+  cart_token:       string;
+  email:            string;
+  currency:         string;
+  total_amount:     number; // cents
+  status:           string; // "pending" | "complete"
+  created_at:       string;
 }
 
 // ─── Error Type ──────────────────────────────────────────
