@@ -8,15 +8,15 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/immortalvibes/api/shippo"
+	"github.com/immortalvibes/api/easypost"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/webhook"
 )
 
-// ShippoClient rate-shops and purchases shipping labels.
-type ShippoClient interface {
-	RateShop(ctx context.Context, to shippo.Address) (rateID string, err error)
+// ShipperClient rate-shops and purchases shipping labels.
+type ShipperClient interface {
+	RateShop(ctx context.Context, to easypost.Address) (rateID string, err error)
 	BuyLabel(ctx context.Context, rateID string) (trackingNumber, carrier, labelURL string, err error)
 }
 
@@ -52,7 +52,7 @@ type WebhookHandler struct {
 	stock      WebhookStock
 	db         WebhookOrderStore
 	emailer    EmailSender
-	shipper    ShippoClient
+	shipper    ShipperClient
 	ownerEmail string
 }
 
@@ -63,7 +63,7 @@ func NewWebhookHandler(
 	stock WebhookStock,
 	db WebhookOrderStore,
 	emailer EmailSender,
-	shipper ShippoClient,
+	shipper ShipperClient,
 	ownerEmail string,
 ) *WebhookHandler {
 	return &WebhookHandler{
@@ -151,7 +151,7 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 }
 
 func (h *WebhookHandler) processShipping(order *store.OrderRow) {
-	toAddr := shippo.Address{
+	toAddr := easypost.Address{
 		Name:    order.ShippingName,
 		Street1: order.Line1,
 		Street2: order.Line2,
@@ -163,14 +163,14 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 
 	rateID, err := h.shipper.RateShop(context.Background(), toAddr)
 	if err != nil {
-		log.Printf("webhook: Shippo.RateShop(%s): %v", order.ID, err)
+		log.Printf("webhook: RateShop(%s): %v", order.ID, err)
 		h.notifyShippingFailure(order, err.Error())
 		return
 	}
 
 	trackingNum, carrier, labelURL, err := h.shipper.BuyLabel(context.Background(), rateID)
 	if err != nil {
-		log.Printf("webhook: Shippo.BuyLabel(%s): %v", order.ID, err)
+		log.Printf("webhook: BuyLabel(%s): %v", order.ID, err)
 		h.notifyShippingFailure(order, err.Error())
 		return
 	}

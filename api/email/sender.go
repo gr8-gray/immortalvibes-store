@@ -103,7 +103,7 @@ func (s *Sender) SendTrackingUpdate(ctx context.Context, customerEmail, orderID,
 	return s.send(ctx, customerEmail, subject, html)
 }
 
-// SendShippingFailure alerts the owner that Shippo label creation failed.
+// SendShippingFailure alerts the owner that label creation failed.
 // Includes full order details so the owner can create the label manually.
 func (s *Sender) SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error {
 	subject := fmt.Sprintf("[IV Order] SHIPPING FAILED — manual label needed — %s", orderID)
@@ -115,7 +115,7 @@ func (s *Sender) SendShippingFailure(ctx context.Context, ownerEmail, orderID, c
 		<p><strong>Ship to:</strong></p>
 		<pre style="background:#f4f4f4;padding:0.75rem">%s</pre>
 		<p><strong>Error:</strong> <code>%s</code></p>
-		<p><a href="https://app.goshippo.com" style="font-weight:bold">Create label at goshippo.com</a></p>
+		<p><a href="https://app.easypost.com" style="font-weight:bold">Create label at easypost.com</a></p>
 	`, orderID, customerEmail, shippingAddr, errMsg)
 	return s.send(ctx, ownerEmail, subject, html)
 }

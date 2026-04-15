@@ -16,15 +16,15 @@ type Config struct {
 	CFKVCartsID         string
 	CFAPIToken          string
 	DBUrl               string
-	ResendAPIKey        string
-	ShippoAPIKey        string
-	ShippoFromName      string
-	ShippoFromStreet1   string
-	ShippoFromCity      string
-	ShippoFromState     string
-	ShippoFromZip       string
-	ShippoFromCountry   string
-	OwnerEmail          string
+	ResendAPIKey      string
+	EasyPostAPIKey    string
+	FromName          string
+	FromStreet1       string
+	FromCity          string
+	FromState         string
+	FromZip           string
+	FromCountry       string
+	OwnerEmail        string
 }
 
 func Load() (*Config, error) {
@@ -39,14 +39,14 @@ func Load() (*Config, error) {
 		CFKVCartsID:         os.Getenv("CF_KV_CARTS_ID"),
 		CFAPIToken:          os.Getenv("CF_API_TOKEN"),
 		DBUrl:               os.Getenv("DATABASE_URL"),
-		ResendAPIKey:        os.Getenv("RESEND_API_KEY"),
-		ShippoAPIKey:        os.Getenv("SHIPPO_API_KEY"),
-		ShippoFromName:      os.Getenv("SHIPPO_FROM_NAME"),
-		ShippoFromStreet1:   os.Getenv("SHIPPO_FROM_STREET1"),
-		ShippoFromCity:      os.Getenv("SHIPPO_FROM_CITY"),
-		ShippoFromState:     os.Getenv("SHIPPO_FROM_STATE"),
-		ShippoFromZip:       os.Getenv("SHIPPO_FROM_ZIP"),
-		ShippoFromCountry:   getEnv("SHIPPO_FROM_COUNTRY", "US"),
+		ResendAPIKey:      os.Getenv("RESEND_API_KEY"),
+		EasyPostAPIKey:    os.Getenv("EASYPOST_API_KEY"),
+		FromName:          os.Getenv("FROM_NAME"),
+		FromStreet1:       os.Getenv("FROM_STREET1"),
+		FromCity:          os.Getenv("FROM_CITY"),
+		FromState:         os.Getenv("FROM_STATE"),
+		FromZip:           os.Getenv("FROM_ZIP"),
+		FromCountry:       getEnv("FROM_COUNTRY", "US"),
 		OwnerEmail:          os.Getenv("OWNER_EMAIL"),
 	}
 
@@ -81,23 +81,23 @@ func Load() (*Config, error) {
 	if c.ResendAPIKey == "" {
 		missing = append(missing, "RESEND_API_KEY")
 	}
-	if c.ShippoAPIKey == "" {
-		missing = append(missing, "SHIPPO_API_KEY")
+	if c.EasyPostAPIKey == "" {
+		missing = append(missing, "EASYPOST_API_KEY")
 	}
-	if c.ShippoFromName == "" {
-		missing = append(missing, "SHIPPO_FROM_NAME")
+	if c.FromName == "" {
+		missing = append(missing, "FROM_NAME")
 	}
-	if c.ShippoFromStreet1 == "" {
-		missing = append(missing, "SHIPPO_FROM_STREET1")
+	if c.FromStreet1 == "" {
+		missing = append(missing, "FROM_STREET1")
 	}
-	if c.ShippoFromCity == "" {
-		missing = append(missing, "SHIPPO_FROM_CITY")
+	if c.FromCity == "" {
+		missing = append(missing, "FROM_CITY")
 	}
-	if c.ShippoFromState == "" {
-		missing = append(missing, "SHIPPO_FROM_STATE")
+	if c.FromState == "" {
+		missing = append(missing, "FROM_STATE")
 	}
-	if c.ShippoFromZip == "" {
-		missing = append(missing, "SHIPPO_FROM_ZIP")
+	if c.FromZip == "" {
+		missing = append(missing, "FROM_ZIP")
 	}
 	if c.OwnerEmail == "" {
 		missing = append(missing, "OWNER_EMAIL")
