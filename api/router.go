@@ -9,7 +9,7 @@ import (
 	"github.com/immortalvibes/api/email"
 	"github.com/immortalvibes/api/handlers"
 	apimiddleware "github.com/immortalvibes/api/middleware"
-	"github.com/immortalvibes/api/easypost"
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 )
 
@@ -45,7 +45,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 
 	// Stripe webhook (not behind ProxyAuth — Stripe calls this directly)
 	emailSender := email.NewSender(cfg.ResendAPIKey, "orders@immortalvibes.co.uk")
-	easypostClient := easypost.NewClient(cfg.EasyPostAPIKey, easypost.Address{
+	shippoClient := shippo.NewClient(cfg.ShippoAPIKey, shippo.Address{
 		Name:    cfg.FromName,
 		Street1: cfg.FromStreet1,
 		City:    cfg.FromCity,
@@ -53,7 +53,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 		Zip:     cfg.FromZip,
 		Country: cfg.FromCountry,
 	})
-	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, easypostClient, cfg.OwnerEmail)
+	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail)
 	r.With(apimiddleware.SkipProxyAuth).Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
 
 	// Admin (behind AdminAuth)

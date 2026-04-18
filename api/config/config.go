@@ -16,8 +16,8 @@ type Config struct {
 	CFKVCartsID         string
 	CFAPIToken          string
 	DBUrl               string
-	ResendAPIKey      string
-	EasyPostAPIKey    string
+	ResendAPIKey    string
+	ShippoAPIKey    string
 	FromName          string
 	FromStreet1       string
 	FromCity          string
@@ -40,7 +40,7 @@ func Load() (*Config, error) {
 		CFAPIToken:          os.Getenv("CF_API_TOKEN"),
 		DBUrl:               os.Getenv("DATABASE_URL"),
 		ResendAPIKey:      os.Getenv("RESEND_API_KEY"),
-		EasyPostAPIKey:    os.Getenv("EASYPOST_API_KEY"),
+		ShippoAPIKey:    os.Getenv("SHIPPO_API_KEY"),
 		FromName:          os.Getenv("FROM_NAME"),
 		FromStreet1:       os.Getenv("FROM_STREET1"),
 		FromCity:          os.Getenv("FROM_CITY"),
@@ -81,8 +81,8 @@ func Load() (*Config, error) {
 	if c.ResendAPIKey == "" {
 		missing = append(missing, "RESEND_API_KEY")
 	}
-	if c.EasyPostAPIKey == "" {
-		missing = append(missing, "EASYPOST_API_KEY")
+	if c.ShippoAPIKey == "" {
+		missing = append(missing, "SHIPPO_API_KEY")
 	}
 	if c.FromName == "" {
 		missing = append(missing, "FROM_NAME")

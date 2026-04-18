@@ -14,7 +14,7 @@ import (
 
 	"github.com/immortalvibes/api/handlers"
 	"github.com/immortalvibes/api/models"
-	"github.com/immortalvibes/api/easypost"
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 )
 
@@ -59,7 +59,7 @@ func (s *stubEmailSender) SendShippingFailure(ctx context.Context, ownerEmail, o
 // stubShipperClient returns a fixed label without making network calls.
 type stubShipperClient struct{}
 
-func (s *stubShipperClient) RateShop(ctx context.Context, to easypost.Address) (string, error) {
+func (s *stubShipperClient) RateShop(ctx context.Context, to shippo.Address) (string, error) {
 	return "shp_stub:rate_stub_001", nil
 }
 

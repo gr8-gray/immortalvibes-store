@@ -19,7 +19,7 @@ func setAllEnv(t *testing.T) {
 	t.Setenv("CF_API_TOKEN", "tok123")
 	t.Setenv("DATABASE_URL", "postgres://localhost/test")
 	t.Setenv("RESEND_API_KEY", "re_123")
-	t.Setenv("EASYPOST_API_KEY", "EZAK_test")
+	t.Setenv("SHIPPO_API_KEY", "shippo_test_abc")
 	t.Setenv("FROM_NAME", "Test Sender")
 	t.Setenv("FROM_STREET1", "123 Test St")
 	t.Setenv("FROM_CITY", "Testville")

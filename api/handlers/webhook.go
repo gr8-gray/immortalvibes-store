@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/immortalvibes/api/easypost"
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/webhook"
@@ -16,7 +16,7 @@ import (
 
 // ShipperClient rate-shops and purchases shipping labels.
 type ShipperClient interface {
-	RateShop(ctx context.Context, to easypost.Address) (rateID string, err error)
+	RateShop(ctx context.Context, to shippo.Address) (rateID string, err error)
 	BuyLabel(ctx context.Context, rateID string) (trackingNumber, carrier, labelURL string, err error)
 }
 
@@ -151,7 +151,7 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 }
 
 func (h *WebhookHandler) processShipping(order *store.OrderRow) {
-	toAddr := easypost.Address{
+	toAddr := shippo.Address{
 		Name:    order.ShippingName,
 		Street1: order.Line1,
 		Street2: order.Line2,
