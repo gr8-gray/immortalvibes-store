@@ -45,6 +45,9 @@
     align-items: center;
     justify-content: center;
     padding: 4rem 2rem;
+    background: #030308;
+    position: relative;
+    z-index: 1;
   }
 
   .contact-inner {

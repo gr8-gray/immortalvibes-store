@@ -12,8 +12,8 @@
   import TransitionOverlay from '$lib/components/TransitionOverlay.svelte';
   import { resolveTransition, slugFromPath, MISSION_ACCENT, transitionStore } from '$lib/stores/transition';
 
-  // Hide chrome on immersive pages
-  const immersive = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
+  // Hide footer on canvas pages (home + shop)
+  const hideFooter = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
   const isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   let { children } = $props();
@@ -61,14 +61,14 @@
 {#if !isMobile}<MagneticCursor />{/if}
 <StarField />
 <TransitionOverlay bind:this={overlayComponent} />
-{#if !immersive}<Nav />{/if}
+<Nav />
 
 <main bind:this={mainEl} class="layout-main">
   {@render children()}
 </main>
 
-{#if !immersive}<Footer />{/if}
-{#if !immersive}<CartDrawer />{/if}
+{#if !hideFooter}<Footer />{/if}
+<CartDrawer />
 
 <style>
   :global(body) {

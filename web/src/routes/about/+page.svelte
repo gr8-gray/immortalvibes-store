@@ -74,6 +74,9 @@
   .about {
     min-height: 100vh;
     color: #F0EDE6;
+    background: #030308;
+    position: relative;
+    z-index: 1;
   }
 
   /* ── Two-column layout ── */

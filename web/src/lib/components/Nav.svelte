@@ -6,6 +6,7 @@
   import { page } from '$app/stores';
 
   let scrolled = false;
+  const isHomepage = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
   let menuOpen = false;
   let scrollHandler: (() => void) | null = null;
 
@@ -27,10 +28,10 @@
   function closeMenu() { menuOpen = false; }
 
   // Close on route change
-  $: $page.url.pathname, closeMenu();
+  $effect(() => { $page.url.pathname; closeMenu(); });
 </script>
 
-<nav class="nav" class:nav--scrolled={scrolled} aria-label="Main navigation">
+<nav class="nav" class:nav--scrolled={scrolled} class:nav--frosted={isHomepage} aria-label="Main navigation">
   <div class="nav__inner">
 
     <!-- Logo -->
@@ -101,6 +102,14 @@
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom-color: rgba(240,237,230,0.08);
+  }
+
+  /* Homepage: frosted from the start, lighter than scroll state */
+  .nav--frosted {
+    background: rgba(3,3,8,0.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom-color: rgba(240,237,230,0.06);
   }
 
   .nav__inner {

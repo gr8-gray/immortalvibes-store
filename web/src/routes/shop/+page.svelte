@@ -52,9 +52,6 @@
   <title>Immortal Vibes — Select Your Mission</title>
 </svelte:head>
 
-<a href="/" class="shop-logo" aria-label="Immortal Vibes home">
-  <img src="/logo-bare.png" alt="Immortal Vibes" />
-</a>
 
 <div class="shop">
 
