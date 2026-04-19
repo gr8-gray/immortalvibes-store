@@ -5,9 +5,9 @@
   import { openCart } from '$lib/stores/cartDrawer';
   import { page } from '$app/stores';
 
-  let scrolled = false;
+  let scrolled = $state(false);
   const isHomepage = $derived($page.url.pathname === '/' || $page.url.pathname === '/shop');
-  let menuOpen = false;
+  let menuOpen = $state(false);
   let scrollHandler: (() => void) | null = null;
 
   onMount(() => {
@@ -35,7 +35,7 @@
   <div class="nav__inner">
 
     <!-- Logo -->
-    <a href="/" class="nav__logo" aria-label="Immortal Vibes home" on:click={closeMenu}>
+    <a href="/" class="nav__logo" aria-label="Immortal Vibes home" onclick={closeMenu}>
       <img src="/logo-bare.png" alt="Immortal Vibes" class="nav__logo-img" />
     </a>
 
@@ -48,7 +48,7 @@
 
     <!-- Right side: cart + hamburger -->
     <div class="nav__right">
-      <button on:click={openCart} class="nav__cart" aria-label="Cart ({$cartCount} items)">
+      <button onclick={openCart} class="nav__cart" aria-label="Cart ({$cartCount} items)">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
              fill="none" stroke="currentColor" stroke-width="1.5"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -65,7 +65,7 @@
       <button
         class="nav__hamburger"
         class:nav__hamburger--open={menuOpen}
-        on:click={toggleMenu}
+        onclick={toggleMenu}
         aria-label={menuOpen ? 'Close menu' : 'Open menu'}
         aria-expanded={menuOpen}
       >
@@ -80,9 +80,9 @@
   <!-- Mobile menu dropdown -->
   {#if menuOpen}
     <div class="nav__mobile-menu" role="navigation">
-      <a href="/shop"    class="nav__mobile-link" class:active={isActive('/shop')}    on:click={closeMenu}>Shop</a>
-      <a href="/about"   class="nav__mobile-link" class:active={isActive('/about')}   on:click={closeMenu}>About</a>
-      <a href="/contact" class="nav__mobile-link" class:active={isActive('/contact')} on:click={closeMenu}>Contact</a>
+      <a href="/shop"    class="nav__mobile-link" class:active={isActive('/shop')}    onclick={closeMenu}>Shop</a>
+      <a href="/about"   class="nav__mobile-link" class:active={isActive('/about')}   onclick={closeMenu}>About</a>
+      <a href="/contact" class="nav__mobile-link" class:active={isActive('/contact')} onclick={closeMenu}>Contact</a>
     </div>
   {/if}
 </nav>
