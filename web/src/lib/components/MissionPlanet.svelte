@@ -4,12 +4,28 @@
   import { browser } from '$app/environment';
   import * as THREE from 'three';
 
+  export interface ClusterItem {
+    url: string;
+    scale?: number;          // size multiplier (default productScale)
+    offsetX?: number;        // horizontal offset (Three.js units)
+    offsetY?: number;        // vertical offset
+    opacity?: number;        // 0–1 (default productOpacity)
+    blending?: 'normal' | 'additive';
+  }
+
   export let planetType: 'earth' | 'leo' | 'lunar' | 'nebula' = 'earth';
   export let photoUrl: string   = '';
-  export let productUrl: string   = '';   // transparent PNG — rendered as in-scene sprite
-  export let productScale: number   = 1.0;   // per-product size multiplier
-  export let productOffsetY: number  = 0.0;          // vertical shift (+ = up)
-  export let productOpacity: number  = 0.72;         // sprite opacity
+  export let productUrl: string   = '';   // single sprite path (legacy)
+  export let products: ClusterItem[] = [];  // multi-sprite cluster (overrides productUrl when non-empty)
+  // Auto-rotating carousel. Strings or objects with { url, offsetY?, scale? }
+  // for per-slot positioning when source PNGs aren't perfectly centered/sized.
+  export type CarouselSlot = string | { url: string; offsetY?: number; scale?: number };
+  export let carousel: CarouselSlot[] = [];
+  export let carouselInterval: number = 3500; // ms between transitions
+  export let carouselFade: number     = 850;  // ms crossfade duration
+  export let productScale: number   = 1.0;   // default per-sprite size
+  export let productOffsetY: number  = 0.0;          // default vertical shift
+  export let productOpacity: number  = 0.72;         // default opacity
   export let productBlending: 'normal' | 'additive' = 'normal';
   export let glowColor: string  = '#4FC3F7';
   export let rotationSpeed: number = 0.0015;
@@ -106,8 +122,138 @@
       gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);}
   `;
 
+  // ── Texture builder — bake radial fade once per image ─────────────────────
+  function buildFadedTexture(img: HTMLImageElement): THREE.CanvasTexture {
+    const cw = img.naturalWidth  || img.width;
+    const ch = img.naturalHeight || img.height;
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0);
+    const cx = cw / 2, cy = ch / 2;
+    const rx = cx * 0.88, ry = cy * 0.88;
+    const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.15, cx, cy, Math.max(rx, ry));
+    grad.addColorStop(0.0, 'rgba(0,0,0,1)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.9)');
+    grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
+    grad.addColorStop(1.0, 'rgba(0,0,0,0)');
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, cw, ch);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }
+
+  // ── Carousel loader — preload N textures, run a crossfade timer ──────────
+  // Returns a cleanup function (clear interval, dispose textures).
+  function loadCarousel(rawSlots: CarouselSlot[], scene: THREE.Scene): () => void {
+    const loader = new THREE.TextureLoader();
+    const items = rawSlots.map((it) =>
+      typeof it === 'string'
+        ? { url: it, offsetY: 0, scale: 1 }
+        : { url: it.url, offsetY: it.offsetY ?? 0, scale: it.scale ?? 1 },
+    );
+    const slots: { tex: THREE.CanvasTexture; w: number; h: number; offsetY: number; scale: number }[] = [];
+    let intervalId: number | null = null;
+
+    // Two sprites — one shown, one hidden, swap roles each tick.
+    let spriteA: THREE.Sprite | null = null;
+    let spriteB: THREE.Sprite | null = null;
+    let activeIsA = true;
+    let nextIndex = 0;
+
+    function makeSprite(): THREE.Sprite {
+      const mat = new THREE.SpriteMaterial({
+        transparent: true,
+        opacity:     0,
+        blending:    productBlending === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        depthWrite:  false,
+        depthTest:   false,
+      });
+      const s = new THREE.Sprite(mat);
+      s.position.set(0, productOffsetY, 1.12);
+      scene.add(s);
+      return s;
+    }
+
+    function applySlot(sprite: THREE.Sprite, slot: typeof slots[0]) {
+      const aspect = slot.w / slot.h;
+      const spriteH = 1.5 * productScale * slot.scale;
+      const spriteW = spriteH * aspect;
+      sprite.material.map = slot.tex;
+      sprite.material.needsUpdate = true;
+      sprite.scale.set(spriteW, spriteH, 1);
+      sprite.position.y = productOffsetY + slot.offsetY;
+    }
+
+    function fade(sprite: THREE.Sprite, from: number, to: number, durationMs: number) {
+      const start = performance.now();
+      function step(now: number) {
+        const t = Math.min(1, (now - start) / durationMs);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        sprite.material.opacity = from + (to - from) * eased;
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function tick() {
+      if (slots.length === 0) return;
+      const incoming = activeIsA ? spriteB : spriteA;
+      const outgoing = activeIsA ? spriteA : spriteB;
+      if (!incoming || !outgoing) return;
+      applySlot(incoming, slots[nextIndex]);
+      nextIndex = (nextIndex + 1) % slots.length;
+      fade(incoming, 0, productOpacity, carouselFade);
+      fade(outgoing, productOpacity, 0, carouselFade);
+      activeIsA = !activeIsA;
+    }
+
+    // Preload all textures, then start.
+    let loaded = 0;
+    items.forEach((it, i) => {
+      loader.load(it.url, (tex) => {
+        const img = tex.image as HTMLImageElement;
+        slots[i] = {
+          tex: buildFadedTexture(img),
+          w: img.naturalWidth || img.width,
+          h: img.naturalHeight || img.height,
+          offsetY: it.offsetY,
+          scale: it.scale,
+        };
+        loaded++;
+        if (loaded === items.length) start();
+      });
+    });
+
+    function start() {
+      spriteA = makeSprite();
+      spriteB = makeSprite();
+      // Show first slot immediately, fade in.
+      applySlot(spriteA, slots[0]);
+      fade(spriteA, 0, productOpacity, carouselFade);
+      nextIndex = slots.length > 1 ? 1 : 0;
+      if (slots.length > 1) {
+        intervalId = window.setInterval(tick, carouselInterval);
+      }
+    }
+
+    return () => {
+      if (intervalId !== null) clearInterval(intervalId);
+      slots.forEach(s => s.tex.dispose());
+    };
+  }
+
   // ── Product sprite — apply radial alpha fade via canvas ───────────────────
-  function loadProductSprite(url: string, scene: THREE.Scene) {
+  function loadProductSprite(item: ClusterItem, scene: THREE.Scene) {
+    const url      = item.url;
+    const scale    = item.scale    ?? productScale;
+    const offX     = item.offsetX  ?? 0;
+    const offY     = item.offsetY  ?? productOffsetY;
+    const op       = item.opacity  ?? productOpacity;
+    const blend    = item.blending ?? productBlending;
+
     const loader = new THREE.TextureLoader();
     loader.load(url, (tex) => {
       const img = tex.image as HTMLImageElement;
@@ -136,21 +282,20 @@
       fadedTex.colorSpace = THREE.SRGBColorSpace;
 
       const aspect = cw / ch;
-      // Base 1.5 world units, scaled per product
-      const spriteH = 1.5 * productScale;
+      const spriteH = 1.5 * scale;
       const spriteW = spriteH * aspect;
 
       const spriteMat = new THREE.SpriteMaterial({
         map:         fadedTex,
         transparent: true,
-        opacity:     productOpacity,
-        blending:    productBlending === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
+        opacity:     op,
+        blending:    blend === 'additive' ? THREE.AdditiveBlending : THREE.NormalBlending,
         depthWrite:  false,
         depthTest:   false,
       });
       const sprite = new THREE.Sprite(spriteMat);
       sprite.scale.set(spriteW, spriteH, 1);
-      sprite.position.set(0, productOffsetY, 1.12);
+      sprite.position.set(offX, offY, 1.12);
       scene.add(sprite);
     });
   }
@@ -225,8 +370,16 @@
       scene.add(new THREE.AmbientLight(0x0a0a14, 0.75));
     }
 
-    // Product sprite — rendered inside Three.js so veil wraps around it
-    if (productUrl) loadProductSprite(productUrl, scene);
+    // Product sprite(s) — rendered inside Three.js so veil wraps around them.
+    // Precedence: carousel > products > productUrl.
+    let cleanupCarousel: (() => void) | null = null;
+    if (carousel && carousel.length > 0) {
+      cleanupCarousel = loadCarousel(carousel, scene);
+    } else if (products && products.length > 0) {
+      products.forEach((item) => loadProductSprite(item, scene));
+    } else if (productUrl) {
+      loadProductSprite({ url: productUrl }, scene);
+    }
 
     function animate() {
       rafId = requestAnimationFrame(animate);
@@ -245,6 +398,7 @@
 
     return () => {
       obs.disconnect(); cancelAnimationFrame(rafId);
+      if (cleanupCarousel) cleanupCarousel();
       renderer.dispose(); geo.dispose(); mat.dispose();
       atmoMat.dispose(); veilMat.dispose();
     };

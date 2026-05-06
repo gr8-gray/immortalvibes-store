@@ -92,6 +92,7 @@
   });
 
   onDestroy(() => {
+    if (typeof window === 'undefined') return;
     cancelAnimationFrame(rafId);
     window.removeEventListener('resize', resize);
   });

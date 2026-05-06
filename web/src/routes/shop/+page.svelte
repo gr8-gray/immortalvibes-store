@@ -1,57 +1,144 @@
 <!-- web/src/routes/shop/+page.svelte -->
+<!-- WR set drop -->
+
 <script lang="ts">
-  import MissionPlanet from '$lib/components/MissionPlanet.svelte';
+  import { onMount, onDestroy } from 'svelte';
+  import { browser } from '$app/environment';
+  import MissionPlanet, { type ClusterItem, type CarouselSlot } from '$lib/components/MissionPlanet.svelte';
+  import { playSystemReformation, REFORMATION_DURATION_MS } from '$lib/animations/system-reformation.ts';
+  import type { gsap } from 'gsap';
 
-  const R2 = 'https://pub-75a66fca0ddd4d93b3bb53bda5d6a29c.r2.dev';
+  // Intro toggle — flip via PUBLIC_DROP_INTRO_ENABLED env var.
+  // String compare because Vite injects env values as strings.
+  const introEnabled = (import.meta.env.PUBLIC_DROP_INTRO_ENABLED ?? 'true') !== 'false';
 
-  const missions = [
-    {
-      num: '001',
-      name: 'Warped Reality Beanie',
-      env: 'Low Earth Orbit',
-      slug: 'warped-reality-beanie',
-      planetType: 'leo',
-      product: '/photos/product-beanie.png',
-      productScale: 0.75,
-      glow: '#4FC3F7',
-      speed: 0.0018,
-      tilt: 0.22,
-    },
-    {
-      num: '002',
-      name: 'Vanguard Trucker Hat',
-      env: 'Lunar Surface',
-      slug: 'vanguard-trucker-hat',
-      planetType: 'lunar',
-      product: '/photos/product-hat.png',
-      productScale: 1.5,
-      planetScale: 0.72,
-      planetOffsetY: 0.04,
-      glow: '#C8B89A',
-      speed: 0.0011,
-      tilt: 0.08,
-      condemned: true, // sold out — flip to false when restocked
-    },
-    {
-      num: '003',
-      name: 'Racerback Tanktop',
-      env: 'Stellar Nursery',
-      slug: 'racerback-tanktop',
-      planetType: 'nebula',
-      product: '/photos/product-tank.png',
-      productScale: 0.75,
-      spriteBlending: 'additive',
-      glow: '#6B0FCC',
-      speed: 0.0022,
-      tilt: 0.32,
-    },
+  // ── Permanent missions (post-intro state) ────────────────────────────────
+  // Trucker is decommissioned — only Warped Reality Set + Tank remain.
+  // WR planet shows a self-winding carousel of the blue-variant pieces.
+  // One shirt only — Spires (more designed). Both tee variants live on the set landing page.
+  const setCarousel: CarouselSlot[] = [
+    // Blue beanie PNG sits high on its canvas — nudge down so the beanie is
+    // centered on the planet sphere instead of drifting toward the top.
+    { url: '/photos/_drop/beanie-blue.png', offsetY: -0.18 },
+    '/photos/_drop/tee-front.png',
+    '/photos/_drop/sweatpants-front.png',
   ];
+
+  const setMission = {
+    num: '001',
+    name: 'Warped Reality',
+    env: 'The Set Drop',
+    slug: 'warped-reality-set',
+    planetType: 'leo' as const,
+    carousel: setCarousel,
+    glow: '#4FC3F7',
+    speed: 0.0018,
+    tilt: 0.22,
+  };
+
+  const tankMission = {
+    num: '003',
+    name: 'Racerback Tanktop',
+    env: 'Stellar Nursery',
+    slug: 'racerback-tanktop',
+    planetType: 'nebula' as const,
+    product: '/photos/product-tank.png',
+    productScale: 1.1,
+    spriteBlending: 'additive' as const,
+    glow: '#6B0FCC',
+    speed: 0.0022,
+    tilt: 0.32,
+  };
+
+  // ── Intro state ──────────────────────────────────────────────────────────
+  let showIntroTrucker = introEnabled;
+  let introPlayed = false;
+  let timeline: ReturnType<typeof gsap.timeline> | null = null;
+
+  // Bound refs for animation
+  let truckerSlotEl:   HTMLElement;
+  let truckerHaloEl:   HTMLElement;
+  let truckerPlanetEl: HTMLElement;
+  let wrSlotEl:        HTMLElement;
+  let wrHaloEl:        HTMLElement;
+  let wrClusterEl:     HTMLElement;
+  let tankSlotEl:      HTMLElement;
+  let collapseRing1El: HTMLElement;
+  let collapseRing2El: HTMLElement;
+  let collapseRing3El: HTMLElement;
+  let singularityEl:   HTMLElement;
+  let shockwaveEl:     HTMLElement;
+  let shockwave2El:    HTMLElement;
+  let shockwave3El:    HTMLElement;
+  let flashEl:         HTMLElement;
+  let streaksEl:       HTMLElement;
+  let particlesEl:     HTMLElement;
+
+  let truckerCollapsing = false;
+
+  function startTruckerCollapse() {
+    truckerCollapsing = true;
+  }
+
+  function skipIntro() {
+    if (timeline) {
+      timeline.progress(1).kill();
+      timeline = null;
+    }
+    truckerCollapsing = true;
+    // Wait for the reflow transition before unmounting the trucker slot.
+    setTimeout(() => {
+      showIntroTrucker = false;
+      introPlayed = true;
+    }, 1100);
+  }
+
+  onMount(() => {
+    if (!browser || !introEnabled || introPlayed) return;
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Defer one frame so refs are bound after Svelte commit.
+    requestAnimationFrame(() => {
+      timeline = playSystemReformation({
+        truckerSlot:    truckerSlotEl,
+        truckerHalo:    truckerHaloEl,
+        truckerPlanet:  truckerPlanetEl,
+        wrSlot:         wrSlotEl,
+        wrHalo:         wrHaloEl,
+        wrCluster:      wrClusterEl,
+        tankSlot:       tankSlotEl,
+        collapseRing1:  collapseRing1El,
+        collapseRing2:  collapseRing2El,
+        collapseRing3:  collapseRing3El,
+        singularity:    singularityEl,
+        shockwave:      shockwaveEl,
+        shockwave2:     shockwave2El,
+        shockwave3:     shockwave3El,
+        flash:          flashEl,
+        streaks:        streaksEl,
+        particles:      particlesEl,
+      }, {
+        reduceMotion,
+        onTruckerGone: startTruckerCollapse,
+        onComplete: () => {
+          // Reflow already started ~1.95s ago via onTruckerGone — by now
+          // the row has fully collapsed. Safe to unmount the slot.
+          showIntroTrucker = false;
+          introPlayed = true;
+        },
+      });
+    });
+  });
+
+  onDestroy(() => {
+    if (timeline) timeline.kill();
+  });
 </script>
 
 <svelte:head>
   <title>Immortal Vibes — Select Your Mission</title>
 </svelte:head>
-
 
 <div class="shop">
 
@@ -60,56 +147,133 @@
   </header>
 
   <div class="planets-row">
-    {#each missions as m}
-      <a href="/shop/{m.slug}" class="mission-slot">
 
+    <!-- ── Warped Reality SET (permanent slot 1) ── -->
+    <a href="/shop/{setMission.slug}" class="mission-slot wr-slot" bind:this={wrSlotEl}>
+      <div class="planet-wrap">
+        <MissionPlanet
+          planetType={setMission.planetType}
+          carousel={setMission.carousel}
+          carouselInterval={3500}
+          carouselFade={850}
+          productScale={0.72}
+          productOpacity={0.95}
+          glowColor={setMission.glow}
+          rotationSpeed={setMission.speed}
+          axialTilt={setMission.tilt}
+        />
+        <div class="planet-halo" style="--glow:{setMission.glow}" bind:this={wrHaloEl}></div>
+        <div class="set-cluster-marker" bind:this={wrClusterEl} aria-hidden="true"></div>
+      </div>
+
+      <div class="mission-label">
+        <span class="num">{setMission.num}</span>
+        <span class="name">{setMission.name}</span>
+        <span class="env">{setMission.env}</span>
+        <span class="set-badge">SET DROP · 3 PIECES</span>
+      </div>
+    </a>
+
+    <!-- ── Trucker (transient — only during intro; explodes during act 1) ── -->
+    {#if showIntroTrucker}
+      <div class="mission-slot trucker-slot" class:is-collapsing={truckerCollapsing} bind:this={truckerSlotEl} aria-hidden="true">
         <div class="planet-wrap">
-          <MissionPlanet
-            planetType={m.planetType}
-            productUrl={m.product}
-            productScale={m.planetScale ?? m.productScale ?? 1.0}
-            productOffsetY={m.planetOffsetY ?? 0}
-            productBlending={m.spriteBlending ?? 'normal'}
-            glowColor={m.glow}
-            rotationSpeed={m.speed}
-            axialTilt={m.tilt}
-          />
-          <div class="planet-halo" style="--glow:{m.glow}"></div>
+          <!-- planet wrapper is the explosion target — scales, blurs, rotates -->
+          <div class="planet-explode-target" bind:this={truckerPlanetEl}>
+            <MissionPlanet
+              planetType="lunar"
+              productUrl="/photos/product-hat.png"
+              productScale={0.9}
+              productOffsetY={0.18}
+              glowColor="#C8B89A"
+              rotationSpeed={0.0011}
+              axialTilt={0.08}
+            />
+          </div>
+          <div class="planet-halo" style="--glow:#C8B89A" bind:this={truckerHaloEl}></div>
 
-          {#if m.condemned}
-            <!-- rings sit outside the clipping shell -->
-            <div class="ring-outer"></div>
-            <div class="ring-inner"></div>
-            <div class="alert-dot"></div>
-            <!-- shell clips tape + overlays to the circle -->
-            <div class="condemned-shell">
-              <div class="condemned-dim"></div>
-              <div class="scanlines"></div>
-              <div class="danger-atmo"></div>
-              <div class="tape tape-1"></div>
-              <div class="tape tape-2"></div>
-              <div class="tape-text">CONDEMNED</div>
-            </div>
-          {/if}
+          <!-- IMPLOSION layers — collapse rings + singularity dot -->
+          <div class="collapse-ring c1" bind:this={collapseRing1El}></div>
+          <div class="collapse-ring c2" bind:this={collapseRing2El}></div>
+          <div class="collapse-ring c3" bind:this={collapseRing3El}></div>
+          <div class="singularity"      bind:this={singularityEl}></div>
+
+          <!-- SUPERNOVA layers — flash + 3 shockwaves -->
+          <div class="flash"      bind:this={flashEl}></div>
+          <div class="shockwave"  bind:this={shockwaveEl}></div>
+          <div class="shockwave2" bind:this={shockwave2El}></div>
+          <div class="shockwave3" bind:this={shockwave3El}></div>
+
+          <!-- Radial streaks — 24 lines fanning outward -->
+          <div class="streaks" bind:this={streaksEl}>
+            {#each Array(24) as _, i}
+              <span
+                class="streak"
+                style="
+                  --angle: {(i * 15)}deg;
+                  --delay: {(i % 6) * 0.02}s;
+                "
+              ></span>
+            {/each}
+          </div>
+
+          <div class="particles" bind:this={particlesEl}>
+            {#each Array(36) as _, i}
+              <span
+                class="particle"
+                style="
+                  --angle: {(i * 10)}deg;
+                  --delay: {(i % 8) * 0.025}s;
+                  --dist: {110 + (i % 5) * 38}px;
+                  --size: {3 + (i % 4)}px;
+                  --hue: {i % 3 === 0 ? '#fff5d8' : i % 3 === 1 ? '#ffb060' : '#ff7028'};
+                "
+              ></span>
+            {/each}
+            {#each Array(8) as _, i}
+              <span
+                class="ember"
+                style="
+                  --angle: {(i * 45) + 22}deg;
+                  --delay: {i * 0.04}s;
+                  --dist: {180 + i * 18}px;
+                "
+              ></span>
+            {/each}
+          </div>
         </div>
-
-        <div class="mission-label" class:is-condemned={m.condemned}>
-          <span class="num">{m.num}</span>
-          <span class="name">{m.name}</span>
-          {#if m.condemned}
-            <div class="condemned-badge">Condemned</div>
-            <span class="mission-terminated">Mission Terminated</span>
-          {:else}
-            <span class="env">{m.env}</span>
-          {/if}
+        <div class="mission-label is-decommissioning">
+          <span class="num">002</span>
+          <span class="name">Vanguard Trucker Hat</span>
+          <span class="env decommission-text">DECOMMISSIONED</span>
         </div>
+      </div>
+    {/if}
 
-      </a>
-    {/each}
+    <!-- ── Tank (permanent slot) ── -->
+    <a href="/shop/{tankMission.slug}" class="mission-slot tank-slot" bind:this={tankSlotEl}>
+      <div class="planet-wrap">
+        <MissionPlanet
+          planetType={tankMission.planetType}
+          productUrl={tankMission.product}
+          productScale={tankMission.productScale}
+          productBlending={tankMission.spriteBlending}
+          glowColor={tankMission.glow}
+          rotationSpeed={tankMission.speed}
+          axialTilt={tankMission.tilt}
+        />
+        <div class="planet-halo" style="--glow:{tankMission.glow}"></div>
+      </div>
+      <div class="mission-label">
+        <span class="num">{tankMission.num}</span>
+        <span class="name">{tankMission.name}</span>
+        <span class="env">{tankMission.env}</span>
+      </div>
+    </a>
+
   </div>
 
   <footer class="bottom-bar">
-    <!-- Clicking the Earth returns home -->
     <a href="/" class="earth-link" aria-label="Return to Earth">
       <div class="earth-wrap">
         <MissionPlanet
@@ -126,27 +290,14 @@
     <a href="/" class="return-btn">↓ RETURN TO EARTH</a>
   </footer>
 
+  {#if showIntroTrucker && !introPlayed}
+    <button class="skip-intro" on:click={skipIntro} type="button">SKIP INTRO →</button>
+  {/if}
+
 </div>
 
 <style>
   :global(body) { overflow: hidden; }
-
-  .shop-logo {
-    position: fixed;
-    top: 1.2rem;
-    left: 1.8rem;
-    z-index: 20;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-  }
-
-  .shop-logo:hover { opacity: 1; }
-
-  .shop-logo img {
-    width: 52px;
-    height: 52px;
-    object-fit: contain;
-  }
 
   .shop {
     position: fixed;
@@ -161,11 +312,7 @@
   }
 
   /* ── Header ── */
-  .top-bar {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
+  .top-bar { width: 100%; display: flex; justify-content: center; }
 
   .select-label {
     font-family: 'Inter', sans-serif;
@@ -185,9 +332,9 @@
   }
 
   @media (min-width: 641px) {
-    .mission-slot:nth-child(1) { transform: translateY(-3vh); }
-    .mission-slot:nth-child(2) { transform: translateY(2vh);  }
-    .mission-slot:nth-child(3) { transform: translateY(-2vh); }
+    .wr-slot      { transform: translateY(-3vh); }
+    .trucker-slot { transform: translateY(2vh);  }
+    .tank-slot    { transform: translateY(-2vh); }
   }
 
   @media (max-width: 640px) {
@@ -196,8 +343,6 @@
     .planets-row { flex-direction: column; gap: 2rem; align-items: center; justify-content: flex-start; flex: unset; padding: 1.5rem 0 2rem; }
     .planet-wrap { width: clamp(150px, 60vw, 220px); height: clamp(150px, 60vw, 220px); }
     .mission-slot:hover { transform: none !important; }
-    .shop-logo { top: 0.9rem; left: 1rem; }
-    .shop-logo img { width: 40px; height: 40px; }
     .bottom-bar { margin-top: 1rem; }
   }
 
@@ -211,15 +356,38 @@
     transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
+  /* Trucker slot collapse — smooth reflow instead of display:none snap.
+     Width + margin animate to 0; sibling slots reposition naturally via flex. */
+  .trucker-slot {
+    transition:
+      width   1.1s cubic-bezier(0.5, 0, 0.25, 1),
+      max-width 1.1s cubic-bezier(0.5, 0, 0.25, 1),
+      margin  1.1s cubic-bezier(0.5, 0, 0.25, 1),
+      opacity 0.5s ease;
+  }
+  .trucker-slot.is-collapsing {
+    width: 0 !important;
+    max-width: 0 !important;
+    margin-left:  calc(clamp(3rem, 7vw, 7rem) * -1) !important;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
   .mission-slot:hover { transform: translateY(-8px) !important; }
 
-  /* ── Planet + overlay ── */
+  /* Set + Tank are matched siblings post-decommission. */
+  .wr-slot .planet-wrap,
+  .tank-slot .planet-wrap {
+    width: clamp(220px, 25vw, 340px);
+    height: clamp(220px, 25vw, 340px);
+  }
+
+  /* Trucker uses the base size during intro. */
   .planet-wrap {
     position: relative;
     width: clamp(160px, 18vw, 260px);
     height: clamp(160px, 18vw, 260px);
   }
-
 
   /* Diffuse outer glow */
   .planet-halo {
@@ -272,157 +440,240 @@
     text-transform: uppercase;
   }
 
-  /* ── Condemned overlay ── */
-  .condemned-shell {
+  .set-badge {
+    margin-top: 0.2rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.45rem;
+    letter-spacing: 0.30em;
+    color: rgba(200, 146, 42, 0.85);
+    border: 1px solid rgba(200, 146, 42, 0.45);
+    padding: 0.2rem 0.7rem;
+    text-transform: uppercase;
+  }
+
+  /* ── Explosion VFX (act 1 of intro) ── */
+
+  /* Wrapper that gsap scales/rotates/blurs to "shatter" the planet. */
+  .planet-explode-target {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 50%;
+    will-change: transform, filter;
+  }
+
+  /* Bright white radial flash — the burst itself. */
+  .flash {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    overflow: hidden;
+    background: radial-gradient(circle,
+      rgba(255, 255, 255, 1.0) 0%,
+      rgba(255, 240, 200, 0.95) 18%,
+      rgba(255, 180, 90, 0.7) 38%,
+      rgba(255, 90, 30, 0.35) 60%,
+      transparent 78%);
+    transform-origin: 50% 50%;
     pointer-events: none;
+    mix-blend-mode: screen;
+    will-change: transform, opacity;
+    z-index: 6;
+    filter: blur(2px);
   }
 
-  .condemned-dim {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.65);
-    border-radius: 50%;
-  }
-
-  .scanlines {
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent 0px, transparent 3px,
-      rgba(0, 0, 0, 0.18) 3px, rgba(0, 0, 0, 0.18) 4px
-    );
-    border-radius: 50%;
-  }
-
-  .danger-atmo {
+  /* Primary shockwave — bright orange ring. */
+  .shockwave {
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%,
-      transparent 40%, rgba(160, 30, 30, 0.22) 100%);
+    border: 3px solid rgba(255, 170, 80, 0.95);
+    box-shadow:
+      0 0 40px rgba(255, 130, 50, 0.7),
+      inset 0 0 20px rgba(255, 200, 120, 0.4);
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+    z-index: 5;
   }
 
-  .tape {
+  /* Secondary shockwave — softer, trails primary. */
+  .shockwave2 {
     position: absolute;
-    width: 230%;
-    height: 14px;
-    left: -65%;
-    transform-origin: center center;
-    background: repeating-linear-gradient(
-      90deg,
-      rgba(14, 14, 0, 0.72) 0px,  rgba(14, 14, 0, 0.72) 14px,
-      rgba(200, 146, 42, 0.65) 14px, rgba(200, 146, 42, 0.65) 28px
-    );
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 220, 160, 0.6);
+    box-shadow: 0 0 60px rgba(255, 150, 70, 0.4);
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+    z-index: 4;
   }
 
-  .tape-1 { top: calc(50% - 7px); transform: rotate(-33deg); }
-  .tape-2 { top: calc(50% - 7px); transform: rotate(33deg); }
+  /* Tertiary shockwave — faintest, biggest, last to fade. */
+  .shockwave3 {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 230, 180, 0.4);
+    box-shadow: 0 0 80px rgba(255, 140, 60, 0.25);
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+    z-index: 3;
+  }
 
-  .tape-text {
+  /* ── Implosion VFX ── */
+
+  /* Collapse rings — start outside the planet, crash inward to centre. */
+  .collapse-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+    z-index: 5;
+  }
+  .collapse-ring.c1 {
+    border: 2px solid rgba(255, 200, 140, 0.95);
+    box-shadow: 0 0 24px rgba(255, 160, 80, 0.7),
+                inset 0 0 12px rgba(255, 200, 120, 0.4);
+  }
+  .collapse-ring.c2 {
+    border: 1px solid rgba(255, 220, 160, 0.85);
+    box-shadow: 0 0 18px rgba(255, 180, 100, 0.6);
+  }
+  .collapse-ring.c3 {
+    border: 1px solid rgba(255, 240, 200, 0.65);
+    box-shadow: 0 0 14px rgba(255, 200, 120, 0.5);
+  }
+
+  /* Singularity — bright pinpoint at the implosion peak. */
+  .singularity {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow:
+      0 0 20px #fff,
+      0 0 40px rgba(255, 220, 160, 0.95),
+      0 0 80px rgba(255, 140, 50, 0.7),
+      0 0 140px rgba(200, 80, 30, 0.4);
+    transform-origin: 50% 50%;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    will-change: transform, opacity;
+    z-index: 8;
+  }
+
+  /* Radial debris streaks — lines fanning out from centre at the burst. */
+  .streaks {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    will-change: opacity;
+    z-index: 6;
+  }
+  .streak {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 110px; height: 2px;
+    background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 220, 160, 0.95) 18%,
+      rgba(255, 140, 60, 0.95) 60%,
+      rgba(255, 80, 30, 0) 100%);
+    box-shadow: 0 0 8px rgba(255, 140, 60, 0.7);
+    transform-origin: 0% 50%;
+    opacity: 0;
+    animation: streak-fly 0.85s cubic-bezier(0.18, 0.7, 0.4, 1) var(--delay, 0s) forwards;
+  }
+  @keyframes streak-fly {
+    0%   { opacity: 0;   transform: rotate(var(--angle)) translateX(0)    scaleX(0.2); }
+    18%  { opacity: 1;   transform: rotate(var(--angle)) translateX(20px)  scaleX(0.5); }
+    60%  { opacity: 0.85;transform: rotate(var(--angle)) translateX(120px) scaleX(1.4); }
+    100% { opacity: 0;   transform: rotate(var(--angle)) translateX(220px) scaleX(2.2); }
+  }
+
+  .particles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 7;
+    will-change: opacity;
+  }
+
+  .particle {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(-33deg);
-    font-family: 'Inter', sans-serif;
-    font-size: 0.38rem;
-    font-weight: 700;
-    letter-spacing: 0.35em;
-    color: rgba(14, 14, 0, 0.85);
-    background: rgba(200, 146, 42, 0.75);
-    padding: 0.1rem 0.5rem;
-    white-space: nowrap;
-    text-transform: uppercase;
-    z-index: 2;
-  }
-
-  .ring-outer {
-    position: absolute;
-    inset: -6px;
+    width: var(--size, 4px);
+    height: var(--size, 4px);
     border-radius: 50%;
-    border: 1px solid rgba(190, 45, 45, 0.55);
-    box-shadow: 0 0 12px rgba(190,45,45,0.25), inset 0 0 10px rgba(190,45,45,0.08);
-    pointer-events: none;
-    animation: flicker 2.6s ease-in-out infinite;
+    background: var(--hue, #f0d7a3);
+    box-shadow: 0 0 12px var(--hue, #f0d7a3),
+                0 0 24px color-mix(in srgb, var(--hue, #f0d7a3) 60%, transparent);
+    transform: translate(-50%, -50%);
+    animation: particle-fly 1.05s cubic-bezier(0.18, 0.7, 0.4, 1) var(--delay, 0s) forwards;
+    opacity: 0;
   }
 
-  .ring-inner {
+  @keyframes particle-fly {
+    0%   { transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0)                scale(1.4); opacity: 1; }
+    20%  { opacity: 1; }
+    70%  { opacity: 0.9; }
+    100% { transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist, 80px)) scale(0.4); opacity: 0; }
+  }
+
+  /* Larger flung debris embers — fewer, slower, longer reach. */
+  .ember {
     position: absolute;
-    inset: -2px;
+    top: 50%;
+    left: 50%;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    border: 1px solid rgba(190, 45, 45, 0.18);
-    pointer-events: none;
-    animation: flicker 2.6s ease-in-out infinite reverse;
+    background: radial-gradient(circle, #fff8d8 0%, #ffaa50 40%, #c84418 100%);
+    box-shadow: 0 0 16px rgba(255, 130, 60, 0.85),
+                0 0 32px rgba(255, 80, 30, 0.4);
+    transform: translate(-50%, -50%);
+    animation: ember-fly 1.4s cubic-bezier(0.15, 0.65, 0.45, 1) var(--delay, 0s) forwards;
+    opacity: 0;
   }
 
-  .alert-dot {
+  @keyframes ember-fly {
+    0%   { transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0)                  scale(1.6); opacity: 1; }
+    100% { transform: translate(-50%, -50%) rotate(var(--angle)) translateX(var(--dist, 180px)) scale(0.2); opacity: 0; }
+  }
+
+  .decommission-text {
+    color: rgba(200, 60, 60, 0.7) !important;
+    letter-spacing: 0.3em !important;
+  }
+
+  /* ── Skip intro button ── */
+  .skip-intro {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #cc2222;
-    box-shadow: 0 0 8px rgba(200,30,30,0.9);
-    z-index: 10;
-    pointer-events: none;
-    animation: blink 1.4s ease-in-out infinite;
-  }
-
-  @keyframes flicker {
-    0%, 100% { opacity: 0.4; }
-    30%       { opacity: 1; }
-    65%       { opacity: 0.6; }
-    80%       { opacity: 0.9; }
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.1; }
-  }
-
-  .mission-label.is-condemned .name { color: rgba(240, 237, 230, 0.25); }
-  .mission-label.is-condemned .num  { color: rgba(200, 146, 42, 0.25); }
-
-  .condemned-badge {
+    bottom: 1.2rem;
+    right: 1.4rem;
     font-family: 'Inter', sans-serif;
-    font-size: 0.46rem;
-    letter-spacing: 0.28em;
-    color: rgba(190, 45, 45, 0.7);
-    border: 1px solid rgba(190, 45, 45, 0.3);
-    padding: 0.2rem 0.8rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.32em;
+    color: rgba(240, 237, 230, 0.55);
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(240, 237, 230, 0.18);
+    padding: 0.55rem 1.1rem;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
     text-transform: uppercase;
-    position: relative;
+    transition: color 0.2s, border-color 0.2s;
+    z-index: 50;
   }
 
-  .condemned-badge::before,
-  .condemned-badge::after {
-    content: '';
-    position: absolute;
-    width: 5px;
-    height: 5px;
-  }
-  .condemned-badge::before {
-    top: -1px; left: -1px;
-    border-top: 1px solid rgba(190,45,45,0.55);
-    border-left: 1px solid rgba(190,45,45,0.55);
-  }
-  .condemned-badge::after {
-    bottom: -1px; right: -1px;
-    border-bottom: 1px solid rgba(190,45,45,0.55);
-    border-right: 1px solid rgba(190,45,45,0.55);
-  }
-
-  .mission-terminated {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.4rem;
-    letter-spacing: 0.2em;
-    color: rgba(240, 237, 230, 0.18);
-    text-transform: uppercase;
+  .skip-intro:hover {
+    color: #F0EDE6;
+    border-color: rgba(240, 237, 230, 0.5);
   }
 
   /* ── Footer / Earth ── */
@@ -433,12 +684,7 @@
     gap: 0.5rem;
   }
 
-  .earth-link {
-    display: block;
-    text-decoration: none;
-    transition: transform 0.3s ease;
-  }
-
+  .earth-link { display: block; text-decoration: none; transition: transform 0.3s ease; }
   .earth-link:hover { transform: scale(1.12); }
 
   .earth-wrap {
@@ -484,5 +730,11 @@
   .return-btn:hover {
     color: #F0EDE6;
     border-color: rgba(240,237,230,0.4);
+  }
+
+  /* set-cluster-marker is a hidden hook for the GSAP timeline to fade in.
+     Visual cluster comes from the in-scene Three.js sprites. */
+  .set-cluster-marker {
+    position: absolute; inset: 0; pointer-events: none;
   }
 </style>

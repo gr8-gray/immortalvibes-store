@@ -1,11 +1,28 @@
 # Claude local settings
 .claude/settings.local.json
+.claude/bridge-session
 
-# Python scripts
-gen_silhouette.py
+# AI tool caches
+.playwright-mcp/
+.superdesign/
+.superpowers/
+.wrangler/
 
 # Design scratch files
 superdesign/
+
+# One-off Python scripts (kept locally, not in repo)
+gen_silhouette.py
+fix_green_beanie.py
+process_drop.py
+
+# Source photos (originals, not site assets)
+/photos/
+/_upload_ready/
+/web/static/staging/
+
+# Root-level screenshots
+/*.png
 
 # OS
 .DS_Store
