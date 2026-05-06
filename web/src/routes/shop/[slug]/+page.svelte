@@ -7,6 +7,7 @@
   import SizeSelector from '$lib/components/SizeSelector.svelte';
   import StockBadge from '$lib/components/StockBadge.svelte';
   import ParticleBurst from '$lib/components/ParticleBurst.svelte';
+  import SetPicker from '$lib/components/SetPicker.svelte';
   import { revealOnScroll } from '$lib/animations/reveal';
   import { cart } from '$lib/stores/cart';
   import { openCart } from '$lib/stores/cartDrawer';
@@ -18,52 +19,76 @@
   export let data: PageData;
 
   $: product     = data.product;
+  $: allProducts = data.allProducts ?? [];
   $: variants    = product.variants ?? [];
   $: hasVariants = variants.length > 0;
+  $: inSet       = !!product.setId;
 
-  // Active variant & gallery state
+  // Active variant & view state. activeView: 'front' = standalone PNG, 'back' = backImage,
+  // numbers >= 0 = index into gallery (model shots). Default to 'front' so product
+  // photos surface first on every product page.
   let activeVariantIdx = 0;
-  let activeGalleryIdx = 0;
+  let activeView: 'front' | 'back' | number = 'front';
 
   // Reset state on navigation (next/prev mission)
   let _lastSlug = '';
   $: if (product.slug !== _lastSlug) {
     _lastSlug = product.slug;
     activeVariantIdx = 0;
-    activeGalleryIdx = (product.variants?.[0]?.gallery?.length ?? 0) > 0 ? 0 : -1;
+    activeView = 'front';
   }
 
   $: activeVariant  = hasVariants ? variants[activeVariantIdx] : null;
   $: galleryImages  = activeVariant?.gallery ?? [];
+  $: hasBack        = !!activeVariant?.backImage;
 
-  // If no gallery images, fall back to standalone
-  $: effectiveIdx = galleryImages.length > 0 ? activeGalleryIdx : -1;
+  $: mainImage = (() => {
+    if (!activeVariant) return product.image_url;
+    if (activeView === 'front') return activeVariant.productImage ?? product.image_url;
+    if (activeView === 'back')  return activeVariant.backImage ?? activeVariant.productImage;
+    return galleryImages[activeView] ?? activeVariant.productImage;
+  })();
 
-  // Main displayed image — gallery first, standalone last
-  $: mainImage = effectiveIdx >= 0
-    ? galleryImages[effectiveIdx]
-    : (activeVariant?.productImage ?? product.image_url);
-
-  $: isProductShot = effectiveIdx < 0;
+  $: isProductShot = activeView === 'front' || activeView === 'back';
 
   function selectVariant(idx: number) {
     activeVariantIdx = idx;
-    // Reset to first model shot for new variant (or standalone if no gallery)
-    activeGalleryIdx = variants[idx]?.gallery?.length > 0 ? 0 : -1;
+    activeView = 'front';
   }
 
-  function selectGallery(idx: number) {
-    activeGalleryIdx = idx;
-  }
+  function selectGallery(idx: number) { activeView = idx; }
+  function showFront() { activeView = 'front'; }
+  function showBack()  { activeView = 'back';  }
 
-  function showStandalone() {
-    activeGalleryIdx = -1;
-  }
+  // Mission nav — set members all share mission 001 (Warped Reality), so the
+  // "next planet" jump from any set member skips other set members and the
+  // decommissioned trucker. From standalone missions, walk MISSION_ORDER normally.
+  const DECOMMISSIONED = new Set(['vanguard-trucker-hat']);
+  $: setMemberSlugs = inSet
+    ? allProducts.filter((p) => p.setId === product.setId).map((p) => p.slug)
+    : [];
 
-  // Mission nav
-  $: currentIndex = MISSION_ORDER.indexOf(product.slug ?? '');
-  $: prevSlug = currentIndex > 0 ? MISSION_ORDER[currentIndex - 1] : null;
-  $: nextSlug = currentIndex < MISSION_ORDER.length - 1 ? MISSION_ORDER[currentIndex + 1] : null;
+  $: prevSlug = (() => {
+    if (inSet) return null; // set is at the start of /shop's planet row
+    const idx = MISSION_ORDER.indexOf(product.slug);
+    for (let i = idx - 1; i >= 0; i--) {
+      const s = MISSION_ORDER[i];
+      if (!DECOMMISSIONED.has(s) && !setMemberSlugs.includes(s)) return s;
+    }
+    return null;
+  })();
+
+  $: nextSlug = (() => {
+    if (inSet) {
+      return MISSION_ORDER.find((s) => !DECOMMISSIONED.has(s) && !setMemberSlugs.includes(s)) ?? null;
+    }
+    const idx = MISSION_ORDER.indexOf(product.slug);
+    for (let i = idx + 1; i < MISSION_ORDER.length; i++) {
+      const s = MISSION_ORDER[i];
+      if (!DECOMMISSIONED.has(s) && !setMemberSlugs.includes(s)) return s;
+    }
+    return null;
+  })();
 
   function navigateMission(slug: string) {
     goto(`/shop/${slug}`, { noScroll: true });
@@ -170,7 +195,11 @@
       <span class="mission-name">{missionLabels[missionNumber]}</span>
     </div>
 
-    <!-- Mission prev/next nav -->
+    <!-- Set members get BOTH the set picker (jump within set) AND the mission
+         nav (jump to next planet). Standalone missions get mission nav only. -->
+    {#if inSet}
+      <SetPicker {allProducts} currentSlug={product.slug} setId={product.setId} />
+    {/if}
     {#if prevSlug || nextSlug}
       <div class="mission-nav">
         {#if prevSlug}
@@ -203,32 +232,44 @@
           />
         </div>
 
-        <!-- Thumbnail strip: model shots first, standalone last -->
-        {#if hasVariants && (activeVariant?.productImage || galleryImages.length > 0)}
+        <!-- Thumbnail strip: product photos first (front, back), then model shots. -->
+        {#if hasVariants && (activeVariant?.productImage || hasBack || galleryImages.length > 0)}
           <div class="thumb-strip">
-            <!-- Model / gallery shots first -->
+            <!-- Front product shot -->
+            {#if activeVariant?.productImage}
+              <button
+                class="thumb"
+                class:active={activeView === 'front'}
+                on:click={showFront}
+                aria-label="Front view"
+              >
+                <img src={activeVariant.productImage} alt="front" />
+              </button>
+            {/if}
+
+            <!-- Back product shot (only when variant defines backImage) -->
+            {#if hasBack}
+              <button
+                class="thumb"
+                class:active={activeView === 'back'}
+                on:click={showBack}
+                aria-label="Back view"
+              >
+                <img src={activeVariant?.backImage} alt="back" />
+              </button>
+            {/if}
+
+            <!-- Model / gallery shots after the product views -->
             {#each galleryImages as img, i}
               <button
                 class="thumb"
-                class:active={effectiveIdx === i}
+                class:active={activeView === i}
                 on:click={() => selectGallery(i)}
                 aria-label="Gallery image {i + 1}"
               >
                 <img src={img} alt="gallery {i + 1}" />
               </button>
             {/each}
-
-            <!-- Standalone product shot last -->
-            {#if activeVariant?.productImage}
-              <button
-                class="thumb"
-                class:active={isProductShot}
-                on:click={showStandalone}
-                aria-label="Product standalone"
-              >
-                <img src={activeVariant.productImage} alt="standalone" />
-              </button>
-            {/if}
           </div>
         {/if}
       </div>

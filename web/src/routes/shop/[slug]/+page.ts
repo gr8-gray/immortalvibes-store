@@ -5,6 +5,7 @@ import type { Product } from '$lib/types/shop';
 
 export interface PageData {
   product: Product;
+  allProducts: Product[];
 }
 
 interface ApiPrice {
@@ -31,7 +32,7 @@ export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
     const apiProducts: ApiProduct[] = await res.json();
 
     const live = apiProducts.find((p) => p.name === mock.name);
-    if (!live) return { product: mock };
+    if (!live) return { product: mock, allProducts: MOCK_PRODUCTS };
 
     const usdPrice = live.prices.find((p) => p.currency === 'usd');
     return {
@@ -42,8 +43,9 @@ export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
         price_usd: usdPrice?.amount ?? mock.price_usd,
         status: live.stock_count > 0 ? 'available' : 'sold_out',
       },
+      allProducts: MOCK_PRODUCTS,
     };
   } catch {
-    return { product: mock };
+    return { product: mock, allProducts: MOCK_PRODUCTS };
   }
 };

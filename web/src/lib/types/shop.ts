@@ -5,7 +5,8 @@ const R2 = 'https://pub-75a66fca0ddd4d93b3bb53bda5d6a29c.r2.dev';
 export interface ProductVariant {
   colorName: string;    // e.g. "Blue", "Green"
   hex: string;          // swatch color
-  productImage: string; // standalone transparent PNG
+  productImage: string; // standalone transparent PNG (front view)
+  backImage?: string;   // optional back view — pairs with productImage for auto-cycle cards
   gallery: string[];    // model shots for this colorway
   imageScale?: number;   // CSS scale for standalone shot (default 1.0)
   planetScale?: number;   // override productScale on the planet select screen
@@ -18,8 +19,8 @@ export interface Product {
   slug: string;
   name: string;
   description: string;
-  price_usd: number;    // cents
-  price_gbp: number;    // cents
+  price_usd: number;    // cents — 0 = TBD
+  price_gbp: number;    // cents — 0 = TBD
   price_id: string;     // Stripe Price ID (USD) — populated from API
   currency: string;     // 'usd' | 'gbp'
   status: 'available' | 'sold_out' | 'coming_soon';
@@ -27,6 +28,7 @@ export interface Product {
   image_url: string;          // legacy fallback
   variants?: ProductVariant[]; // color variants with standalone + model shots
   mission_number: '001' | '002' | '003' | '004';
+  setId?: 'warped-reality'; // groups products into a drop set
 }
 
 export interface PageData {
@@ -45,31 +47,21 @@ export const MOCK_PRODUCTS: Product[] = [
     currency: 'usd',
     status: 'available',
     sizes: ['OS'],
-    image_url: `${R2}/beanie/model-waterfront-blue-portrait.jpg`,
+    image_url: '/photos/_drop/beanie-blue.png',
     mission_number: '001',
+    setId: 'warped-reality',
     variants: [
       {
-        colorName: 'Blue',
-        hex: '#3A6EA5',
-        productImage: '/photos/product-beanie.png',
-        gallery: [
-          `${R2}/beanie/model-waterfront-blue-portrait.jpg`,
-          `${R2}/beanie/model-closeup-blue-pull.jpg`,
-          `${R2}/beanie/model-sky-blue-lowangle.jpg`,
-          `${R2}/beanie/model-waterfront-blue-back-pull.jpg`,
-          `${R2}/beanie/owner-waterfront-blue-seated-laugh.jpg`,
-          `${R2}/beanie/owner-waterfront-blue-seated-smile.jpg`,
-        ],
+        colorName: 'Earth Blue',
+        hex: '#1E8FB8',
+        productImage: '/photos/_drop/beanie-blue.png',
+        gallery: ['/photos/blue-beanie-model.jpeg'],
       },
       {
         colorName: 'Green',
         hex: '#3D6B50',
         productImage: '/photos/product-green-beanie.png',
-        gallery: [
-          `${R2}/beanie/model-waterfront-green-crossed.jpg`,
-          `${R2}/beanie/owner-night-green-audi.jpg`,
-          `${R2}/beanie/owner-night-green-truck.jpg`,
-        ],
+        gallery: ['/photos/green-beanie-model.jpeg'],
       },
     ],
   },
@@ -123,6 +115,55 @@ export const MOCK_PRODUCTS: Product[] = [
         gallery: [
           `${R2}/tanktop/owner-gym-back.jpg`,
         ],
+      },
+    ],
+  },
+  {
+    id: 'mock_004',
+    slug: 'warped-reality-tee',
+    name: 'Warped Reality Tee',
+    description: 'Heavyweight oversized cut. Sky-blue collar print on the front, ornate spires graphic on the back. Black only.',
+    price_usd: 3000,
+    price_gbp: 2400,
+    price_id: 'price_1TTl9AHy1AKk8SUWeLENS5Bu',
+    currency: 'usd',
+    status: 'available',
+    sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
+    image_url: '/photos/_drop/tee-front.png',
+    mission_number: '001',
+    setId: 'warped-reality',
+    variants: [
+      {
+        colorName: 'Black',
+        hex: '#0E0E12',
+        productImage: '/photos/_drop/tee-front.png',
+        backImage: '/photos/_drop/tee-back.png',
+        spriteBlending: 'additive',
+        gallery: [],
+      },
+    ],
+  },
+  {
+    id: 'mock_005',
+    slug: 'warped-reality-sweatpants',
+    name: 'Warped Reality Sweatpants',
+    description: 'Wide-leg, midweight fleece. Arched IMMORTAL VIBES graphic at the waist. Black only.',
+    price_usd: 3000,
+    price_gbp: 2400,
+    price_id: 'price_1TTl9YHy1AKk8SUWGPXI3icl',
+    currency: 'usd',
+    status: 'available',
+    sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
+    image_url: '/photos/_drop/sweatpants-front.png',
+    mission_number: '001',
+    setId: 'warped-reality',
+    variants: [
+      {
+        colorName: 'Black',
+        hex: '#0E0E12',
+        productImage: '/photos/_drop/sweatpants-front.png',
+        spriteBlending: 'additive',
+        gallery: [],
       },
     ],
   },
