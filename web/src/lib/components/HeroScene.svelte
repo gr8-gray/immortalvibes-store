@@ -336,7 +336,7 @@
   }
 
   .hero__headline {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-weight: 200;
     font-size: clamp(2.25rem, 6.2vw, 5.25rem);
     line-height: 1.04; letter-spacing: 0.12em;

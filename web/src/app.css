@@ -37,14 +37,14 @@ body {
 
 /* ─── Typography Utilities ───────────────────────────── */
 .type-hero {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'GodOfWar', 'Gods of War', serif;
   font-weight: 200;
   letter-spacing: 0.6em;
   text-transform: uppercase;
 }
 
 .type-display {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'GodOfWar', 'Gods of War', serif;
   font-weight: 300;
   letter-spacing: 0.4em;
   text-transform: uppercase;

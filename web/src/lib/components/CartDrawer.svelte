@@ -194,7 +194,7 @@
   }
 
   .item-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1rem;
     color: #F0EDE6;
     margin: 0;
@@ -217,7 +217,7 @@
   }
 
   .item-price {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1rem;
     color: #C8922A;
   }
@@ -261,7 +261,7 @@
   }
 
   .subtotal-amount {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.35rem;
     color: #C8922A;
   }

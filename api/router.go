@@ -35,6 +35,10 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Post("/api/cart", cartHandler.AddToCart)
 	r.Put("/api/cart/{token}", cartHandler.UpdateCart)
 
+	// Promo code validation
+	promoHandler := handlers.NewPromoHandler()
+	r.Post("/api/promo/validate", promoHandler.Validate)
+
 	// Checkout
 	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db)
 	r.Post("/api/checkout", checkoutHandler.Checkout)
@@ -55,6 +59,10 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	})
 	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail)
 	r.With(apimiddleware.SkipProxyAuth).Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
+
+	// Subscribe — email capture for discount code
+	subscribeHandler := handlers.NewSubscribeHandler(db, emailSender)
+	r.Post("/api/subscribe", subscribeHandler.Subscribe)
 
 	// Admin (behind AdminAuth)
 	adminHandler := handlers.NewAdminHandler(db)

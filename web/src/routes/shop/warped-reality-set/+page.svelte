@@ -137,7 +137,7 @@
   }
 
   .title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-weight: 300;
     font-size: clamp(2.6rem, 7vw, 5.4rem);
     letter-spacing: 0.02em;
@@ -146,7 +146,7 @@
   }
 
   .subtitle {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-style: italic;
     font-size: clamp(1rem, 1.6vw, 1.35rem);
     color: rgba(240, 237, 230, 0.62);
@@ -219,7 +219,7 @@
   }
 
   .piece-name {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-weight: 300;
     font-size: 1.45rem;
     margin: 0.15rem 0 0.15rem;

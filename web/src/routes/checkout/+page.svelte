@@ -5,9 +5,9 @@
   import { loadStripe } from '@stripe/stripe-js';
   import { env } from '$env/dynamic/public';
   import { cart } from '$lib/stores/cart';
-  import { createCheckout } from '$lib/api';
+  import { createCheckout, validatePromo } from '$lib/api';
   import type { Stripe, StripeElements } from '@stripe/stripe-js';
-  import type { ShippingAddress } from '$lib/api';
+  import type { ShippingAddress, PromoDiscount } from '$lib/api';
 
   let stripe: Stripe | null = null;
   let elements: StripeElements | null = null;
@@ -27,6 +27,48 @@
   let submitting = false;
   let errorMsg = '';
   let cartSnapshot = $cart;
+
+  // Promo code state
+  let promoCode = '';
+  let promoApplying = false;
+  let promoError = '';
+  let promoDiscount: PromoDiscount | null = null;
+  let appliedCode = '';
+
+  function cartTotal(): number {
+    return cartSnapshot.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+  }
+
+  function discountedTotal(): number {
+    const raw = cartTotal();
+    if (!promoDiscount) return raw;
+    if (promoDiscount.type === 'percent_off') {
+      return Math.round(raw * (1 - promoDiscount.value / 100));
+    }
+    return Math.max(0, raw - promoDiscount.value);
+  }
+
+  async function applyPromo() {
+    const code = promoCode.trim().toUpperCase();
+    if (!code) return;
+    promoApplying = true;
+    promoError = '';
+    promoDiscount = null;
+    appliedCode = '';
+    try {
+      const res = await validatePromo(code);
+      if (res.valid && res.discount) {
+        promoDiscount = res.discount;
+        appliedCode = code;
+      } else {
+        promoError = res.error ?? 'Invalid code';
+      }
+    } catch {
+      promoError = 'Could not validate code. Try again.';
+    } finally {
+      promoApplying = false;
+    }
+  }
 
   onMount(async () => {
     if (!browser) return;
@@ -62,7 +104,7 @@
       country,
     };
     try {
-      const session = await createCheckout($cart.id!, email, address);
+      const session = await createCheckout($cart.id!, email, address, appliedCode || undefined);
       const clientSecret = session.client_secret;
       orderId = session.order_id;
       elements = stripe!.elements({ clientSecret });
@@ -124,6 +166,25 @@
           </span>
         </div>
       {/each}
+      {#if promoDiscount}
+        <div class="summary-row summary-discount-row">
+          <span class="summary-item promo-applied">
+            {appliedCode}
+            {#if promoDiscount.type === 'percent_off'}
+              (–{promoDiscount.value}%)
+            {:else}
+              (–${(promoDiscount.value / 100).toFixed(2)})
+            {/if}
+          </span>
+          <span class="summary-price promo-applied">
+            –${((cartTotal() - discountedTotal()) / 100).toFixed(2)}
+          </span>
+        </div>
+        <div class="summary-row summary-total-row">
+          <span class="summary-item summary-total-label">TOTAL</span>
+          <span class="summary-price">${(discountedTotal() / 100).toFixed(2)}</span>
+        </div>
+      {/if}
     </div>
 
     <!-- Email step -->
@@ -194,6 +255,39 @@
           />
         </div>
 
+        <!-- Promo code -->
+        <p class="field-label" style="margin-top:1.25rem">PROMO CODE</p>
+        <div class="promo-row">
+          <input
+            type="text"
+            bind:value={promoCode}
+            placeholder="e.g. VIBE10"
+            class="email-input promo-input"
+            disabled={!!appliedCode || promoApplying}
+            on:keydown={(e) => e.key === 'Enter' && applyPromo()}
+          />
+          <button
+            class="promo-btn"
+            on:click={applyPromo}
+            disabled={!promoCode.trim() || !!appliedCode || promoApplying}
+          >
+            {promoApplying ? '…' : appliedCode ? 'APPLIED' : 'APPLY'}
+          </button>
+        </div>
+        {#if promoError}
+          <p class="promo-error">{promoError}</p>
+        {/if}
+        {#if appliedCode}
+          <p class="promo-success">
+            {appliedCode} applied —
+            {#if promoDiscount?.type === 'percent_off'}
+              {promoDiscount.value}% off
+            {:else if promoDiscount}
+              ${(promoDiscount.value / 100).toFixed(2)} off
+            {/if}
+          </p>
+        {/if}
+
         <button class="pay-btn" on:click={initPayment} disabled={submitting || !email}>
           {submitting ? 'PREPARING…' : 'CONTINUE TO PAYMENT'}
         </button>
@@ -228,7 +322,7 @@
   }
 
   .page-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(1.8rem, 4vw, 3rem);
     font-weight: 300;
     color: #F0EDE6;
@@ -278,7 +372,7 @@
   }
 
   .summary-price {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 0.95rem;
     color: #C8922A;
   }
@@ -368,5 +462,76 @@
   .back-btn:hover {
     border-color: rgba(240, 237, 230, 0.5);
     color: #F0EDE6;
+  }
+
+  /* Promo code */
+  .promo-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .promo-input {
+    flex: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .promo-btn {
+    flex: 0 0 auto;
+    padding: 0 1.25rem;
+    background: transparent;
+    border: 1px solid rgba(240, 237, 230, 0.25);
+    color: rgba(240, 237, 230, 0.7);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .promo-btn:hover:not(:disabled) {
+    border-color: rgba(240, 237, 230, 0.55);
+    color: #F0EDE6;
+  }
+
+  .promo-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .promo-error {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: rgba(200, 100, 80, 0.85);
+    margin: 0;
+  }
+
+  .promo-success {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    color: rgba(120, 200, 120, 0.85);
+    margin: 0;
+  }
+
+  .promo-applied {
+    color: rgba(120, 200, 120, 0.85);
+  }
+
+  .summary-discount-row {
+    border-top: 1px solid rgba(240, 237, 230, 0.06);
+    padding-top: 0.5rem;
+  }
+
+  .summary-total-row {
+    border-top: 1px solid rgba(240, 237, 230, 0.12);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  .summary-total-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: rgba(240, 237, 230, 0.55);
   }
 </style>

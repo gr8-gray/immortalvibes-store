@@ -456,7 +456,7 @@
   }
 
   .product-name {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(2rem, 5vw, 4rem);
     font-weight: 300;
     color: #F0EDE6;
@@ -465,7 +465,7 @@
   }
 
   .product-price {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.5rem;
     color: #C8922A;
     margin: 0;

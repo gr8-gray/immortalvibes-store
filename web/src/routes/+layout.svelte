@@ -10,6 +10,8 @@
   import MagneticCursor from '$lib/components/MagneticCursor.svelte';
   import CartDrawer from '$lib/components/CartDrawer.svelte';
   import TransitionOverlay from '$lib/components/TransitionOverlay.svelte';
+  import DiscountBanner from '$lib/components/DiscountBanner.svelte';
+  import DiscountCapture from '$lib/components/DiscountCapture.svelte';
   import { resolveTransition, slugFromPath, MISSION_ACCENT, transitionStore } from '$lib/stores/transition';
 
   // Hide footer on canvas pages (home + shop)
@@ -21,6 +23,12 @@
   let overlayComponent: TransitionOverlay;
   let mainEl: HTMLElement;
   let navigating = false;
+
+  let bannerRef: DiscountBanner;
+  let captureOpen = $state(false);
+  function openCapture() { captureOpen = true; }
+  function closeCapture() { captureOpen = false; }
+  function onSubscribed() { bannerRef?.markSubscribed(); }
 
   if (browser) {
     beforeNavigate(({ to, cancel }) => {
@@ -69,6 +77,10 @@
 
 {#if !hideFooter}<Footer />{/if}
 <CartDrawer />
+<DiscountBanner bind:this={bannerRef} onOpen={openCapture} />
+{#if captureOpen}
+  <DiscountCapture onSubscribed={onSubscribed} onClose={closeCapture} />
+{/if}
 
 <style>
   :global(body) {

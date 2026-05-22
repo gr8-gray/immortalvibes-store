@@ -120,6 +120,28 @@ func (s *Sender) SendShippingFailure(ctx context.Context, ownerEmail, orderID, c
 	return s.send(ctx, ownerEmail, subject, html)
 }
 
+// SendDiscountCode emails a subscriber their one-time discount code.
+func (s *Sender) SendDiscountCode(ctx context.Context, toEmail, code string) error {
+	subject := "Your Immortal Vibes discount code"
+	html := fmt.Sprintf(`
+		<div style="background:#030308;color:#F0EDE6;font-family:sans-serif;padding:2.5rem;max-width:520px;margin:0 auto">
+			<p style="font-size:0.6rem;letter-spacing:0.4em;color:#C8922A;text-transform:uppercase;margin:0 0 1.5rem">Immortal Vibes</p>
+			<h1 style="font-size:2rem;margin:0 0 1rem;font-weight:400">Rise Beyond 10%%</h1>
+			<p style="color:rgba(240,237,230,0.6);line-height:1.6;margin:0 0 2rem">
+				Your discount code is ready. Apply it at checkout on your first order.
+			</p>
+			<div style="background:rgba(200,146,42,0.1);border:1px solid rgba(200,146,42,0.4);padding:1.5rem;text-align:center;margin:0 0 2rem">
+				<p style="font-size:1.8rem;letter-spacing:0.12em;color:#C8922A;margin:0;font-weight:700">%s</p>
+				<p style="font-size:0.55rem;letter-spacing:0.3em;color:rgba(200,146,42,0.5);margin:0.5rem 0 0">ENTER AT CHECKOUT</p>
+			</div>
+			<p style="font-size:0.75rem;color:rgba(240,237,230,0.3);line-height:1.6;margin:0">
+				One use per customer. New customers only. No expiry.
+			</p>
+		</div>
+	`, code)
+	return s.send(ctx, toEmail, subject, html)
+}
+
 func (s *Sender) send(ctx context.Context, toEmail, subject, html string) error {
 	payload := resendPayload{
 		From:    s.fromAddr,

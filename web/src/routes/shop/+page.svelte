@@ -6,7 +6,7 @@
   import { browser } from '$app/environment';
   import MissionPlanet, { type ClusterItem, type CarouselSlot } from '$lib/components/MissionPlanet.svelte';
   import { playSystemReformation, REFORMATION_DURATION_MS } from '$lib/animations/system-reformation.ts';
-  import type { gsap } from 'gsap';
+  import { gsap } from 'gsap';
 
   // Intro toggle — flip via PUBLIC_DROP_INTRO_ENABLED env var.
   // String compare because Vite injects env values as strings.
@@ -43,7 +43,7 @@
     slug: 'racerback-tanktop',
     planetType: 'nebula' as const,
     product: '/photos/product-tank.png',
-    productScale: 1.1,
+    productScale: 0.55,
     spriteBlending: 'additive' as const,
     glow: '#6B0FCC',
     speed: 0.0022,
@@ -77,7 +77,28 @@
   let truckerCollapsing = false;
 
   function startTruckerCollapse() {
+    // FLIP — snapshot sibling positions before the flex reflow
+    const wrRect   = wrSlotEl?.getBoundingClientRect();
+    const tankRect = tankSlotEl?.getBoundingClientRect();
+
     truckerCollapsing = true;
+
+    // One rAF lets the layout engine recalculate to final positions.
+    // Animate siblings from their pre-reflow coords back to the new ones.
+    requestAnimationFrame(() => {
+      if (wrSlotEl && wrRect) {
+        const dx = wrRect.left - wrSlotEl.getBoundingClientRect().left;
+        if (Math.abs(dx) > 1) {
+          gsap.fromTo(wrSlotEl,  { x: dx }, { x: 0, duration: 1.1, ease: 'power3.out', clearProps: 'x' });
+        }
+      }
+      if (tankSlotEl && tankRect) {
+        const dx = tankRect.left - tankSlotEl.getBoundingClientRect().left;
+        if (Math.abs(dx) > 1) {
+          gsap.fromTo(tankSlotEl, { x: dx }, { x: 0, duration: 1.1, ease: 'power3.out', clearProps: 'x' });
+        }
+      }
+    });
   }
 
   function skipIntro() {
@@ -425,7 +446,7 @@
   }
 
   .name {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(0.9rem, 1.4vw, 1.25rem);
     font-weight: 300;
     color: #F0EDE6;
