@@ -81,27 +81,7 @@ func Load() (*Config, error) {
 	if c.ResendAPIKey == "" {
 		missing = append(missing, "RESEND_API_KEY")
 	}
-	if c.ShippoAPIKey == "" {
-		missing = append(missing, "SHIPPO_API_KEY")
-	}
-	if c.FromName == "" {
-		missing = append(missing, "FROM_NAME")
-	}
-	if c.FromStreet1 == "" {
-		missing = append(missing, "FROM_STREET1")
-	}
-	if c.FromCity == "" {
-		missing = append(missing, "FROM_CITY")
-	}
-	if c.FromState == "" {
-		missing = append(missing, "FROM_STATE")
-	}
-	if c.FromZip == "" {
-		missing = append(missing, "FROM_ZIP")
-	}
-	if c.OwnerEmail == "" {
-		missing = append(missing, "OWNER_EMAIL")
-	}
+	// Shipping vars optional — set when shipping automation is activated
 	if len(missing) > 0 {
 		return nil, fmt.Errorf("missing required env vars: %v", missing)
 	}
