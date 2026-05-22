@@ -185,11 +185,43 @@ export interface ShippingAddress {
   country:       string;
 }
 
+// ─── Promo Endpoints ──────────────────────────────────────
+
+export interface PromoDiscount {
+  type:  'percent_off' | 'amount_off';
+  value: number; // percent (0-100) or cents
+}
+
+export interface PromoValidateResponse {
+  valid:      boolean;
+  coupon_id?: string;
+  discount?:  PromoDiscount;
+  error?:     string;
+}
+
+/** Validate a promo code against the Go API */
+export function validatePromo(code: string): Promise<PromoValidateResponse> {
+  return apiFetch<PromoValidateResponse>('/api/promo/validate', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
 /** Create a Stripe PaymentIntent for the current cart */
-export function createCheckout(cartToken: string, email: string, address: ShippingAddress): Promise<CheckoutSession> {
+export function createCheckout(
+  cartToken: string,
+  email: string,
+  address: ShippingAddress,
+  discountCode?: string
+): Promise<CheckoutSession> {
   return apiFetch<CheckoutSession>('/api/checkout', {
     method: 'POST',
-    body: JSON.stringify({ cart_token: cartToken, email, ...address }),
+    body: JSON.stringify({
+      cart_token: cartToken,
+      email,
+      ...address,
+      ...(discountCode ? { discount_code: discountCode } : {}),
+    }),
   });
 }
 

@@ -76,23 +76,24 @@ export function playT1Out(
   }
 
   tl
-    .to(els.horizon, { y: '100vh', duration: 0.4, ease: 'power3.in' }, 0)
+    .to(els.horizon, { y: '100vh', duration: 0.55, ease: 'power2.inOut' }, 0)
     .call(() => {
       gsap.set(els.streakCanvas, { opacity: 1 });
       rafId = requestAnimationFrame(loop);
     }, [], 0)
-    .to(state, { speed: 1, duration: 0.5, ease: 'power3.in' }, 0)
-    .to([els.atmoLeft, els.atmoRight], { opacity: 0.75, duration: 0.15, ease: 'power2.out' }, 0.3)
-    .to([els.atmoLeft, els.atmoRight], { y: '-100vh', duration: 0.4, ease: 'power3.in' }, 0.45)
-    .call(onMidpoint, [], 0.5)
-    .to(els.flash, { opacity: 1, duration: 0.08, ease: 'power4.in' }, 0.8)
-    .to(els.flash, { opacity: 0, duration: 0.22, ease: 'power2.out' }, 0.88)
-    .to(state, { speed: 0, duration: 0.3, ease: 'power3.out' }, 0.9)
+    .to(state, { speed: 1, duration: 0.65, ease: 'power2.in' }, 0)
+    .to([els.atmoLeft, els.atmoRight], { opacity: 0.75, duration: 0.2, ease: 'power2.out' }, 0.35)
+    .to([els.atmoLeft, els.atmoRight], { y: '-100vh', duration: 0.5, ease: 'power3.in' }, 0.5)
+    // Flash is the warp-jump peak — route change happens just after it
+    .to(els.flash, { opacity: 1, duration: 0.08, ease: 'power4.in' }, 0.82)
+    .call(onMidpoint, [], 0.86)
+    .to(els.flash, { opacity: 0, duration: 0.28, ease: 'expo.out' }, 0.9)
+    .to(state, { speed: 0, duration: 0.35, ease: 'power3.out' }, 0.92)
     .call(() => {
       cancelAnimationFrame(rafId);
       gsap.set(els.streakCanvas, { opacity: 0 });
-    }, [], 1.2)
-    .to({}, { duration: 0.2 }, 1.2);
+    }, [], 1.3)
+    .to({}, { duration: 0.15 }, 1.3);
 
   return tl;
 }
@@ -100,8 +101,13 @@ export function playT1Out(
 export function playT1In(els: T1Elements, onComplete: () => void): gsap.core.Timeline {
   const tl = gsap.timeline({ onComplete });
 
+  // Brief arrival echo: atmo glow fades in from sides then dissolves with the overlay
+  gsap.set([els.atmoLeft, els.atmoRight], { y: 0, opacity: 0 });
+
   tl
-    .to(els.overlay, { opacity: 0, duration: 0.3, ease: 'power2.out' })
+    .to([els.atmoLeft, els.atmoRight], { opacity: 0.45, duration: 0.14, ease: 'power2.out' }, 0)
+    .to([els.atmoLeft, els.atmoRight], { opacity: 0, duration: 0.32, ease: 'power2.inOut' }, 0.14)
+    .to(els.overlay, { opacity: 0, duration: 0.45, ease: 'expo.out' }, 0.08)
     .call(() => { gsap.set(els.overlay, { display: 'none' }); });
 
   return tl;

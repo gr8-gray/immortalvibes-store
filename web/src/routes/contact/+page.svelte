@@ -68,7 +68,7 @@
   }
 
   .headline {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(2rem, 5vw, 3.5rem);
     font-weight: 300;
     color: #F0EDE6;

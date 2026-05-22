@@ -236,7 +236,7 @@
     text-transform: uppercase; margin: 0 0 0.35rem;
   }
   .product-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.35rem; font-weight: 300;
     color: #F0EDE6; margin: 0 0 0.65rem; line-height: 1.1;
   }

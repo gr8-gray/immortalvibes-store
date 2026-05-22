@@ -46,20 +46,20 @@ export function playT2(
   });
 
   tl
-    .to(els.mist, { opacity: 1, duration: 0.1 })
+    .to(els.mist, { opacity: 1, duration: 0.18, ease: 'power2.out' })
     .to(els.streaks, {
       opacity: 0.85,
       scaleX: 1,
-      duration: 0.18,
+      duration: 0.22,
       stagger: 0.008,
-      ease: 'power2.in',
+      ease: 'power2.inOut',
     }, 0.05)
-    .to(els.flash, { opacity: 1, duration: 0.06, ease: 'power3.in' }, 0.28)
-    .call(onMidpoint, [], 0.3)
-    .to(els.flash, { opacity: 0, duration: 0.08, ease: 'power2.out' }, 0.3)
-    .to(els.streaks, { opacity: 0, scaleX: 0, duration: 0.15, ease: 'power2.out' }, 0.3)
-    .to(els.mist, { opacity: 0, duration: 0.1 }, 0.36)
-    .to(els.overlay, { opacity: 0, duration: 0.1 }, 0.42)
+    .to(els.flash, { opacity: 1, duration: 0.07, ease: 'power3.in' }, 0.32)
+    .call(onMidpoint, [], 0.36)
+    .to(els.flash, { opacity: 0, duration: 0.14, ease: 'expo.out' }, 0.36)
+    .to(els.streaks, { opacity: 0, scaleX: 0, duration: 0.22, ease: 'power2.inOut' }, 0.36)
+    .to(els.mist, { opacity: 0, duration: 0.18, ease: 'power2.inOut' }, 0.42)
+    .to(els.overlay, { opacity: 0, duration: 0.22, ease: 'expo.out' }, 0.5)
     .call(() => gsap.set(els.overlay, { display: 'none' }));
 
   return tl;

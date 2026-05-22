@@ -127,7 +127,7 @@
   }
 
   .polling-msg {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.4rem;
     color: #F0EDE6;
     margin: 0;
@@ -158,7 +158,7 @@
   }
 
   .confirm-title {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(2.5rem, 6vw, 4.5rem);
     font-weight: 300;
     color: #F0EDE6;
@@ -214,7 +214,7 @@
   }
 
   .total-amount {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.5rem;
     color: #C8922A;
   }

@@ -158,7 +158,7 @@
   }
 
   .headline {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: clamp(2rem, 3.5vw, 3.5rem);
     font-weight: 300;
     line-height: 1.08;
@@ -204,7 +204,7 @@
   }
 
   .tenets li {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.1rem;
     font-weight: 300;
     color: rgba(240,237,230,0.85);
@@ -217,7 +217,7 @@
   }
 
   .signoff {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'GodOfWar', 'Gods of War', serif;
     font-size: 1.4rem;
     font-weight: 300;
     letter-spacing: 0.12em;

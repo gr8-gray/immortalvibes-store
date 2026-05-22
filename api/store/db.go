@@ -103,7 +103,31 @@ func (d *DB) migrate() error {
 		ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier         TEXT;
 		ALTER TABLE orders ADD COLUMN IF NOT EXISTS label_url       TEXT;
 	`)
+	if err != nil {
+		return err
+	}
+	// Subscribers — email list for discount codes.
+	_, err = d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS subscribers (
+			email      TEXT PRIMARY KEY,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		);
+	`)
 	return err
+}
+
+// SaveSubscriber upserts an email into the subscribers table.
+// Returns isNew=true if the row was freshly inserted.
+func (d *DB) SaveSubscriber(ctx context.Context, emailAddr string) (bool, error) {
+	result, err := d.db.ExecContext(ctx, `
+		INSERT INTO subscribers (email) VALUES ($1)
+		ON CONFLICT (email) DO NOTHING
+	`, emailAddr)
+	if err != nil {
+		return false, err
+	}
+	rows, _ := result.RowsAffected()
+	return rows > 0, nil
 }
 
 // GetStock returns the current stock count for a Stripe Product ID.

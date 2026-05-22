@@ -10,7 +10,9 @@ import (
 	"github.com/immortalvibes/api/models"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v76/coupon"
 	"github.com/stripe/stripe-go/v76/paymentintent"
+	"github.com/stripe/stripe-go/v76/promotioncode"
 )
 
 // eurCountries is the set of ISO country codes that map to EUR.
@@ -53,6 +55,7 @@ type CheckoutRequest struct {
 	State        string `json:"state"`
 	PostalCode   string `json:"postal_code"`
 	Country      string `json:"country"`
+	DiscountCode string `json:"discount_code,omitempty"`
 }
 
 // CheckoutResponse is returned to the SvelteKit frontend.
@@ -124,12 +127,26 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	currency := DetectCurrency(r)
 	total := cart.Total()
 
+	// Apply discount if a code was provided.
+	var appliedCouponID string
+	if req.DiscountCode != "" {
+		resolvedCouponID, discountedTotal, ok := resolveDiscount(req.DiscountCode, total)
+		if ok {
+			appliedCouponID = resolvedCouponID
+			total = discountedTotal
+		}
+		// If the code is invalid we silently continue at full price —
+		// the frontend validates first; this is just a safety net.
+	}
+
 	piParams := &stripe.PaymentIntentParams{
 		Amount:   stripe.Int64(total),
 		Currency: stripe.String(currency),
 		Metadata: map[string]string{
-			"cart_token": req.CartToken,
-			"email":      req.Email,
+			"cart_token":    req.CartToken,
+			"email":         req.Email,
+			"discount_code": req.DiscountCode,
+			"coupon_id":     appliedCouponID,
 		},
 	}
 	pi, err := paymentintent.New(piParams)
@@ -166,4 +183,49 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		Currency:     currency,
 		TotalAmount:  total,
 	})
+}
+
+// resolveDiscount tries to resolve a human-readable promo code or direct
+// coupon ID via Stripe, then returns the coupon ID, discounted total, and ok.
+func resolveDiscount(code string, total int64) (couponID string, discountedTotal int64, ok bool) {
+	// Try PromotionCode first.
+	pcParams := &stripe.PromotionCodeListParams{}
+	pcParams.Filters.AddFilter("code", "", code)
+	pcParams.Filters.AddFilter("active", "", "true")
+	pcParams.Filters.AddFilter("limit", "", "1")
+	iter := promotioncode.List(pcParams)
+	for iter.Next() {
+		pc := iter.PromotionCode()
+		if pc.Coupon != nil {
+			return applyStripeCoupon(pc.Coupon, total, pc.Coupon.ID)
+		}
+	}
+	if iter.Err() != nil {
+		return "", total, false
+	}
+
+	// Fall back to direct Coupon ID.
+	c, err := coupon.Get(code, nil)
+	if err != nil || !c.Valid {
+		return "", total, false
+	}
+	return applyStripeCoupon(c, total, c.ID)
+}
+
+func applyStripeCoupon(c *stripe.Coupon, total int64, id string) (string, int64, bool) {
+	if c == nil {
+		return "", total, false
+	}
+	if c.PercentOff > 0 {
+		discount := int64(float64(total) * float64(c.PercentOff) / 100.0)
+		return id, total - discount, true
+	}
+	if c.AmountOff > 0 {
+		discounted := total - c.AmountOff
+		if discounted < 0 {
+			discounted = 0
+		}
+		return id, discounted, true
+	}
+	return "", total, false
 }
