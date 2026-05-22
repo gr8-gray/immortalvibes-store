@@ -14,18 +14,37 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
   headers.set('X-Proxy-Secret', env.PROXY_SECRET);
   headers.delete('host');
 
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers,
-    body: request.method !== 'GET' && request.method !== 'HEAD'
-      ? request.body
-      : undefined,
-  });
+  try {
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body: request.method !== 'GET' && request.method !== 'HEAD'
+        ? request.body
+        : undefined,
+    });
 
-  return new Response(response.body, {
-    status: response.status,
-    headers: response.headers,
-  });
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set('content-type', 'application/json');
+
+    const body = await response.text();
+    let json: string;
+    try {
+      JSON.parse(body);
+      json = body;
+    } catch {
+      json = JSON.stringify({ error: body || 'upstream error', status: response.status });
+    }
+
+    return new Response(json, {
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: 'API unreachable', detail: String(err) }), {
+      status: 502,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
 };
 
 export const GET    = proxy;
