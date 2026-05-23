@@ -1,4 +1,5 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
+import { updateCartItem, type GoCart } from '$lib/api';
 
 export interface CartItem {
   variantId: string;
@@ -7,6 +8,20 @@ export interface CartItem {
   quantity: number;
   unitPrice: number; // in cents
   currency: string;
+}
+
+function mapGoCart(goCart: GoCart): { id: string; items: CartItem[] } {
+  return {
+    id: goCart.token,
+    items: goCart.line_items.map((li) => ({
+      variantId: li.price_id,
+      productId: li.product_id,
+      title:     li.name,
+      quantity:  li.quantity,
+      unitPrice: li.amount,
+      currency:  li.currency,
+    })),
+  };
 }
 
 export interface CartState {
@@ -48,6 +63,42 @@ function createCartStore() {
         ...state,
         items: state.items.filter((i) => i.variantId !== variantId)
       }));
+    },
+    /**
+     * Set the quantity of a specific line item, syncing to the server cart.
+     * Passing quantity <= 0 removes the line. Falls back to a local-only
+     * update if no server token is present or the API call fails so the UI
+     * stays responsive.
+     */
+    async setItemQuantity(variantId: string, quantity: number) {
+      const state = get({ subscribe });
+      const token = state.id;
+      const clamped = Math.max(0, Math.floor(quantity));
+
+      const localFallback = () => {
+        update((s) =>
+          clamped === 0
+            ? { ...s, items: s.items.filter((i) => i.variantId !== variantId) }
+            : {
+                ...s,
+                items: s.items.map((i) =>
+                  i.variantId === variantId ? { ...i, quantity: clamped } : i
+                ),
+              }
+        );
+      };
+
+      if (!token) {
+        localFallback();
+        return;
+      }
+
+      try {
+        const goCart = await updateCartItem(token, variantId, clamped);
+        set(mapGoCart(goCart));
+      } catch {
+        localFallback();
+      }
     },
     clear() {
       set(initialState);

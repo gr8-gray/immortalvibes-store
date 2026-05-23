@@ -15,7 +15,15 @@
   $: subtotalCurrency = $cart.items[0]?.currency ?? 'usd';
 
   function handleRemove(variantId: string) {
-    cart.removeItem(variantId);
+    cart.setItemQuantity(variantId, 0);
+  }
+
+  function handleDecrement(variantId: string, currentQty: number) {
+    cart.setItemQuantity(variantId, currentQty - 1);
+  }
+
+  function handleIncrement(variantId: string, currentQty: number) {
+    cart.setItemQuantity(variantId, currentQty + 1);
   }
 
   function handleCheckout() {
@@ -72,7 +80,24 @@
         <div class="cart-item">
           <div class="item-info">
             <p class="item-title">{item.title}</p>
-            <p class="item-qty">Qty: {item.quantity}</p>
+            <div class="qty-stepper" role="group" aria-label="Quantity for {item.title}">
+              <button
+                class="qty-btn"
+                on:click={() => handleDecrement(item.variantId, item.quantity)}
+                aria-label="Decrease quantity"
+                disabled={item.quantity <= 1}
+              >
+                −
+              </button>
+              <span class="qty-num" aria-live="polite">{item.quantity}</span>
+              <button
+                class="qty-btn"
+                on:click={() => handleIncrement(item.variantId, item.quantity)}
+                aria-label="Increase quantity"
+              >
+                +
+              </button>
+            </div>
           </div>
           <div class="item-right">
             <span class="item-price">
@@ -207,6 +232,50 @@
     color: rgba(240, 237, 230, 0.35);
     letter-spacing: 0.1em;
     margin: 0;
+  }
+
+  .qty-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+  }
+
+  .qty-btn {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(240, 237, 230, 0.04);
+    border: 1px solid rgba(240, 237, 230, 0.12);
+    color: rgba(240, 237, 230, 0.7);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    user-select: none;
+  }
+
+  .qty-btn:hover:not(:disabled) {
+    background: rgba(200, 146, 42, 0.12);
+    border-color: rgba(200, 146, 42, 0.5);
+    color: #C8922A;
+  }
+
+  .qty-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .qty-num {
+    min-width: 1.25rem;
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    color: rgba(240, 237, 230, 0.85);
   }
 
   .item-right {
