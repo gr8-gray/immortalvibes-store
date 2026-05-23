@@ -56,6 +56,7 @@ type CheckoutRequest struct {
 	PostalCode   string `json:"postal_code"`
 	Country      string `json:"country"`
 	DiscountCode string `json:"discount_code,omitempty"`
+	ShippingCost int    `json:"shipping_cost,omitempty"`
 }
 
 // CheckoutResponse is returned to the SvelteKit frontend.
@@ -126,6 +127,9 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	currency := DetectCurrency(r)
 	total := cart.Total()
+
+	// Add shipping cost to total.
+	total += int64(req.ShippingCost)
 
 	// Apply discount if a code was provided.
 	var appliedCouponID string

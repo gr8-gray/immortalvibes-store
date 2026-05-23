@@ -5,9 +5,9 @@
   import { loadStripe } from '@stripe/stripe-js';
   import { env } from '$env/dynamic/public';
   import { cart } from '$lib/stores/cart';
-  import { createCheckout, validatePromo } from '$lib/api';
+  import { createCheckout, validatePromo, estimateShipping } from '$lib/api';
   import type { Stripe, StripeElements } from '@stripe/stripe-js';
-  import type { ShippingAddress, PromoDiscount } from '$lib/api';
+  import type { ShippingAddress, PromoDiscount, ShippingEstimate } from '$lib/api';
 
   let stripe: Stripe | null = null;
   let elements: StripeElements | null = null;
@@ -35,17 +35,56 @@
   let promoDiscount: PromoDiscount | null = null;
   let appliedCode = '';
 
+  // Shipping estimate state
+  let shippingEstimate: ShippingEstimate | null = null;
+  let shippingLoading = false;
+  let shippingDebounce: ReturnType<typeof setTimeout> | null = null;
+
+  function shippingCostCents(): number {
+    return shippingEstimate?.rate?.amount ?? 0;
+  }
+
+  // Trigger estimate whenever required address fields are all filled
+  $: if (line1 && city && addrState && postalCode) {
+    if (shippingDebounce) clearTimeout(shippingDebounce);
+    shippingDebounce = setTimeout(async () => {
+      shippingLoading = true;
+      shippingEstimate = null;
+      try {
+        shippingEstimate = await estimateShipping({
+          shipping_name: shippingName || 'Recipient',
+          line1,
+          line2: line2 || undefined,
+          city,
+          state: addrState,
+          postal_code: postalCode,
+          country: country || 'US',
+        });
+      } catch {
+        shippingEstimate = { rate: null, error: 'Unable to calculate shipping' };
+      } finally {
+        shippingLoading = false;
+      }
+    }, 600);
+  } else {
+    shippingEstimate = null;
+  }
+
   function cartTotal(): number {
     return cartSnapshot.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   }
 
   function discountedTotal(): number {
     const raw = cartTotal();
-    if (!promoDiscount) return raw;
-    if (promoDiscount.type === 'percent_off') {
-      return Math.round(raw * (1 - promoDiscount.value / 100));
+    let subtotal = raw;
+    if (promoDiscount) {
+      if (promoDiscount.type === 'percent_off') {
+        subtotal = Math.round(raw * (1 - promoDiscount.value / 100));
+      } else {
+        subtotal = Math.max(0, raw - promoDiscount.value);
+      }
     }
-    return Math.max(0, raw - promoDiscount.value);
+    return subtotal + shippingCostCents();
   }
 
   async function applyPromo() {
@@ -104,7 +143,7 @@
       country,
     };
     try {
-      const session = await createCheckout($cart.id!, email, address, appliedCode || undefined);
+      const session = await createCheckout($cart.id!, email, address, appliedCode || undefined, shippingCostCents() || undefined);
       const clientSecret = session.client_secret;
       orderId = session.order_id;
       elements = stripe!.elements({ clientSecret });
@@ -166,6 +205,31 @@
           </span>
         </div>
       {/each}
+      <!-- Shipping estimate row -->
+      {#if shippingLoading}
+        <div class="summary-row">
+          <span class="summary-item shipping-calculating">Calculating shipping…</span>
+          <span class="summary-price shipping-calculating">—</span>
+        </div>
+      {:else if shippingEstimate}
+        <div class="summary-row">
+          <span class="summary-item">
+            {#if shippingEstimate.rate}
+              Shipping ({shippingEstimate.rate.provider} {shippingEstimate.rate.service})
+            {:else}
+              Shipping
+            {/if}
+          </span>
+          <span class="summary-price">
+            {#if shippingEstimate.rate}
+              ${(shippingEstimate.rate.amount / 100).toFixed(2)}
+            {:else}
+              Unable to calculate
+            {/if}
+          </span>
+        </div>
+      {/if}
+
       {#if promoDiscount}
         <div class="summary-row summary-discount-row">
           <span class="summary-item promo-applied">
@@ -177,9 +241,12 @@
             {/if}
           </span>
           <span class="summary-price promo-applied">
-            –${((cartTotal() - discountedTotal()) / 100).toFixed(2)}
+            –${((cartTotal() - (discountedTotal() - shippingCostCents())) / 100).toFixed(2)}
           </span>
         </div>
+      {/if}
+
+      {#if promoDiscount || shippingEstimate}
         <div class="summary-row summary-total-row">
           <span class="summary-item summary-total-label">TOTAL</span>
           <span class="summary-price">${(discountedTotal() / 100).toFixed(2)}</span>
@@ -516,6 +583,11 @@
 
   .promo-applied {
     color: rgba(120, 200, 120, 0.85);
+  }
+
+  .shipping-calculating {
+    color: rgba(240, 237, 230, 0.3);
+    font-style: italic;
   }
 
   .summary-discount-row {

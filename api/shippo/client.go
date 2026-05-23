@@ -121,6 +121,111 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 	return bestRateID + ":" + bestCarrier, nil
 }
 
+// RateEstimate holds pricing info for the cheapest rate returned by Shippo.
+type RateEstimate struct {
+	Provider string  // e.g. "USPS"
+	Service  string  // e.g. "Priority Mail"
+	Amount   float64 // dollars
+	Currency string  // e.g. "USD"
+}
+
+// EstimateRate creates a Shippo shipment and returns the cheapest rate details.
+// Unlike RateShop, it returns full rate info suitable for display pre-purchase.
+func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, error) {
+	type addrFields struct {
+		Name    string `json:"name"`
+		Street1 string `json:"street1"`
+		Street2 string `json:"street2,omitempty"`
+		City    string `json:"city"`
+		State   string `json:"state"`
+		Zip     string `json:"zip"`
+		Country string `json:"country"`
+	}
+	type parcelFields struct {
+		Length       float64 `json:"length"`
+		Width        float64 `json:"width"`
+		Height       float64 `json:"height"`
+		DistanceUnit string  `json:"distance_unit"`
+		Weight       float64 `json:"weight"`
+		MassUnit     string  `json:"mass_unit"`
+	}
+
+	body, err := json.Marshal(map[string]any{
+		"address_from": addrFields{
+			Name:    c.fromAddr.Name,
+			Street1: c.fromAddr.Street1,
+			City:    c.fromAddr.City,
+			State:   c.fromAddr.State,
+			Zip:     c.fromAddr.Zip,
+			Country: c.fromAddr.Country,
+		},
+		"address_to": addrFields{
+			Name:    to.Name,
+			Street1: to.Street1,
+			Street2: to.Street2,
+			City:    to.City,
+			State:   to.State,
+			Zip:     to.Zip,
+			Country: to.Country,
+		},
+		"parcels": []parcelFields{{
+			Length: 12, Width: 9, Height: 1, DistanceUnit: "in",
+			Weight: 8, MassUnit: "oz",
+		}},
+		"async": false,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var result struct {
+		Rates []struct {
+			Amount            string `json:"amount"`
+			Currency          string `json:"currency"`
+			Provider          string `json:"provider"`
+			ServicelevelName  string `json:"servicelevel"`
+			ServicelevelToken string `json:"servicelevel_token"`
+			Attributes        []struct {
+				Name string `json:"name"`
+			} `json:"attributes"`
+			// Shippo wraps servicelevel in a nested object
+			Servicelevel *struct {
+				Name  string `json:"name"`
+				Token string `json:"token"`
+			} `json:"servicelevel"`
+		} `json:"rates"`
+	}
+	if err := c.do(ctx, "/shipments/", body, &result); err != nil {
+		return nil, fmt.Errorf("shippo estimate: %w", err)
+	}
+
+	var best *RateEstimate
+	var bestAmount float64 = -1
+	for _, r := range result.Rates {
+		amt, err := strconv.ParseFloat(r.Amount, 64)
+		if err != nil {
+			continue
+		}
+		if best == nil || amt < bestAmount {
+			service := r.ServicelevelName
+			if r.Servicelevel != nil && r.Servicelevel.Name != "" {
+				service = r.Servicelevel.Name
+			}
+			best = &RateEstimate{
+				Provider: r.Provider,
+				Service:  service,
+				Amount:   amt,
+				Currency: r.Currency,
+			}
+			bestAmount = amt
+		}
+	}
+	if best == nil {
+		return nil, fmt.Errorf("shippo: no rates returned")
+	}
+	return best, nil
+}
+
 // BuyLabel purchases a shipping label. token is "rateID:carrier" from RateShop.
 // Returns tracking number, carrier name, and label PDF URL.
 func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, carrier, labelURL string, err error) {
