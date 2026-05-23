@@ -1,9 +1,12 @@
 <!-- web/src/routes/+layout.svelte -->
 <script lang="ts">
   import '../app.css';
+  import { onMount } from 'svelte';
   import { browser } from '$app/environment';
   import { beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
+  import { cart, type CartItem } from '$lib/stores/cart';
+  import { getCurrentCart } from '$lib/api';
   import StarField from '$lib/components/StarField.svelte';
   import Nav from '$lib/components/Nav.svelte';
   import Footer from '$lib/components/Footer.svelte';
@@ -19,6 +22,28 @@
   const isMobile = browser && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   let { children } = $props();
+
+  // Hydrate cart from the cart_token cookie on first mount so reloads
+  // don't appear to lose the cart. The HttpOnly cookie means JS can't read
+  // the token directly, so we ask the server for the current cart.
+  onMount(async () => {
+    try {
+      const goCart = await getCurrentCart();
+      if (goCart.token && goCart.line_items.length > 0) {
+        const items: CartItem[] = goCart.line_items.map((li) => ({
+          variantId: li.price_id,
+          productId: li.product_id,
+          title:     li.name,
+          quantity:  li.quantity,
+          unitPrice: li.amount,
+          currency:  li.currency,
+        }));
+        cart.setCart(goCart.token, items);
+      }
+    } catch {
+      // Best-effort hydration — failure is non-fatal.
+    }
+  });
 
   let overlayComponent: TransitionOverlay;
   let mainEl: HTMLElement;

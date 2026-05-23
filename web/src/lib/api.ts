@@ -163,6 +163,15 @@ export function getCart(token: string): Promise<GoCart> {
 }
 
 /**
+ * Fetch the current cart identified by the cart_token cookie.
+ * Returns an empty cart ({ token: "", line_items: [] }) if no cookie or cart is missing.
+ * Used to hydrate the cart store on app mount.
+ */
+export function getCurrentCart(): Promise<GoCart> {
+  return apiFetch<GoCart>('/api/cart');
+}
+
+/**
  * Set the quantity of a specific line item. Pass quantity=0 to remove.
  * Requires the cart_token cookie to match the token in the URL.
  */
