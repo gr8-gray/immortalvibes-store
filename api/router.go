@@ -39,6 +39,21 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	promoHandler := handlers.NewPromoHandler()
 	r.Post("/api/promo/validate", promoHandler.Validate)
 
+	// Shared Shippo client
+	shippoFromAddr := shippo.Address{
+		Name:    cfg.FromName,
+		Street1: cfg.FromStreet1,
+		City:    cfg.FromCity,
+		State:   cfg.FromState,
+		Zip:     cfg.FromZip,
+		Country: cfg.FromCountry,
+	}
+	shippoClient := shippo.NewClient(cfg.ShippoAPIKey, shippoFromAddr)
+
+	// Shipping estimate
+	shippingHandler := handlers.NewShippingHandler(shippoClient, shippoFromAddr)
+	r.Post("/api/shipping/estimate", shippingHandler.Estimate)
+
 	// Checkout
 	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db)
 	r.Post("/api/checkout", checkoutHandler.Checkout)
@@ -49,14 +64,6 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 
 	// Stripe webhook (not behind ProxyAuth — Stripe calls this directly)
 	emailSender := email.NewSender(cfg.ResendAPIKey, "orders@immortalvibes.co.uk")
-	shippoClient := shippo.NewClient(cfg.ShippoAPIKey, shippo.Address{
-		Name:    cfg.FromName,
-		Street1: cfg.FromStreet1,
-		City:    cfg.FromCity,
-		State:   cfg.FromState,
-		Zip:     cfg.FromZip,
-		Country: cfg.FromCountry,
-	})
 	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail)
 	r.With(apimiddleware.SkipProxyAuth).Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
 

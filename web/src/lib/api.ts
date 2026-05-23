@@ -185,6 +185,35 @@ export interface ShippingAddress {
   country:       string;
 }
 
+// ─── Shipping Endpoints ───────────────────────────────────
+
+export interface ShippingRate {
+  provider: string;
+  service:  string;
+  amount:   number; // cents
+  currency: string;
+}
+
+export interface ShippingEstimate {
+  rate:   ShippingRate | null;
+  error?: string;
+}
+
+/** Estimate shipping cost for a given address */
+export function estimateShipping(addr: ShippingAddress): Promise<ShippingEstimate> {
+  return apiFetch<ShippingEstimate>('/api/shipping/estimate', {
+    method: 'POST',
+    body: JSON.stringify({
+      name:    addr.shipping_name,
+      street1: addr.line1,
+      city:    addr.city,
+      state:   addr.state,
+      zip:     addr.postal_code,
+      country: addr.country,
+    }),
+  });
+}
+
 // ─── Promo Endpoints ──────────────────────────────────────
 
 export interface PromoDiscount {
@@ -212,7 +241,8 @@ export function createCheckout(
   cartToken: string,
   email: string,
   address: ShippingAddress,
-  discountCode?: string
+  discountCode?: string,
+  shippingCost?: number
 ): Promise<CheckoutSession> {
   return apiFetch<CheckoutSession>('/api/checkout', {
     method: 'POST',
@@ -221,6 +251,7 @@ export function createCheckout(
       email,
       ...address,
       ...(discountCode ? { discount_code: discountCode } : {}),
+      ...(shippingCost ? { shipping_cost: shippingCost } : {}),
     }),
   });
 }
