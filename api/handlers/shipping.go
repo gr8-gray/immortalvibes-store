@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -100,6 +101,7 @@ func (h *ShippingHandler) Estimate(w http.ResponseWriter, r *http.Request) {
 	estimate, err := h.shippo.EstimateRate(r.Context(), to)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
+		log.Printf("shipping estimate failed: to=%s,%s,%s err=%v", to.City, to.State, to.Zip, err)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(shippingEstimateResponse{Error: err.Error()})
 		return
