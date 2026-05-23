@@ -100,8 +100,8 @@ func (h *ShippingHandler) Estimate(w http.ResponseWriter, r *http.Request) {
 	estimate, err := h.shippo.EstimateRate(r.Context(), to)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		w.WriteHeader(http.StatusOK) // return 200 with null rate per spec
-		json.NewEncoder(w).Encode(shippingEstimateResponse{Error: "Unable to calculate shipping"})
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(shippingEstimateResponse{Error: err.Error()})
 		return
 	}
 
