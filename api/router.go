@@ -31,6 +31,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 
 	// Cart
 	cartHandler := handlers.NewCartHandler(kv)
+	r.Get("/api/cart", cartHandler.GetCurrentCart)
 	r.Get("/api/cart/{token}", cartHandler.GetCart)
 	r.Post("/api/cart", cartHandler.AddToCart)
 	r.Put("/api/cart/{token}", cartHandler.UpdateCart)

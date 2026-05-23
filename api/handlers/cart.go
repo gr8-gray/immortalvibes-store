@@ -64,6 +64,31 @@ func (h *CartHandler) GetCart(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(cart)
 }
 
+// GetCurrentCart handles GET /api/cart — returns the cart identified by the
+// cart_token cookie. Used by the frontend to hydrate the cart store on page load
+// (the cookie is HttpOnly so JS can't read the token directly).
+// Returns an empty cart with empty token if no cookie or cart not found.
+func (h *CartHandler) GetCurrentCart(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	c, err := r.Cookie("cart_token")
+	if err != nil || c.Value == "" {
+		json.NewEncoder(w).Encode(&models.Cart{Token: "", LineItems: []models.LineItem{}})
+		return
+	}
+
+	cart, err := h.kv.GetCart(r.Context(), c.Value)
+	if errors.Is(err, store.ErrCartNotFound) {
+		json.NewEncoder(w).Encode(&models.Cart{Token: "", LineItems: []models.LineItem{}})
+		return
+	}
+	if err != nil {
+		http.Error(w, "failed to get cart", http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(cart)
+}
+
 // AddToCart handles POST /api/cart.
 // Reads cart_token cookie; creates a new cart if not found.
 func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {

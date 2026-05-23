@@ -220,11 +220,11 @@
               Shipping
             {/if}
           </span>
-          <span class="summary-price">
+          <span class="summary-price" class:shipping-error={!shippingEstimate.rate}>
             {#if shippingEstimate.rate}
               ${(shippingEstimate.rate.amount / 100).toFixed(2)}
             {:else}
-              Unable to calculate
+              {shippingEstimate.error ?? 'Unable to calculate'}
             {/if}
           </span>
         </div>
