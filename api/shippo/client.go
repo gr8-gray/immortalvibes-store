@@ -183,12 +183,9 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			Amount            string `json:"amount"`
 			Currency          string `json:"currency"`
 			Provider          string `json:"provider"`
-			ServicelevelName  string `json:"servicelevel"`
 			ServicelevelToken string `json:"servicelevel_token"`
-			Attributes        []struct {
-				Name string `json:"name"`
-			} `json:"attributes"`
-			// Shippo wraps servicelevel in a nested object
+			// Shippo wraps servicelevel in a nested object with {name, token}.
+			// attributes is returned as []string (e.g. "BESTVALUE", "CHEAPEST") and unused here.
 			Servicelevel *struct {
 				Name  string `json:"name"`
 				Token string `json:"token"`
@@ -207,8 +204,8 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			continue
 		}
 		if best == nil || amt < bestAmount {
-			service := r.ServicelevelName
-			if r.Servicelevel != nil && r.Servicelevel.Name != "" {
+			var service string
+			if r.Servicelevel != nil {
 				service = r.Servicelevel.Name
 			}
 			best = &RateEstimate{
