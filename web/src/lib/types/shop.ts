@@ -167,4 +167,31 @@ export const MOCK_PRODUCTS: Product[] = [
       },
     ],
   },
+  {
+    id: 'mock_006',
+    slug: 'immortal-light-sweatpants',
+    name: 'Immortal Light Sweatpants',
+    description: 'Forged in deep space. All-over rocky serpentine-scale terrain print with a gold IMMORTAL wordmark running the left leg. Drawstring waist, unisex cut.',
+    price_usd: 3000,
+    price_gbp: 2400,
+    price_id: '',
+    currency: 'usd',
+    status: 'coming_soon',
+    sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
+    image_url: `${R2}/sweatpants/model-1-hero.jpg`,
+    mission_number: '004',
+    variants: [
+      {
+        colorName: 'Mars Rust',
+        hex: '#6B4A38',
+        productImage: '/photos/_drop/immortal-light-sweatpants-front.png',
+        gallery: [
+          `${R2}/sweatpants/model-1-hero.jpg`,
+          `${R2}/sweatpants/model-porch.jpg`,
+          `${R2}/sweatpants/model-willow.jpg`,
+          `${R2}/sweatpants/model-lake.jpg`,
+        ],
+      },
+    ],
+  },
 ];

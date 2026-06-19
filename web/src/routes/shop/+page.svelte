@@ -50,6 +50,20 @@
     tilt: 0.32,
   };
 
+  const sweatsMission = {
+    num: '004',
+    name: 'Immortal Light Sweatpants',
+    env: 'Deep Space',
+    slug: 'immortal-light-sweatpants',
+    planetType: 'mars' as const,
+    product: '/photos/_drop/immortal-light-sweatpants-front.png',
+    productScale: 0.6,
+    spriteBlending: 'normal' as const,
+    glow: '#C8503C',
+    speed: 0.0016,
+    tilt: 0.26,
+  };
+
   // ── Intro state ──────────────────────────────────────────────────────────
   let showIntroTrucker = introEnabled;
   let introPlayed = false;
@@ -63,6 +77,7 @@
   let wrHaloEl:        HTMLElement;
   let wrClusterEl:     HTMLElement;
   let tankSlotEl:      HTMLElement;
+  let sweatsSlotEl:    HTMLElement;
   let collapseRing1El: HTMLElement;
   let collapseRing2El: HTMLElement;
   let collapseRing3El: HTMLElement;
@@ -292,6 +307,28 @@
       </div>
     </a>
 
+    <!-- ── Sweatpants — Deep Space (permanent slot) ── -->
+    <a href="/shop/{sweatsMission.slug}" class="mission-slot sweats-slot" bind:this={sweatsSlotEl}>
+      <div class="planet-wrap">
+        <MissionPlanet
+          planetType={sweatsMission.planetType}
+          productUrl={sweatsMission.product}
+          productScale={sweatsMission.productScale}
+          productBlending={sweatsMission.spriteBlending}
+          glowColor={sweatsMission.glow}
+          rotationSpeed={sweatsMission.speed}
+          axialTilt={sweatsMission.tilt}
+        />
+        <div class="planet-halo" style="--glow:{sweatsMission.glow}"></div>
+      </div>
+      <div class="mission-label">
+        <span class="num">{sweatsMission.num}</span>
+        <span class="name">{sweatsMission.name}</span>
+        <span class="env">{sweatsMission.env}</span>
+        <span class="set-badge">COMING SOON</span>
+      </div>
+    </a>
+
   </div>
 
   <footer class="bottom-bar">
@@ -356,6 +393,7 @@
     .wr-slot      { transform: translateY(-3vh); }
     .trucker-slot { transform: translateY(2vh);  }
     .tank-slot    { transform: translateY(-2vh); }
+    .sweats-slot  { transform: translateY(2vh);  }
   }
 
   @media (max-width: 640px) {
@@ -396,9 +434,10 @@
 
   .mission-slot:hover { transform: translateY(-8px) !important; }
 
-  /* Set + Tank are matched siblings post-decommission. */
+  /* Set + Tank + Sweats are matched siblings post-decommission. */
   .wr-slot .planet-wrap,
-  .tank-slot .planet-wrap {
+  .tank-slot .planet-wrap,
+  .sweats-slot .planet-wrap {
     width: clamp(220px, 25vw, 340px);
     height: clamp(220px, 25vw, 340px);
   }
