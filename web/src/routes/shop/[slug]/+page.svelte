@@ -280,7 +280,9 @@
 
         <h1 class="reveal-child product-name">{product.name}</h1>
 
-        <p class="reveal-child product-price">{getDisplayPrice()}</p>
+        {#if product.status === 'available'}
+          <p class="reveal-child product-price">{getDisplayPrice()}</p>
+        {/if}
 
         <!-- Color variant swatches -->
         {#if variants.length > 1}

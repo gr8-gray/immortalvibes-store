@@ -24,6 +24,7 @@ export const MISSION_ACCENT: Record<string, string> = {
   'warped-reality-beanie': '#4FC3F7',
   'vanguard-trucker-hat': 'rgba(200,190,180,0.9)',
   'racerback-tanktop':    'rgba(255,130,50,0.9)',
+  'immortal-light-sweatpants': 'rgba(200,80,40,0.9)',
 };
 
 // Ordered mission slugs for T3 prev/next
@@ -31,6 +32,7 @@ export const MISSION_ORDER = [
   'warped-reality-beanie',
   'vanguard-trucker-hat',
   'racerback-tanktop',
+  'immortal-light-sweatpants',
 ];
 
 // Resolve which transition to use given from/to pathnames

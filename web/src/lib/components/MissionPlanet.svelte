@@ -13,7 +13,7 @@
     blending?: 'normal' | 'additive';
   }
 
-  export let planetType: 'earth' | 'leo' | 'lunar' | 'nebula' = 'earth';
+  export let planetType: 'earth' | 'leo' | 'lunar' | 'nebula' | 'mars' = 'earth';
   export let photoUrl: string   = '';
   export let productUrl: string   = '';   // single sprite path (legacy)
   export let products: ClusterItem[] = [];  // multi-sprite cluster (overrides productUrl when non-empty)
@@ -119,6 +119,33 @@
       vec3 col=bandCol*(diff*0.78+0.22);
       float limb=pow(max(0.0,1.0-dot(vNormal,vec3(0,0,1))),2.2);
       col+=vec3(0.35,0.10,0.85)*limb*0.50;
+      gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);}
+  `;
+
+  // ── Mars — deep-space rust planet ─────────────────────────────────────────
+  const marsFrag = /* glsl */`
+    varying vec3 vNormal,vPos; uniform vec3 sunDir; ${NOISE3_GLSL}
+    void main(){
+      // Continental rust terrain + finer rocky detail (3D FBM, no UV seams)
+      float cont=fbm(vPos*2.4),rock=fbm(vPos*7.5+vec3(4.1,2.3,7.8)),fine=fbm(vPos*17.0+vec3(1.4,9.2,2.6));
+      vec3 lowland=vec3(0.30,0.11,0.06);   // dark serpentine basins
+      vec3 highland=vec3(0.62,0.30,0.16);  // rust ochre plateaus
+      vec3 surface=mix(lowland,highland,smoothstep(0.36,0.64,cont));
+      surface=mix(surface,vec3(0.50,0.22,0.12),rock*0.45);
+      surface+=(fine-0.5)*0.07;            // grain
+      // Dark canyon network — thin valleys carved by ridged noise
+      float canyon=abs(fbm(vPos*9.0+vec3(3.3,1.1,6.2))-0.5);
+      surface=mix(surface,vec3(0.16,0.06,0.04),smoothstep(0.05,0.0,canyon)*0.6);
+      // Dusty polar caps — frost at high |y|
+      float cap=smoothstep(0.78,0.92,abs(normalize(vPos).y)+fbm(vPos*5.0)*0.10);
+      surface=mix(surface,vec3(0.86,0.80,0.74),cap*0.85);
+      surface=clamp(surface,0.0,1.0);
+      // Lighting — warm sun, low fill
+      float diff=dot(vNormal,sunDir),lit=smoothstep(-0.10,0.16,diff);
+      vec3 col=surface*(lit*0.92+0.045);
+      // Dusty atmosphere limb — pale rust haze
+      float limb=pow(max(0.0,1.0-abs(dot(vNormal,vec3(0,0,1)))),2.4);
+      col+=vec3(0.85,0.45,0.28)*limb*lit*0.30+vec3(0.45,0.18,0.10)*limb*limb*0.22;
       gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);}
   `;
 
@@ -337,6 +364,11 @@
         vertexShader: SHARED_VERT, fragmentShader: nebulaFrag,
         uniforms: { sunDir: { value: SUN }, time: timeUniform },
       });
+    } else if (planetType === 'mars') {
+      mat = new THREE.ShaderMaterial({
+        vertexShader: SHARED_VERT, fragmentShader: marsFrag,
+        uniforms: { sunDir: { value: SUN } },
+      });
     } else {
       const tex = new THREE.TextureLoader().load(photoUrl);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -348,7 +380,7 @@
     scene.add(planet);
 
     // Atmosphere rim — BackSide wraps around planet edge AND over the sprite
-    const atmoOpacity = planetType === 'nebula' ? 0.20 : planetType === 'leo' ? 0.18 : 0.12;
+    const atmoOpacity = planetType === 'nebula' ? 0.20 : planetType === 'leo' ? 0.18 : planetType === 'mars' ? 0.16 : 0.12;
     const atmoMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(glowColor), transparent: true,
       opacity: atmoOpacity, side: THREE.BackSide,
