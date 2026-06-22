@@ -22,6 +22,7 @@ type Address struct {
 	State   string
 	Zip     string
 	Country string
+	Email   string // Shippo requires a non-empty email on address_from to purchase a label.
 }
 
 // Client makes Shippo REST API calls.
@@ -51,6 +52,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 		State   string `json:"state"`
 		Zip     string `json:"zip"`
 		Country string `json:"country"`
+		Email   string `json:"email,omitempty"`
 	}
 	type parcelFields struct {
 		Length       float64 `json:"length"`
@@ -69,6 +71,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 			State:   c.fromAddr.State,
 			Zip:     c.fromAddr.Zip,
 			Country: c.fromAddr.Country,
+			Email:   c.fromAddr.Email,
 		},
 		"address_to": addrFields{
 			Name:    to.Name,
@@ -78,6 +81,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 			State:   to.State,
 			Zip:     to.Zip,
 			Country: to.Country,
+			Email:   to.Email,
 		},
 		// Fixed parcel profile: 12×9×1 in padded mailer, 8 oz
 		"parcels": []parcelFields{{
@@ -140,6 +144,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 		State   string `json:"state"`
 		Zip     string `json:"zip"`
 		Country string `json:"country"`
+		Email   string `json:"email,omitempty"`
 	}
 	type parcelFields struct {
 		Length       float64 `json:"length"`
@@ -158,6 +163,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			State:   c.fromAddr.State,
 			Zip:     c.fromAddr.Zip,
 			Country: c.fromAddr.Country,
+			Email:   c.fromAddr.Email,
 		},
 		"address_to": addrFields{
 			Name:    to.Name,
@@ -167,6 +173,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			State:   to.State,
 			Zip:     to.Zip,
 			Country: to.Country,
+			Email:   to.Email,
 		},
 		"parcels": []parcelFields{{
 			Length: 12, Width: 9, Height: 1, DistanceUnit: "in",

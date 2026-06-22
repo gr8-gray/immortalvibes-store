@@ -48,6 +48,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 		State:   cfg.FromState,
 		Zip:     cfg.FromZip,
 		Country: cfg.FromCountry,
+		Email:   "orders@theimmortalvibes.com", // Shippo requires a non-empty from-email to buy labels.
 	}
 	shippoClient := shippo.NewClient(cfg.ShippoAPIKey, shippoFromAddr)
 
@@ -63,10 +64,12 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	ordersHandler := handlers.NewOrdersHandler(db)
 	r.Get("/api/order/{id}", ordersHandler.GetOrder)
 
-	// Stripe webhook (not behind ProxyAuth — Stripe calls this directly)
-	emailSender := email.NewSender(cfg.ResendAPIKey, "orders@immortalvibes.co.uk")
+	// Stripe webhook — Stripe calls Go directly (no CF Worker, no proxy secret).
+	// Exempted inside ProxyAuth by path (global r.Use can't be undone per-route);
+	// authenticated by Stripe signature in the handler.
+	emailSender := email.NewSender(cfg.ResendAPIKey, "orders@theimmortalvibes.com")
 	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail)
-	r.With(apimiddleware.SkipProxyAuth).Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
+	r.Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
 
 	// Subscribe — email capture for discount code
 	subscribeHandler := handlers.NewSubscribeHandler(db, emailSender)

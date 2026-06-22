@@ -159,6 +159,7 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 		State:   order.State,
 		Zip:     order.PostalCode,
 		Country: order.Country,
+		Email:   order.Email,
 	}
 
 	rateID, err := h.shipper.RateShop(context.Background(), toAddr)

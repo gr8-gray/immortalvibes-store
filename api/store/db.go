@@ -190,10 +190,12 @@ func (d *DB) SaveOrder(ctx context.Context, o OrderRow) error {
 // GetOrder retrieves an order by its UUID. Returns ErrOrderNotFound if missing.
 func (d *DB) GetOrder(ctx context.Context, id string) (*OrderRow, error) {
 	var o OrderRow
+	// COALESCE nullable columns to '' — same NULL-scan bug as GetOrderByPaymentIntent
+	// (incident 2026-06-21); GetOrder backs the /api/order/{id} confirmation page.
 	err := d.db.QueryRowContext(ctx, `
 		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
-		       shipping_name, line1, line2, city, state, postal_code, country,
-		       tracking_number, carrier, label_url
+		       shipping_name, line1, COALESCE(line2,''), city, state, postal_code, country,
+		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,'')
 		FROM orders WHERE id = $1
 	`, id).Scan(
 		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
@@ -212,10 +214,13 @@ func (d *DB) GetOrder(ctx context.Context, id string) (*OrderRow, error) {
 // GetOrderByPaymentIntent retrieves an order by its Stripe PaymentIntent ID.
 func (d *DB) GetOrderByPaymentIntent(ctx context.Context, paymentIntentID string) (*OrderRow, error) {
 	var o OrderRow
+	// COALESCE the nullable columns to '' — an unshipped order always has NULL
+	// tracking_number/carrier/label_url, and Scan into a plain string fails on NULL.
+	// This bug blocked EVERY order's fulfillment webhook (incident 2026-06-21).
 	err := d.db.QueryRowContext(ctx, `
 		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
-		       shipping_name, line1, line2, city, state, postal_code, country,
-		       tracking_number, carrier, label_url
+		       shipping_name, line1, COALESCE(line2,''), city, state, postal_code, country,
+		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,'')
 		FROM orders WHERE payment_intent_id = $1
 	`, paymentIntentID).Scan(
 		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
