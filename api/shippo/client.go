@@ -23,6 +23,7 @@ type Address struct {
 	Zip     string
 	Country string
 	Email   string // Shippo requires a non-empty email on address_from to purchase a label.
+	Phone   string // USPS requires a non-empty phone on address_from to purchase a label.
 }
 
 // Client makes Shippo REST API calls.
@@ -53,6 +54,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 		Zip     string `json:"zip"`
 		Country string `json:"country"`
 		Email   string `json:"email,omitempty"`
+		Phone   string `json:"phone,omitempty"`
 	}
 	type parcelFields struct {
 		Length       float64 `json:"length"`
@@ -72,6 +74,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 			Zip:     c.fromAddr.Zip,
 			Country: c.fromAddr.Country,
 			Email:   c.fromAddr.Email,
+			Phone:   c.fromAddr.Phone,
 		},
 		"address_to": addrFields{
 			Name:    to.Name,
@@ -82,6 +85,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 			Zip:     to.Zip,
 			Country: to.Country,
 			Email:   to.Email,
+			Phone:   to.Phone,
 		},
 		// Fixed parcel profile: 12×9×1 in padded mailer, 8 oz
 		"parcels": []parcelFields{{
@@ -145,6 +149,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 		Zip     string `json:"zip"`
 		Country string `json:"country"`
 		Email   string `json:"email,omitempty"`
+		Phone   string `json:"phone,omitempty"`
 	}
 	type parcelFields struct {
 		Length       float64 `json:"length"`
@@ -164,6 +169,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			Zip:     c.fromAddr.Zip,
 			Country: c.fromAddr.Country,
 			Email:   c.fromAddr.Email,
+			Phone:   c.fromAddr.Phone,
 		},
 		"address_to": addrFields{
 			Name:    to.Name,
@@ -174,6 +180,7 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 			Zip:     to.Zip,
 			Country: to.Country,
 			Email:   to.Email,
+			Phone:   to.Phone,
 		},
 		"parcels": []parcelFields{{
 			Length: 12, Width: 9, Height: 1, DistanceUnit: "in",

@@ -24,6 +24,7 @@ type Config struct {
 	FromState         string
 	FromZip           string
 	FromCountry       string
+	FromPhone         string
 	OwnerEmail        string
 }
 
@@ -47,6 +48,7 @@ func Load() (*Config, error) {
 		FromState:         os.Getenv("FROM_STATE"),
 		FromZip:           os.Getenv("FROM_ZIP"),
 		FromCountry:       getEnv("FROM_COUNTRY", "US"),
+		FromPhone:         os.Getenv("FROM_PHONE"),
 		OwnerEmail:          os.Getenv("OWNER_EMAIL"),
 	}
 

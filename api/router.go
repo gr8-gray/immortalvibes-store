@@ -49,6 +49,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 		Zip:     cfg.FromZip,
 		Country: cfg.FromCountry,
 		Email:   "orders@theimmortalvibes.com", // Shippo requires a non-empty from-email to buy labels.
+		Phone:   cfg.FromPhone,                 // USPS requires a non-empty from-phone to buy labels.
 	}
 	shippoClient := shippo.NewClient(cfg.ShippoAPIKey, shippoFromAddr)
 
