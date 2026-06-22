@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
 // Sender dispatches transactional email via the Resend API.
@@ -76,18 +78,52 @@ func (s *Sender) SendOrderConfirmation(ctx context.Context, toEmail, orderID str
 	return nil
 }
 
-// SendShippingLabel emails the owner a label-ready notification with PDF link.
-func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier string) error {
+// SendShippingLabel emails the owner a label-ready notification with PDF link,
+// plus a financial summary (order total, label cost billed to Shippo, and the
+// resulting balance) so the owner has a record of the transaction.
+func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string) error {
 	subject := fmt.Sprintf("[IV Order] Label ready — %s", orderID)
+
+	cur := strings.ToUpper(currency)
+	totalStr := fmt.Sprintf("$%.2f %s", float64(orderTotal)/100, cur)
+	if labelCost == "" {
+		labelCost = "(see Shippo)"
+	}
+	// Balance = order total minus the label cost (excludes Stripe fees + COGS).
+	balanceStr := "—"
+	if amt := parseLeadingAmount(labelCost); amt >= 0 {
+		balanceStr = fmt.Sprintf("$%.2f %s", float64(orderTotal)/100-amt, cur)
+	}
+
 	html := fmt.Sprintf(`
 		<h2>Label Ready</h2>
 		<p><strong>Order:</strong> %s</p>
 		<p><strong>Carrier:</strong> %s</p>
 		<p><strong>Tracking:</strong> %s</p>
 		<p><a href="%s" style="font-weight:bold">Download Label (PDF)</a></p>
-		<p style="color:#888;font-size:0.85em">Please ship within 2 business days.</p>
-	`, orderID, carrier, trackingNum, labelURL)
+		<table style="margin:1rem 0;border-collapse:collapse;font-size:0.95em">
+			<tr><td style="padding:2px 12px 2px 0;color:#666">Order total (collected via Stripe)</td><td style="padding:2px 0"><strong>%s</strong></td></tr>
+			<tr><td style="padding:2px 12px 2px 0;color:#666">Shipping label (billed to Shippo)</td><td style="padding:2px 0">-%s</td></tr>
+			<tr><td style="padding:2px 12px 2px 0;color:#666">After label (before Stripe fees &amp; product cost)</td><td style="padding:2px 0">%s</td></tr>
+		</table>
+		<p style="color:#888;font-size:0.85em">The label cost is charged to your Shippo account, not Stripe — Stripe only shows the order total.</p>
+		<p style="color:#888;font-size:0.85em">Please ship within 2 business days. If you received an earlier "SHIPPING FAILED" notice for this order, disregard it — the label above is valid.</p>
+	`, orderID, carrier, trackingNum, labelURL, totalStr, labelCost, balanceStr)
 	return s.send(ctx, ownerEmail, subject, html)
+}
+
+// parseLeadingAmount extracts the leading numeric value from a string like
+// "6.74 USD". Returns -1 if no number is present.
+func parseLeadingAmount(s string) float64 {
+	fields := strings.Fields(s)
+	if len(fields) == 0 {
+		return -1
+	}
+	v, err := strconv.ParseFloat(fields[0], 64)
+	if err != nil {
+		return -1
+	}
+	return v
 }
 
 // SendTrackingUpdate emails the customer their shipment tracking info.
@@ -115,7 +151,8 @@ func (s *Sender) SendShippingFailure(ctx context.Context, ownerEmail, orderID, c
 		<p><strong>Ship to:</strong></p>
 		<pre style="background:#f4f4f4;padding:0.75rem">%s</pre>
 		<p><strong>Error:</strong> <code>%s</code></p>
-		<p><a href="https://app.easypost.com" style="font-weight:bold">Create label at easypost.com</a></p>
+		<p><a href="https://apps.goshippo.com/orders" style="font-weight:bold">Create label in Shippo</a></p>
+		<p style="color:#888;font-size:0.85em">Note: shipping is retried automatically. If you also receive a "Label ready" email for this same order, the label was created for you — ignore this notice and do not buy a second label.</p>
 	`, orderID, customerEmail, shippingAddr, errMsg)
 	return s.send(ctx, ownerEmail, subject, html)
 }

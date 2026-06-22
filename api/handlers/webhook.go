@@ -17,7 +17,7 @@ import (
 // ShipperClient rate-shops and purchases shipping labels.
 type ShipperClient interface {
 	RateShop(ctx context.Context, to shippo.Address) (rateID string, err error)
-	BuyLabel(ctx context.Context, rateID string) (trackingNumber, carrier, labelURL string, err error)
+	BuyLabel(ctx context.Context, rateID string) (trackingNumber, carrier, labelURL, cost string, err error)
 }
 
 // WebhookKV is the cart-clearing subset of CartKV.
@@ -40,7 +40,7 @@ type WebhookOrderStore interface {
 // EmailSender dispatches transactional email.
 type EmailSender interface {
 	SendOrderConfirmation(ctx context.Context, toEmail, orderID string, totalAmount int64, currency string) error
-	SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier string) error
+	SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string) error
 	SendTrackingUpdate(ctx context.Context, customerEmail, orderID, trackingNum, carrier string) error
 	SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error
 }
@@ -127,6 +127,15 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 		return
 	}
 
+	// Idempotency: Stripe may resend this event (retries / manual resends).
+	// If the order is already shipped (label bought, tracking set), there is
+	// nothing more to do — ack and return so we never buy a second label.
+	if order.TrackingNumber != "" {
+		log.Printf("webhook: order %s already shipped (tracking %s) — skipping reprocess", order.ID, order.TrackingNumber)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if err := h.db.UpdateOrderStatus(r.Context(), order.ID, "complete"); err != nil {
 		log.Printf("webhook: UpdateOrderStatus(%s): %v", order.ID, err)
 	}
@@ -143,9 +152,13 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 		}
 	}
 
-	// Shipping runs in a goroutine — Stripe gets a fast 200 immediately.
-	orderCopy := *order
-	go h.processShipping(&orderCopy)
+	// Shipping runs synchronously before we ack Stripe. This keeps label
+	// purchase from being lost to a killed goroutine (e.g. machine stop), and
+	// any transient failure is reported to the owner via SendShippingFailure.
+	// We still return 200: the payment is captured, so we don't want Stripe to
+	// retry the whole event indefinitely — the idempotency guard above makes a
+	// resend safe if the owner needs to re-trigger.
+	h.processShipping(order)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -169,7 +182,7 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 		return
 	}
 
-	trackingNum, carrier, labelURL, err := h.shipper.BuyLabel(context.Background(), rateID)
+	trackingNum, carrier, labelURL, labelCost, err := h.shipper.BuyLabel(context.Background(), rateID)
 	if err != nil {
 		log.Printf("webhook: BuyLabel(%s): %v", order.ID, err)
 		h.notifyShippingFailure(order, err.Error())
@@ -180,7 +193,7 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 		log.Printf("webhook: UpdateOrderShipping(%s): %v", order.ID, err)
 	}
 
-	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier); err != nil {
+	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier, labelCost, order.TotalAmount, order.Currency); err != nil {
 		log.Printf("webhook: SendShippingLabel: %v", err)
 	}
 
