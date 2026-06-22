@@ -5,6 +5,7 @@ type LineItem struct {
 	PriceID   string `json:"price_id"`   // Stripe Price ID
 	ProductID string `json:"product_id"` // Stripe Product ID
 	Name      string `json:"name"`
+	Size      string `json:"size,omitempty"` // variant/size, resolved from the Stripe price nickname at checkout
 	ImageURL  string `json:"image_url"`
 	Currency  string `json:"currency"`
 	Amount    int64  `json:"amount"`     // unit price in smallest currency unit

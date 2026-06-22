@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/immortalvibes/api/models"
@@ -12,8 +14,43 @@ import (
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/coupon"
 	"github.com/stripe/stripe-go/v76/paymentintent"
+	"github.com/stripe/stripe-go/v76/price"
 	"github.com/stripe/stripe-go/v76/promotioncode"
 )
+
+// enrichSizes resolves each line item's variant/size from its Stripe price
+// nickname, best-effort — a failed lookup leaves Size empty and never blocks
+// checkout. Mutates the slice in place.
+func enrichSizes(items []models.LineItem) {
+	for i := range items {
+		if items[i].PriceID == "" {
+			continue
+		}
+		p, err := price.Get(items[i].PriceID, nil)
+		if err == nil && p != nil {
+			items[i].Size = p.Nickname
+		}
+	}
+}
+
+// manifestSummary builds a compact one-line summary for Stripe PI metadata,
+// e.g. "2x Immortal Light Sweatpants (L); 1x Tee (M)". Capped at 480 chars
+// (Stripe metadata values max 500).
+func manifestSummary(items []models.LineItem) string {
+	parts := make([]string, 0, len(items))
+	for _, li := range items {
+		s := fmt.Sprintf("%dx %s", li.Quantity, li.Name)
+		if li.Size != "" {
+			s += " (" + li.Size + ")"
+		}
+		parts = append(parts, s)
+	}
+	out := strings.Join(parts, "; ")
+	if len(out) > 480 {
+		out = out[:477] + "..."
+	}
+	return out
+}
 
 // eurCountries is the set of ISO country codes that map to EUR.
 var eurCountries = map[string]bool{
@@ -125,6 +162,9 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve sizes so the persisted manifest is human-readable (STOP 18).
+	enrichSizes(cart.LineItems)
+
 	currency := DetectCurrency(r)
 	total := cart.Total()
 
@@ -151,6 +191,9 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 			"email":         req.Email,
 			"discount_code": req.DiscountCode,
 			"coupon_id":     appliedCouponID,
+			// Manifest summary so the owner can see contents on the Stripe
+			// dashboard and it survives in the webhook event (STOP 18).
+			"items": manifestSummary(cart.LineItems),
 		},
 	}
 	pi, err := paymentintent.New(piParams)
@@ -175,6 +218,7 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		State:           req.State,
 		PostalCode:      req.PostalCode,
 		Country:         req.Country,
+		LineItems:       cart.LineItems,
 	}); err != nil {
 		http.Error(w, "failed to save order", http.StatusInternalServerError)
 		return

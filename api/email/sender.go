@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/immortalvibes/api/models"
 )
 
 // Sender dispatches transactional email via the Resend API.
@@ -79,9 +81,10 @@ func (s *Sender) SendOrderConfirmation(ctx context.Context, toEmail, orderID str
 }
 
 // SendShippingLabel emails the owner a label-ready notification with PDF link,
-// plus a financial summary (order total, label cost billed to Shippo, and the
-// resulting balance) so the owner has a record of the transaction.
-func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string) error {
+// the PACKING MANIFEST (what to put in the box — STOP 18), plus a financial
+// summary (order total, label cost billed to Shippo, and the resulting balance)
+// so the owner has a complete record of the order.
+func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string, items []models.LineItem) error {
 	subject := fmt.Sprintf("[IV Order] Label ready — %s", orderID)
 
 	cur := strings.ToUpper(currency)
@@ -101,6 +104,8 @@ func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, lab
 		<p><strong>Carrier:</strong> %s</p>
 		<p><strong>Tracking:</strong> %s</p>
 		<p><a href="%s" style="font-weight:bold">Download Label (PDF)</a></p>
+		<h3 style="margin:1.25rem 0 0.5rem">📦 Pack this</h3>
+		%s
 		<table style="margin:1rem 0;border-collapse:collapse;font-size:0.95em">
 			<tr><td style="padding:2px 12px 2px 0;color:#666">Order total (collected via Stripe)</td><td style="padding:2px 0"><strong>%s</strong></td></tr>
 			<tr><td style="padding:2px 12px 2px 0;color:#666">Shipping label (billed to Shippo)</td><td style="padding:2px 0">-%s</td></tr>
@@ -108,8 +113,36 @@ func (s *Sender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, lab
 		</table>
 		<p style="color:#888;font-size:0.85em">The label cost is charged to your Shippo account, not Stripe — Stripe only shows the order total.</p>
 		<p style="color:#888;font-size:0.85em">Please ship within 2 business days. If you received an earlier "SHIPPING FAILED" notice for this order, disregard it — the label above is valid.</p>
-	`, orderID, carrier, trackingNum, labelURL, totalStr, labelCost, balanceStr)
+	`, orderID, carrier, trackingNum, labelURL, renderManifest(items), totalStr, labelCost, balanceStr)
 	return s.send(ctx, ownerEmail, subject, html)
+}
+
+// renderManifest builds the packing-list HTML table (what to put in the box).
+// Falls back to a clear warning if no line items were persisted, so a blank
+// manifest can never be mistaken for an empty order.
+func renderManifest(items []models.LineItem) string {
+	if len(items) == 0 {
+		return `<p style="color:#c0392b"><strong>⚠ No item manifest on this order.</strong> ` +
+			`Confirm contents with the customer before shipping.</p>`
+	}
+	var b strings.Builder
+	b.WriteString(`<table style="border-collapse:collapse;font-size:0.95em;margin:0 0 0.5rem">`)
+	b.WriteString(`<tr style="text-align:left"><th style="padding:4px 16px 4px 0">Item</th>` +
+		`<th style="padding:4px 16px 4px 0">Size</th><th style="padding:4px 16px 4px 0">Qty</th>` +
+		`<th style="padding:4px 0">Unit</th></tr>`)
+	for _, li := range items {
+		size := li.Size
+		if size == "" {
+			size = "—"
+		}
+		unit := fmt.Sprintf("$%.2f", float64(li.Amount)/100)
+		b.WriteString(fmt.Sprintf(
+			`<tr><td style="padding:4px 16px 4px 0">%s</td><td style="padding:4px 16px 4px 0">%s</td>`+
+				`<td style="padding:4px 16px 4px 0">%d</td><td style="padding:4px 0">%s</td></tr>`,
+			li.Name, size, li.Quantity, unit))
+	}
+	b.WriteString(`</table>`)
+	return b.String()
 }
 
 // parseLeadingAmount extracts the leading numeric value from a string like

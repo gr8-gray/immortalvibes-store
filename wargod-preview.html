@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>War God Font — IV Preview</title>
+<style>
+  @import url('https://fonts.cdnfonts.com/css/godofwar');
+  @import url('https://fonts.cdnfonts.com/css/gods-of-war');
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@300;400;600&family=Inter:wght@300;400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #030308;
+    color: #F0EDE6;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4rem 2rem;
+  }
+
+  .section {
+    width: 100%;
+    max-width: 860px;
+    padding: 3.5rem 0;
+    border-bottom: 1px solid rgba(240, 237, 230, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .label {
+    font-size: 0.5rem;
+    letter-spacing: 0.4em;
+    color: rgba(200, 146, 42, 0.6);
+    text-transform: uppercase;
+  }
+
+  .sub {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.5em;
+    color: rgba(240, 237, 230, 0.35);
+    text-transform: uppercase;
+  }
+
+  .btn {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.22em;
+    border: 1px solid rgba(240, 237, 230, 0.35);
+    padding: 0.9rem 2.4rem;
+    color: #F0EDE6;
+    text-transform: uppercase;
+    width: fit-content;
+  }
+
+  /* ── Cormorant (current) ── */
+  .f-cormorant {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: clamp(3rem, 8vw, 6.5rem);
+    letter-spacing: 0.04em;
+    line-height: 1.05;
+    color: #F0EDE6;
+  }
+
+  /* ── War God — the CapCut reference font ── */
+  .f-wargod {
+    font-family: 'GodOfWar', 'Gods of War', 'God Of War', serif;
+    font-size: clamp(2.8rem, 7.5vw, 6rem);
+    line-height: 1.15;
+    color: #F0EDE6;
+    letter-spacing: 0.03em;
+  }
+
+  .f-wargod-mid {
+    font-family: 'GodOfWar', 'Gods of War', 'God Of War', serif;
+    font-size: clamp(1.8rem, 4.5vw, 3.5rem);
+    line-height: 1.2;
+    color: #F0EDE6;
+    letter-spacing: 0.04em;
+  }
+
+  .f-wargod-gold {
+    font-family: 'GodOfWar', 'Gods of War', 'God Of War', serif;
+    font-size: clamp(1.4rem, 3.5vw, 2.6rem);
+    color: #C8922A;
+    letter-spacing: 0.04em;
+  }
+
+  .f-wargod-nav {
+    font-family: 'GodOfWar', 'Gods of War', 'God Of War', serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.1em;
+    color: #F0EDE6;
+  }
+
+  .f-cinzel-nav {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    color: #F0EDE6;
+  }
+
+  .f-cormorant-body {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 1.4rem;
+    color: rgba(240, 237, 230, 0.5);
+    line-height: 1.55;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem 4rem;
+  }
+
+  .col-label {
+    font-size: 0.44rem;
+    letter-spacing: 0.35em;
+    color: rgba(200, 146, 42, 0.4);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(200, 146, 42, 0.12);
+  }
+
+  .spacer { height: 0.75rem; }
+
+  @media (max-width: 600px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 1 — Current baseline -->
+  <div class="section">
+    <span class="label">Current — Cormorant Garamond</span>
+    <div class="f-cormorant">Rise Beyond<br>The Mortal Plane</div>
+    <div class="sub">Mission 001 · Low Earth Orbit</div>
+    <div class="btn">Shop the Drop →</div>
+  </div>
+
+  <!-- 2 — War God hero (matches reference image) -->
+  <div class="section">
+    <span class="label">War God — Hero Scale</span>
+    <div class="f-wargod">Rise Beyond<br>The Mortal Plane</div>
+    <div class="sub">Mission 001 · Low Earth Orbit</div>
+    <div class="btn">Shop the Drop →</div>
+  </div>
+
+  <!-- 3 — Side by side -->
+  <div class="section">
+    <span class="label">Side by Side — Same Scale</span>
+    <div class="compare-grid">
+      <div>
+        <div class="col-label">Cormorant Garamond (current)</div>
+        <div class="f-cormorant" style="font-size:clamp(1.8rem,4vw,3.2rem)">Immortal<br>Vibes</div>
+        <div class="spacer"></div>
+        <div class="sub">Rise Beyond The Mortal Plane</div>
+      </div>
+      <div>
+        <div class="col-label">War God</div>
+        <div class="f-wargod" style="font-size:clamp(1.8rem,4vw,3.2rem)">Immortal<br>Vibes</div>
+        <div class="spacer"></div>
+        <div class="sub">Rise Beyond The Mortal Plane</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 — Mission Gold treatment -->
+  <div class="section">
+    <span class="label">War God — Mission Gold</span>
+    <div class="f-wargod-gold">Warped Reality</div>
+    <div class="sub">Set Drop · 3 Pieces · Mission 001</div>
+  </div>
+
+  <!-- 5 — Mixed: War God display + Cormorant body -->
+  <div class="section">
+    <span class="label">Recommended Mix — War God Display + Cormorant Body</span>
+    <div class="f-wargod-mid">Mission Select</div>
+    <div class="f-cormorant-body">Each mission is a step further from the mortal plane.<br>Choose your environment.</div>
+  </div>
+
+  <!-- 6 — Nav scale comparison -->
+  <div class="section">
+    <span class="label">Nav Scale — War God vs Cinzel (fallback)</span>
+    <div class="compare-grid">
+      <div>
+        <div class="col-label">War God at nav size</div>
+        <div style="display:flex;gap:2rem;flex-wrap:wrap;">
+          <div class="f-wargod-nav">Shop</div>
+          <div class="f-wargod-nav">About</div>
+          <div class="f-wargod-nav" style="color:#C8922A">Cart</div>
+        </div>
+      </div>
+      <div>
+        <div class="col-label">Cinzel Bold (cleaner fallback)</div>
+        <div style="display:flex;gap:2rem;flex-wrap:wrap;">
+          <div class="f-cinzel-nav">Shop</div>
+          <div class="f-cinzel-nav">About</div>
+          <div class="f-cinzel-nav" style="color:#C8922A">Cart</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
