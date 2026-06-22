@@ -44,7 +44,7 @@ func (s *stubEmailSender) SendOrderConfirmation(ctx context.Context, toEmail, or
 	return nil
 }
 
-func (s *stubEmailSender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier string) error {
+func (s *stubEmailSender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string) error {
 	return nil
 }
 
@@ -63,8 +63,8 @@ func (s *stubShipperClient) RateShop(ctx context.Context, to shippo.Address) (st
 	return "shp_stub:rate_stub_001", nil
 }
 
-func (s *stubShipperClient) BuyLabel(ctx context.Context, rateID string) (string, string, string, error) {
-	return "TRACK123", "USPS", "https://easypost.example.com/label.pdf", nil
+func (s *stubShipperClient) BuyLabel(ctx context.Context, rateID string) (string, string, string, string, error) {
+	return "TRACK123", "USPS", "https://shippo.example.com/label.pdf", "6.74 USD", nil
 }
 
 func signWebhookPayload(t *testing.T, secret string, payload []byte) string {

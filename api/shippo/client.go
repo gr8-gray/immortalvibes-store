@@ -103,6 +103,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 		Rates    []struct {
 			ObjectID string `json:"object_id"`
 			Amount   string `json:"amount"`
+			Currency string `json:"currency"`
 			Provider string `json:"provider"`
 		} `json:"rates"`
 	}
@@ -110,7 +111,7 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 		return "", fmt.Errorf("shippo shipment: %w", err)
 	}
 
-	var bestRateID, bestCarrier string
+	var bestRateID, bestCarrier, bestCurrency string
 	var bestAmount float64 = -1
 	for _, r := range result.Rates {
 		amt, err := strconv.ParseFloat(r.Amount, 64)
@@ -120,13 +121,18 @@ func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
 		if bestRateID == "" || amt < bestAmount {
 			bestRateID = r.ObjectID
 			bestCarrier = r.Provider
+			bestCurrency = r.Currency
 			bestAmount = amt
 		}
 	}
 	if bestRateID == "" {
 		return "", fmt.Errorf("shippo: no rates returned for shipment %s", result.ObjectID)
 	}
-	return bestRateID + ":" + bestCarrier, nil
+	// Token packs rateID:carrier:amount:currency so BuyLabel can report the
+	// label cost to the owner without a second Shippo round-trip.
+	return strings.Join([]string{
+		bestRateID, bestCarrier, strconv.FormatFloat(bestAmount, 'f', 2, 64), bestCurrency,
+	}, ":"), nil
 }
 
 // RateEstimate holds pricing info for the cheapest rate returned by Shippo.
@@ -237,14 +243,18 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 	return best, nil
 }
 
-// BuyLabel purchases a shipping label. token is "rateID:carrier" from RateShop.
-// Returns tracking number, carrier name, and label PDF URL.
-func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, carrier, labelURL string, err error) {
-	parts := strings.SplitN(token, ":", 2)
-	if len(parts) != 2 {
-		return "", "", "", fmt.Errorf("shippo: invalid rate token %q", token)
+// BuyLabel purchases a shipping label. token is "rateID:carrier:amount:currency"
+// from RateShop. Returns tracking number, carrier name, label PDF URL, and the
+// label cost (e.g. "6.74 USD") for owner-facing reporting.
+func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, carrier, labelURL, cost string, err error) {
+	parts := strings.SplitN(token, ":", 4)
+	if len(parts) < 2 {
+		return "", "", "", "", fmt.Errorf("shippo: invalid rate token %q", token)
 	}
 	rateID, carrierName := parts[0], parts[1]
+	if len(parts) == 4 && parts[2] != "" {
+		cost = parts[2] + " " + strings.ToUpper(parts[3])
+	}
 
 	body, err := json.Marshal(map[string]any{
 		"rate":            rateID,
@@ -252,7 +262,7 @@ func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, ca
 		"async":           false,
 	})
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", "", err
 	}
 
 	var result struct {
@@ -261,12 +271,12 @@ func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, ca
 		ObjectState    string `json:"object_state"`
 	}
 	if err := c.do(ctx, "/transactions/", body, &result); err != nil {
-		return "", "", "", fmt.Errorf("shippo buy: %w", err)
+		return "", "", "", "", fmt.Errorf("shippo buy: %w", err)
 	}
 	if result.TrackingNumber == "" || result.LabelURL == "" {
-		return "", "", "", fmt.Errorf("shippo: label purchase returned empty tracking or label URL (state: %s)", result.ObjectState)
+		return "", "", "", "", fmt.Errorf("shippo: label purchase returned empty tracking or label URL (state: %s)", result.ObjectState)
 	}
-	return result.TrackingNumber, carrierName, result.LabelURL, nil
+	return result.TrackingNumber, carrierName, result.LabelURL, cost, nil
 }
 
 func (c *Client) do(ctx context.Context, path string, body []byte, out any) error {
