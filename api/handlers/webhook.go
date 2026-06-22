@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/immortalvibes/api/models"
 	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
@@ -40,7 +41,7 @@ type WebhookOrderStore interface {
 // EmailSender dispatches transactional email.
 type EmailSender interface {
 	SendOrderConfirmation(ctx context.Context, toEmail, orderID string, totalAmount int64, currency string) error
-	SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string) error
+	SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string, items []models.LineItem) error
 	SendTrackingUpdate(ctx context.Context, customerEmail, orderID, trackingNum, carrier string) error
 	SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error
 }
@@ -136,8 +137,16 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 		return
 	}
 
+	// Decrement stock exactly once, on the first transition to complete.
+	// Guarded on prior status so Stripe resends never double-decrement.
+	wasComplete := order.Status == "complete"
+
 	if err := h.db.UpdateOrderStatus(r.Context(), order.ID, "complete"); err != nil {
 		log.Printf("webhook: UpdateOrderStatus(%s): %v", order.ID, err)
+	}
+
+	if !wasComplete {
+		h.decrementStock(r.Context(), order)
 	}
 
 	if cartToken != "" {
@@ -161,6 +170,21 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 	h.processShipping(order)
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// decrementStock subtracts purchased quantities from product stock, one line
+// item at a time. Stock errors are logged but never fail the webhook — a paid
+// order must still ship; an out-of-sync stock count is the lesser problem.
+func (h *WebhookHandler) decrementStock(ctx context.Context, order *store.OrderRow) {
+	for _, li := range order.LineItems {
+		if li.ProductID == "" || li.Quantity <= 0 {
+			continue
+		}
+		if err := h.stock.DecrementStock(ctx, li.ProductID, li.Quantity); err != nil {
+			log.Printf("webhook: DecrementStock(order=%s product=%s qty=%d): %v",
+				order.ID, li.ProductID, li.Quantity, err)
+		}
+	}
 }
 
 func (h *WebhookHandler) processShipping(order *store.OrderRow) {
@@ -193,7 +217,7 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 		log.Printf("webhook: UpdateOrderShipping(%s): %v", order.ID, err)
 	}
 
-	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier, labelCost, order.TotalAmount, order.Currency); err != nil {
+	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier, labelCost, order.TotalAmount, order.Currency, order.LineItems); err != nil {
 		log.Printf("webhook: SendShippingLabel: %v", err)
 	}
 

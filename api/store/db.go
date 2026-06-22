@@ -3,10 +3,12 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/immortalvibes/api/models"
 	_ "github.com/lib/pq"
 )
 
@@ -40,6 +42,9 @@ type OrderRow struct {
 	TrackingNumber string
 	Carrier        string
 	LabelURL       string
+	// Order manifest — the line items, persisted at checkout so the order is
+	// self-contained (STOP 18). The cart in KV is deleted on payment.
+	LineItems []models.LineItem
 }
 
 // Open connects to Postgres and runs migrations. Returns a ready-to-use DB.
@@ -102,6 +107,7 @@ func (d *DB) migrate() error {
 		ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
 		ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier         TEXT;
 		ALTER TABLE orders ADD COLUMN IF NOT EXISTS label_url       TEXT;
+		ALTER TABLE orders ADD COLUMN IF NOT EXISTS line_items      JSONB;
 	`)
 	if err != nil {
 		return err
@@ -177,14 +183,33 @@ func (d *DB) DecrementStock(ctx context.Context, productID string, qty int) erro
 }
 
 // SaveOrder inserts a new order row. PaymentIntentID must be unique.
+// The order manifest (line items) is persisted as JSONB so the order is
+// self-contained even after the cart is deleted on payment (STOP 18).
 func (d *DB) SaveOrder(ctx context.Context, o OrderRow) error {
-	_, err := d.db.ExecContext(ctx, `
+	items := o.LineItems
+	if items == nil {
+		items = []models.LineItem{}
+	}
+	itemsJSON, err := json.Marshal(items)
+	if err != nil {
+		return fmt.Errorf("marshal line_items: %w", err)
+	}
+	_, err = d.db.ExecContext(ctx, `
 		INSERT INTO orders (id, payment_intent_id, cart_token, email, currency, total_amount, status,
-		                    shipping_name, line1, line2, city, state, postal_code, country, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
+		                    shipping_name, line1, line2, city, state, postal_code, country, line_items, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
 	`, o.ID, o.PaymentIntentID, o.CartToken, o.Email, o.Currency, o.TotalAmount, o.Status,
-		o.ShippingName, o.Line1, o.Line2, o.City, o.State, o.PostalCode, o.Country)
+		o.ShippingName, o.Line1, o.Line2, o.City, o.State, o.PostalCode, o.Country, itemsJSON)
 	return err
+}
+
+// scanLineItems unmarshals the JSONB line_items column (may be NULL/empty).
+func scanLineItems(raw []byte, o *OrderRow) error {
+	if len(raw) == 0 {
+		o.LineItems = []models.LineItem{}
+		return nil
+	}
+	return json.Unmarshal(raw, &o.LineItems)
 }
 
 // GetOrder retrieves an order by its UUID. Returns ErrOrderNotFound if missing.
@@ -192,21 +217,25 @@ func (d *DB) GetOrder(ctx context.Context, id string) (*OrderRow, error) {
 	var o OrderRow
 	// COALESCE nullable columns to '' — same NULL-scan bug as GetOrderByPaymentIntent
 	// (incident 2026-06-21); GetOrder backs the /api/order/{id} confirmation page.
+	var itemsRaw []byte
 	err := d.db.QueryRowContext(ctx, `
 		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
 		       shipping_name, line1, COALESCE(line2,''), city, state, postal_code, country,
-		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,'')
+		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,''), line_items
 		FROM orders WHERE id = $1
 	`, id).Scan(
 		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
 		&o.ShippingName, &o.Line1, &o.Line2, &o.City, &o.State, &o.PostalCode, &o.Country,
-		&o.TrackingNumber, &o.Carrier, &o.LabelURL,
+		&o.TrackingNumber, &o.Carrier, &o.LabelURL, &itemsRaw,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	if err := scanLineItems(itemsRaw, &o); err != nil {
+		return nil, fmt.Errorf("scan line_items: %w", err)
 	}
 	return &o, nil
 }
@@ -217,21 +246,25 @@ func (d *DB) GetOrderByPaymentIntent(ctx context.Context, paymentIntentID string
 	// COALESCE the nullable columns to '' — an unshipped order always has NULL
 	// tracking_number/carrier/label_url, and Scan into a plain string fails on NULL.
 	// This bug blocked EVERY order's fulfillment webhook (incident 2026-06-21).
+	var itemsRaw []byte
 	err := d.db.QueryRowContext(ctx, `
 		SELECT id, payment_intent_id, cart_token, email, currency, total_amount, status, created_at,
 		       shipping_name, line1, COALESCE(line2,''), city, state, postal_code, country,
-		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,'')
+		       COALESCE(tracking_number,''), COALESCE(carrier,''), COALESCE(label_url,''), line_items
 		FROM orders WHERE payment_intent_id = $1
 	`, paymentIntentID).Scan(
 		&o.ID, &o.PaymentIntentID, &o.CartToken, &o.Email, &o.Currency, &o.TotalAmount, &o.Status, &o.CreatedAt,
 		&o.ShippingName, &o.Line1, &o.Line2, &o.City, &o.State, &o.PostalCode, &o.Country,
-		&o.TrackingNumber, &o.Carrier, &o.LabelURL,
+		&o.TrackingNumber, &o.Carrier, &o.LabelURL, &itemsRaw,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrOrderNotFound
 	}
 	if err != nil {
 		return nil, err
+	}
+	if err := scanLineItems(itemsRaw, &o); err != nil {
+		return nil, fmt.Errorf("scan line_items: %w", err)
 	}
 	return &o, nil
 }
