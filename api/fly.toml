@@ -8,9 +8,12 @@ primary_region = 'iad'
 [http_service]
   internal_port = 8080
   force_https = true
+  # min_machines_running=1: a store taking real payments cannot run its Stripe
+  # webhook on a scale-to-zero machine — the post-200 shipping goroutine gets
+  # killed when the box stops, so labels never reach Shippo (incident 2026-06-21).
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
   [[http_service.checks]]
