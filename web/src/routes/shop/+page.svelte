@@ -8,9 +8,10 @@
   import { playSystemReformation, REFORMATION_DURATION_MS } from '$lib/animations/system-reformation.ts';
   import { gsap } from 'gsap';
 
-  // Intro toggle — flip via PUBLIC_DROP_INTRO_ENABLED env var.
-  // String compare because Vite injects env values as strings.
-  const introEnabled = (import.meta.env.PUBLIC_DROP_INTRO_ENABLED ?? 'true') !== 'false';
+  // Trucker (Mission 002) decommission intro REMOVED 2026-06-25 — drop ships
+  // directly in final state (no implosion/supernova). Kept disabled, not deleted,
+  // in case the reformation intro is reused for a future drop.
+  const introEnabled = false;
 
   // ── Permanent missions (post-intro state) ────────────────────────────────
   // Trucker is decommissioned — only Warped Reality Set + Tank remain.
@@ -325,7 +326,6 @@
         <span class="num">{sweatsMission.num}</span>
         <span class="name">{sweatsMission.name}</span>
         <span class="env">{sweatsMission.env}</span>
-        <span class="set-badge">COMING SOON</span>
       </div>
     </a>
 

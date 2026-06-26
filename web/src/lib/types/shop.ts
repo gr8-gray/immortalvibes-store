@@ -176,7 +176,7 @@ export const MOCK_PRODUCTS: Product[] = [
     price_gbp: 2400,
     price_id: '',
     currency: 'usd',
-    status: 'coming_soon',
+    status: 'available',
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
     image_url: `${R2}/sweatpants/model-1-hero.jpg`,
     mission_number: '004',
