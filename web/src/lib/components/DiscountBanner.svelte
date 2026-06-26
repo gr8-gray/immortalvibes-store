@@ -38,7 +38,11 @@
 <style>
   .banner {
     position: fixed;
-    top: 5rem;
+    /* Sit flush below the nav. Nav height is intrinsic: 52px logo + 1rem
+       vertical padding = ~85px desktop. top:5rem (80px) tucked under it and
+       got clipped behind the nav (higher z-index) — looked broken on flow
+       pages. 5.5rem clears it cleanly. */
+    top: 5.5rem;
     left: 0;
     right: 0;
     height: 34px;
@@ -88,5 +92,11 @@
 
   .dismiss:hover {
     color: rgba(240, 237, 230, 0.7);
+  }
+
+  /* Mobile nav is shorter (~69px: 42px logo + 0.85rem padding) — anchor the
+     banner to clear it without leaving a large gap. */
+  @media (max-width: 640px) {
+    .banner { top: 4.75rem; }
   }
 </style>
