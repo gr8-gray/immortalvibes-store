@@ -54,7 +54,7 @@ func TestDecrementStock(t *testing.T) {
 	productID := "prod_test_002"
 	_ = db.SetStock(t.Context(), productID, 5)
 
-	if err := db.DecrementStock(t.Context(), productID, 3); err != nil {
+	if err := db.DecrementStock(t.Context(), productID, "", 3); err != nil {
 		t.Fatalf("DecrementStock: %v", err)
 	}
 
@@ -70,7 +70,7 @@ func TestDecrementStock_InsufficientStock(t *testing.T) {
 	productID := "prod_test_003"
 	_ = db.SetStock(t.Context(), productID, 1)
 
-	err := db.DecrementStock(t.Context(), productID, 5)
+	err := db.DecrementStock(t.Context(), productID, "", 5)
 	if err != store.ErrInsufficientStock {
 		t.Errorf("expected ErrInsufficientStock, got %v", err)
 	}

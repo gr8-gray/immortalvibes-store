@@ -79,6 +79,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	// Admin (behind AdminAuth)
 	adminHandler := handlers.NewAdminHandler(db)
 	r.With(apimiddleware.AdminAuth(cfg.AdminSecret)).Put("/api/admin/products/{id}/stock", adminHandler.SetStock)
+	r.With(apimiddleware.AdminAuth(cfg.AdminSecret)).Get("/api/admin/products/{id}/stock", adminHandler.GetProductStock)
 
 	return r
 }

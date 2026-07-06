@@ -75,6 +75,18 @@ func (s *StripeProductService) enrichProduct(ctx context.Context, p *stripe.Prod
 		return nil, fmt.Errorf("get stock for %s: %w", p.ID, err)
 	}
 
+	variantRows, err := s.db.GetVariantStocks(ctx, p.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get variant stocks for %s: %w", p.ID, err)
+	}
+	variants := make([]models.VariantStock, 0, len(variantRows))
+	for _, v := range variantRows {
+		variants = append(variants, models.VariantStock{
+			Variant:    v.Variant,
+			StockCount: v.StockCount,
+		})
+	}
+
 	return &models.Product{
 		ID:          p.ID,
 		Name:        p.Name,
@@ -82,6 +94,7 @@ func (s *StripeProductService) enrichProduct(ctx context.Context, p *stripe.Prod
 		ImageURL:    imageURL,
 		Prices:      prices,
 		StockCount:  stock,
+		Variants:    variants,
 	}, nil
 }
 

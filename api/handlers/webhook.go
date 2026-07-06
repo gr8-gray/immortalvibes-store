@@ -28,7 +28,7 @@ type WebhookKV interface {
 
 // WebhookStock decrements stock after a purchase.
 type WebhookStock interface {
-	DecrementStock(ctx context.Context, productID string, qty int) error
+	DecrementStock(ctx context.Context, productID, variant string, qty int) error
 }
 
 // WebhookOrderStore reads and updates orders for the webhook.
@@ -180,9 +180,9 @@ func (h *WebhookHandler) decrementStock(ctx context.Context, order *store.OrderR
 		if li.ProductID == "" || li.Quantity <= 0 {
 			continue
 		}
-		if err := h.stock.DecrementStock(ctx, li.ProductID, li.Quantity); err != nil {
-			log.Printf("webhook: DecrementStock(order=%s product=%s qty=%d): %v",
-				order.ID, li.ProductID, li.Quantity, err)
+		if err := h.stock.DecrementStock(ctx, li.ProductID, li.Size, li.Quantity); err != nil {
+			log.Printf("webhook: DecrementStock(order=%s product=%s variant=%q qty=%d): %v",
+				order.ID, li.ProductID, li.Size, li.Quantity, err)
 		}
 	}
 }

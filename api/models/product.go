@@ -7,12 +7,19 @@ type Price struct {
 	Amount   int64  `json:"amount"`    // smallest currency unit (cents/pence)
 }
 
+// VariantStock holds per-variant (size/colorway) stock for a product.
+type VariantStock struct {
+	Variant    string `json:"variant"`     // e.g. "L", "Earth Blue"
+	StockCount int    `json:"stock_count"`
+}
+
 // Product is the enriched product returned to the frontend.
 type Product struct {
-	ID          string  `json:"id"`           // Stripe Product ID
-	Name        string  `json:"name"`
-	Description string  `json:"description"`
-	ImageURL    string  `json:"image_url"`    // R2 public URL
-	Prices      []Price `json:"prices"`
-	StockCount  int     `json:"stock_count"`
+	ID          string         `json:"id"`           // Stripe Product ID
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	ImageURL    string         `json:"image_url"`    // R2 public URL
+	Prices      []Price        `json:"prices"`
+	StockCount  int            `json:"stock_count"`
+	Variants    []VariantStock `json:"variants"`     // empty array = no per-variant data
 }

@@ -93,11 +93,20 @@ func computeStripeSignature(secret string, ts int64, payload []byte) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-func (s *stubStockStore) DecrementStock(ctx context.Context, productID string, qty int) error {
-	if s.stock[productID] < qty {
-		return store.ErrInsufficientStock
+func (s *stubStockStore) DecrementStock(ctx context.Context, productID, variant string, qty int) error {
+	key := productID
+	if variant != "" {
+		key = productID + ":" + variant
 	}
-	s.stock[productID] -= qty
+	if s.stock[key] < qty {
+		// Fall back to product-level key for legacy carts.
+		if s.stock[productID] < qty {
+			return store.ErrInsufficientStock
+		}
+		s.stock[productID] -= qty
+		return nil
+	}
+	s.stock[key] -= qty
 	return nil
 }
 
@@ -269,6 +278,110 @@ func TestWebhookFulfillmentE2E(t *testing.T) {
 	}
 	if stubs.stock.stock["prod_1"] != 8 {
 		t.Errorf("after resend stock=%d want 8 (no double decrement)", stubs.stock.stock["prod_1"])
+	}
+}
+
+// TestWebhookVariantDecrement verifies that a line item with Size="L" decrements
+// the variant stock key (prod_1:L) and leaves other variants untouched.
+func TestWebhookVariantDecrement(t *testing.T) {
+	stubs := newWebhookStubs()
+	emailer := &stubEmailSender{}
+	shipper := &stubShipperClient{}
+	secret := "whsec_var"
+
+	stubs.db.orders["ord-var-001"] = &store.OrderRow{
+		ID:              "ord-var-001",
+		PaymentIntentID: "pi_var_001",
+		CartToken:       "cart-var",
+		Email:           "buyer@example.com",
+		Currency:        "usd",
+		TotalAmount:     6000,
+		Status:          "pending",
+		ShippingName:    "Test User",
+		Line1:           "1 Test St",
+		City:            "Testville",
+		State:           "CA",
+		PostalCode:      "90210",
+		Country:         "US",
+		LineItems: []models.LineItem{
+			{ProductID: "prod_1", PriceID: "price_l", Name: "WR Tee", Size: "L", Amount: 3000, Quantity: 2},
+		},
+	}
+	// Seed variant stocks: L=3, M=5, other variants untouched.
+	stubs.stock.stock["prod_1:L"] = 3
+	stubs.stock.stock["prod_1:M"] = 5
+
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com")
+
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_var_001","metadata":{"cart_token":"cart-var","email":"buyer@example.com"},"amount":6000,"currency":"usd"}}}`)
+	sig := signWebhookPayload(t, secret, payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sig)
+	w := httptest.NewRecorder()
+	h.HandleWebhook(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+
+	// L: 3→1 (decremented by qty 2)
+	if stubs.stock.stock["prod_1:L"] != 1 {
+		t.Errorf("variant L stock=%d want 1", stubs.stock.stock["prod_1:L"])
+	}
+	// M: untouched
+	if stubs.stock.stock["prod_1:M"] != 5 {
+		t.Errorf("variant M stock=%d want 5 (untouched)", stubs.stock.stock["prod_1:M"])
+	}
+	// Manifest email must still have Size=L
+	if len(emailer.labelItems) != 1 || emailer.labelItems[0].Size != "L" {
+		t.Errorf("owner manifest=%+v, want Size L", emailer.labelItems)
+	}
+}
+
+// TestWebhookLegacyCartFallback verifies that a line item with Size="" falls
+// back to the product_stock (legacy) path.
+func TestWebhookLegacyCartFallback(t *testing.T) {
+	stubs := newWebhookStubs()
+	emailer := &stubEmailSender{}
+	shipper := &stubShipperClient{}
+	secret := "whsec_legacy"
+
+	stubs.db.orders["ord-leg-001"] = &store.OrderRow{
+		ID:              "ord-leg-001",
+		PaymentIntentID: "pi_leg_001",
+		CartToken:       "cart-leg",
+		Email:           "buyer@example.com",
+		Currency:        "usd",
+		TotalAmount:     3000,
+		Status:          "pending",
+		ShippingName:    "Test User",
+		Line1:           "1 Test St",
+		City:            "Testville",
+		State:           "CA",
+		PostalCode:      "90210",
+		Country:         "US",
+		LineItems: []models.LineItem{
+			// No Size — old cart that didn't carry size.
+			{ProductID: "prod_legacy", PriceID: "price_usd", Name: "Old Tee", Amount: 3000, Quantity: 1},
+		},
+	}
+	stubs.stock.stock["prod_legacy"] = 7 // legacy product_stock
+
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com")
+
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_leg_001","metadata":{"cart_token":"cart-leg","email":"buyer@example.com"},"amount":3000,"currency":"usd"}}}`)
+	sig := signWebhookPayload(t, secret, payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sig)
+	w := httptest.NewRecorder()
+	h.HandleWebhook(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+
+	if stubs.stock.stock["prod_legacy"] != 6 {
+		t.Errorf("legacy stock=%d want 6", stubs.stock.stock["prod_legacy"])
 	}
 }
 
