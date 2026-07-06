@@ -1,7 +1,7 @@
 // web/src/routes/shop/[slug]/+page.ts
 import type { PageLoad } from './$types';
 import { MOCK_PRODUCTS } from '$lib/types/shop';
-import type { Product } from '$lib/types/shop';
+import type { Product, StockVariant } from '$lib/types/shop';
 
 export interface PageData {
   product: Product;
@@ -14,11 +14,17 @@ interface ApiPrice {
   amount: number;
 }
 
+interface ApiStockVariant {
+  variant: string;
+  stock_count: number;
+}
+
 interface ApiProduct {
   id: string;
   name: string;
   stock_count: number;
   prices: ApiPrice[];
+  variants: ApiStockVariant[];
 }
 
 export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
@@ -35,6 +41,10 @@ export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
     if (!live) return { product: mock, allProducts: MOCK_PRODUCTS };
 
     const usdPrice = live.prices.find((p) => p.currency === 'usd');
+    const stockVariants: StockVariant[] = (live.variants ?? []).map((v) => ({
+      variant: v.variant,
+      stock_count: v.stock_count,
+    }));
     return {
       product: {
         ...mock,
@@ -42,6 +52,7 @@ export const load: PageLoad = async ({ fetch, params }): Promise<PageData> => {
         price_id: usdPrice?.price_id ?? '',
         price_usd: usdPrice?.amount ?? mock.price_usd,
         status: live.stock_count > 0 ? 'available' : 'sold_out',
+        stockVariants,
       },
       allProducts: MOCK_PRODUCTS,
     };

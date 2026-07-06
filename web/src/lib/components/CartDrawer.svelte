@@ -80,6 +80,7 @@
         <div class="cart-item">
           <div class="item-info">
             <p class="item-title">{item.title}</p>
+            {#if item.size}<p class="item-size">{item.size}</p>{/if}
             <div class="qty-stepper" role="group" aria-label="Quantity for {item.title}">
               <button
                 class="qty-btn"
@@ -231,6 +232,15 @@
     font-size: 0.65rem;
     color: rgba(240, 237, 230, 0.35);
     letter-spacing: 0.1em;
+    margin: 0;
+  }
+
+  .item-size {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.6rem;
+    color: rgba(240, 237, 230, 0.45);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     margin: 0;
   }
 
