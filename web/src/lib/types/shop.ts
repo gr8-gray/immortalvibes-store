@@ -14,6 +14,12 @@ export interface ProductVariant {
   spriteBlending?: 'normal' | 'additive'; // additive: black→transparent, white glows
 }
 
+/** Per-variant (size/colorway) stock data from the API. */
+export interface StockVariant {
+  variant: string;     // matches a size label or ProductVariant.colorName exactly
+  stock_count: number;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -27,6 +33,7 @@ export interface Product {
   sizes: string[];
   image_url: string;          // legacy fallback
   variants?: ProductVariant[]; // color variants with standalone + model shots
+  stockVariants?: StockVariant[]; // per-variant stock from API; empty/absent = all sizes enabled
   mission_number: '001' | '002' | '003' | '004';
   setId?: 'warped-reality'; // groups products into a drop set
 }

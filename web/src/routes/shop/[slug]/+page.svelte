@@ -13,6 +13,7 @@
   import { openCart } from '$lib/stores/cartDrawer';
   import { addItemToCart } from '$lib/api';
   import type { CartItem } from '$lib/stores/cart';
+  import type { StockVariant } from '$lib/types/shop';
   import { MISSION_ORDER } from '$lib/stores/transition';
   import { goto } from '$app/navigation';
 
@@ -39,6 +40,25 @@
   }
 
   $: activeVariant  = hasVariants ? variants[activeVariantIdx] : null;
+
+  // Compute soldOut set from API stockVariants.
+  // Only variants with an explicit stock_count=0 row are sold out.
+  // Missing rows mean "no data" → enabled.
+  $: soldOutSizes = (() => {
+    const sv: StockVariant[] = product.stockVariants ?? [];
+    const s = new Set<string>();
+    for (const v of sv) {
+      if (v.stock_count === 0) s.add(v.variant);
+    }
+    return s;
+  })();
+
+  // For colorway products (beanie), variant label = colorName of active colorway.
+  // For size products, variant label = selectedSize.
+  $: isColorwayProduct = hasVariants && product.sizes.length === 1 && product.sizes[0] === 'OS';
+  $: selectedVariantLabel = isColorwayProduct
+    ? (activeVariant?.colorName ?? '')
+    : selectedSize;
   $: galleryImages  = activeVariant?.gallery ?? [];
   $: hasBack        = !!activeVariant?.backImage;
 
@@ -134,7 +154,9 @@
   }
 
   async function handleAddToCart(e: MouseEvent) {
-    if (!selectedSize) {
+    // For colorway products the variant is pre-selected (active colorway).
+    // For size products, require an explicit size selection.
+    if (!isColorwayProduct && !selectedSize) {
       cartError = 'Please select a size.';
       gsap.to('.size-selector', { x: [-6, 6, -4, 4, 0], duration: 0.35, ease: 'none' });
       return;
@@ -143,21 +165,26 @@
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     burst.trigger(rect.left + rect.width / 2, rect.top);
 
+    const variantLabel = selectedVariantLabel; // snapshot reactive value
+
     try {
       const goCart = await addItemToCart({
         price_id:   product.price_id,
         product_id: product.id,
-        name:       `${product.name} / ${selectedSize}`,
+        name:       product.name,
         image_url:  product.image_url ?? '',
         currency:   'usd',
         amount:     product.price_usd,
         quantity:   1,
+        size:       variantLabel || undefined,
       });
 
       // Map Go line items → CartItem[] for the store
       const items: CartItem[] = goCart.line_items.map(li => ({
-        variantId:  li.price_id,
+        variantId:  li.size ? `${li.price_id}:${li.size}` : li.price_id,
         productId:  li.product_id,
+        priceId:    li.price_id,
+        size:       li.size ?? '',
         title:      li.name,
         quantity:   li.quantity,
         unitPrice:  li.amount,
@@ -290,13 +317,16 @@
             <p class="field-label">COLOR — {activeVariant?.colorName ?? ''}</p>
             <div class="swatches">
               {#each variants as v, i}
+                {@const colorSoldOut = soldOutSizes.has(v.colorName)}
                 <button
                   class="swatch"
                   class:active={activeVariantIdx === i}
+                  class:sold-out={colorSoldOut}
                   style="--c:{v.hex}"
-                  on:click={() => selectVariant(i)}
-                  aria-label={v.colorName}
-                  title={v.colorName}
+                  on:click={() => { if (!colorSoldOut) selectVariant(i); }}
+                  aria-label={colorSoldOut ? `${v.colorName} — sold out` : v.colorName}
+                  title={colorSoldOut ? `${v.colorName} — sold out` : v.colorName}
+                  disabled={colorSoldOut}
                 ></button>
               {/each}
             </div>
@@ -306,11 +336,15 @@
         <p class="reveal-child product-description">{product.description}</p>
 
         {#if product.status === 'available'}
-          <div class="reveal-child">
-            <p class="field-label">SELECT SIZE</p>
-            <SizeSelector sizes={product.sizes} bind:selected={selectedSize} />
-            {#if cartError}<p class="cart-error">{cartError}</p>{/if}
-          </div>
+          {#if !isColorwayProduct}
+            <div class="reveal-child">
+              <p class="field-label">SELECT SIZE</p>
+              <SizeSelector sizes={product.sizes} bind:selected={selectedSize} soldOut={soldOutSizes} />
+              {#if cartError}<p class="cart-error">{cartError}</p>{/if}
+            </div>
+          {:else}
+            {#if cartError}<p class="cart-error reveal-child">{cartError}</p>{/if}
+          {/if}
 
           <button class="reveal-child add-to-cart" on:click={handleAddToCart} data-magnetic>
             ADD TO CART
@@ -496,6 +530,12 @@
     border-color: rgba(240,237,230,0.7);
     box-shadow: 0 0 0 2px rgba(240,237,230,0.18);
     transform: scale(1.1);
+  }
+
+  .swatch.sold-out {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
   }
 
   /* ── Rest of details ── */

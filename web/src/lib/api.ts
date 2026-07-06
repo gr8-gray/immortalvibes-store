@@ -126,6 +126,7 @@ export interface GoLineItem {
   currency:   string;
   amount:     number;  // cents
   quantity:   number;
+  size?:      string;  // variant label (size or colorway); omitted for OS products
 }
 
 export interface GoCart {
@@ -141,6 +142,7 @@ export interface AddItemPayload {
   currency:   string;
   amount:     number;
   quantity:   number;
+  size?:      string;  // variant label; must match ProductVariant.colorName or sizes[] entry
 }
 
 // ─── Cart Endpoints ───────────────────────────────────────
@@ -174,11 +176,12 @@ export function getCurrentCart(): Promise<GoCart> {
 /**
  * Set the quantity of a specific line item. Pass quantity=0 to remove.
  * Requires the cart_token cookie to match the token in the URL.
+ * price_id and size together identify the line item (dedup key = price_id:size).
  */
-export function updateCartItem(token: string, price_id: string, quantity: number): Promise<GoCart> {
+export function updateCartItem(token: string, price_id: string, size: string, quantity: number): Promise<GoCart> {
   return apiFetch<GoCart>(`/api/cart/${token}`, {
     method: 'PUT',
-    body: JSON.stringify({ price_id, quantity }),
+    body: JSON.stringify({ price_id, size: size || undefined, quantity }),
   });
 }
 

@@ -2,20 +2,28 @@ import { writable, derived, get } from 'svelte/store';
 import { updateCartItem, type GoCart } from '$lib/api';
 
 export interface CartItem {
-  variantId: string;
+  variantId: string;  // dedup key: `${price_id}:${size}` (size may be empty for OS)
   productId: string;
+  priceId:   string;  // Stripe price ID
+  size:      string;  // variant label or '' for one-size products
   title: string;
   quantity: number;
   unitPrice: number; // in cents
   currency: string;
 }
 
+function makeVariantId(price_id: string, size: string): string {
+  return size ? `${price_id}:${size}` : price_id;
+}
+
 function mapGoCart(goCart: GoCart): { id: string; items: CartItem[] } {
   return {
     id: goCart.token,
     items: goCart.line_items.map((li) => ({
-      variantId: li.price_id,
+      variantId: makeVariantId(li.price_id, li.size ?? ''),
       productId: li.product_id,
+      priceId:   li.price_id,
+      size:      li.size ?? '',
       title:     li.name,
       quantity:  li.quantity,
       unitPrice: li.amount,
@@ -93,8 +101,15 @@ function createCartStore() {
         return;
       }
 
+      // Find the item to get its priceId and size for the server call.
+      const item = state.items.find((i) => i.variantId === variantId);
+      if (!item) {
+        localFallback();
+        return;
+      }
+
       try {
-        const goCart = await updateCartItem(token, variantId, clamped);
+        const goCart = await updateCartItem(token, item.priceId, item.size, clamped);
         set(mapGoCart(goCart));
       } catch {
         localFallback();
