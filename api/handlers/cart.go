@@ -40,11 +40,13 @@ type AddToCartRequest struct {
 	Currency  string `json:"currency"`
 	Amount    int64  `json:"amount"`
 	Quantity  int    `json:"quantity"`
+	Size      string `json:"size,omitempty"` // variant label (size or colorway); empty for OS products
 }
 
 // UpdateLineItemRequest is the JSON body for PUT /api/cart/{token}.
 type UpdateLineItemRequest struct {
 	PriceID  string `json:"price_id"`
+	Size     string `json:"size,omitempty"` // must match the size used at add-to-cart time
 	Quantity int    `json:"quantity"`
 }
 
@@ -115,10 +117,11 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 		cart = &models.Cart{Token: token, LineItems: []models.LineItem{}}
 	}
 
-	// Merge: if same PriceID exists, increment quantity; else append.
+	// Merge: if same PriceID+Size exists, increment quantity; else append.
+	// Dedup key is price_id:size so different sizes are distinct line items.
 	found := false
 	for i, li := range cart.LineItems {
-		if li.PriceID == req.PriceID {
+		if li.PriceID == req.PriceID && li.Size == req.Size {
 			cart.LineItems[i].Quantity += req.Quantity
 			found = true
 			break
@@ -133,6 +136,7 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 			Currency:  req.Currency,
 			Amount:    req.Amount,
 			Quantity:  req.Quantity,
+			Size:      req.Size,
 		})
 	}
 
@@ -186,15 +190,15 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	priceIDToUpdate := req.PriceID
 	// If no price_id in body, update the first item (convenience for single-item carts).
-	if priceIDToUpdate == "" && len(cart.LineItems) > 0 {
-		priceIDToUpdate = cart.LineItems[0].PriceID
+	if req.PriceID == "" && len(cart.LineItems) > 0 {
+		req.PriceID = cart.LineItems[0].PriceID
+		req.Size = cart.LineItems[0].Size
 	}
 
 	updated := cart.LineItems[:0]
 	for _, li := range cart.LineItems {
-		if li.PriceID == priceIDToUpdate {
+		if li.PriceID == req.PriceID && li.Size == req.Size {
 			if req.Quantity > 0 {
 				li.Quantity = req.Quantity
 				updated = append(updated, li)

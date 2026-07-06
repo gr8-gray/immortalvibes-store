@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/immortalvibes/api/models"
@@ -119,6 +120,19 @@ func (d *DB) migrate() error {
 			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 	`)
+	if err != nil {
+		return err
+	}
+	// Per-variant stock — additive, safe to run on every boot.
+	_, err = d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS variant_stock (
+			product_id  TEXT NOT NULL,
+			variant     TEXT NOT NULL,
+			stock_count INT  NOT NULL DEFAULT 0,
+			updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (product_id, variant)
+		);
+	`)
 	return err
 }
 
@@ -136,11 +150,61 @@ func (d *DB) SaveSubscriber(ctx context.Context, emailAddr string) (bool, error)
 	return rows > 0, nil
 }
 
+// VariantStockRow holds a single per-variant stock record.
+type VariantStockRow struct {
+	Variant    string
+	StockCount int
+}
+
+// GetVariantStocks returns all variant rows for a product, ordered by variant name.
+// Returns an empty slice when no rows exist.
+func (d *DB) GetVariantStocks(ctx context.Context, productID string) ([]VariantStockRow, error) {
+	rows, err := d.db.QueryContext(ctx,
+		`SELECT variant, stock_count FROM variant_stock WHERE product_id = $1 ORDER BY variant`,
+		productID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []VariantStockRow
+	for rows.Next() {
+		var r VariantStockRow
+		if err := rows.Scan(&r.Variant, &r.StockCount); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// SetVariantStock upserts a variant row for a product.
+func (d *DB) SetVariantStock(ctx context.Context, productID, variant string, count int) error {
+	_, err := d.db.ExecContext(ctx, `
+		INSERT INTO variant_stock (product_id, variant, stock_count, updated_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (product_id, variant) DO UPDATE
+		SET stock_count = $3, updated_at = NOW()
+	`, productID, variant, count)
+	return err
+}
+
 // GetStock returns the current stock count for a Stripe Product ID.
-// Returns 0 if the product has no stock row.
+// If variant rows exist, returns their SUM; otherwise falls back to legacy product_stock.
 func (d *DB) GetStock(ctx context.Context, productID string) (int, error) {
-	var count int
+	var sum sql.NullInt64
 	err := d.db.QueryRowContext(ctx,
+		`SELECT SUM(stock_count) FROM variant_stock WHERE product_id = $1`, productID,
+	).Scan(&sum)
+	if err != nil {
+		return 0, err
+	}
+	if sum.Valid {
+		return int(sum.Int64), nil
+	}
+	// No variant rows — fall back to legacy product_stock.
+	var count int
+	err = d.db.QueryRowContext(ctx,
 		`SELECT stock_count FROM product_stock WHERE product_id = $1`, productID,
 	).Scan(&count)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -160,9 +224,33 @@ func (d *DB) SetStock(ctx context.Context, productID string, count int) error {
 	return err
 }
 
-// DecrementStock subtracts qty from product stock atomically.
+// DecrementStock subtracts qty from stock atomically.
+// If variant is non-empty, attempts the variant_stock row first.
+// Falls back to legacy product_stock when no variant row matched (e.g. old carts).
 // Returns ErrInsufficientStock if the result would go below zero.
-func (d *DB) DecrementStock(ctx context.Context, productID string, qty int) error {
+func (d *DB) DecrementStock(ctx context.Context, productID, variant string, qty int) error {
+	if variant != "" {
+		res, err := d.db.ExecContext(ctx, `
+			UPDATE variant_stock
+			SET stock_count = stock_count - $3, updated_at = NOW()
+			WHERE product_id = $1 AND variant = $2
+			  AND stock_count >= $3
+		`, productID, variant, qty)
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows > 0 {
+			log.Printf("store: DecrementStock product=%s variant=%s qty=%d — variant path", productID, variant, qty)
+			return nil
+		}
+		// No variant row matched — fall through to legacy path.
+		log.Printf("store: DecrementStock product=%s variant=%s qty=%d — no variant row, falling back to legacy", productID, variant, qty)
+	}
+	// Legacy product_stock path.
 	res, err := d.db.ExecContext(ctx, `
 		UPDATE product_stock
 		SET stock_count = stock_count - $2, updated_at = NOW()
@@ -179,6 +267,7 @@ func (d *DB) DecrementStock(ctx context.Context, productID string, qty int) erro
 	if rows == 0 {
 		return ErrInsufficientStock
 	}
+	log.Printf("store: DecrementStock product=%s qty=%d — legacy path", productID, qty)
 	return nil
 }
 

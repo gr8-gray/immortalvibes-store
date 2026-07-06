@@ -21,8 +21,13 @@ import (
 // enrichSizes resolves each line item's variant/size from its Stripe price
 // nickname, best-effort — a failed lookup leaves Size empty and never blocks
 // checkout. Mutates the slice in place.
+// Only fills Size when it is already empty (legacy carts); never overwrites a
+// frontend-provided value.
 func enrichSizes(items []models.LineItem) {
 	for i := range items {
+		if items[i].Size != "" {
+			continue // frontend already set the size — trust it
+		}
 		if items[i].PriceID == "" {
 			continue
 		}
@@ -164,6 +169,31 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	// Resolve sizes so the persisted manifest is human-readable (STOP 18).
 	enrichSizes(cart.LineItems)
+
+	// Variant stock guard: reject checkout if any line item's variant stock is
+	// known and insufficient. Non-atomic (no reservation) — same oversell window
+	// as before, but blocks the obvious case.
+	for _, li := range cart.LineItems {
+		if li.ProductID == "" || li.Size == "" {
+			continue
+		}
+		variantRows, err := h.db.GetVariantStocks(r.Context(), li.ProductID)
+		if err != nil {
+			continue // DB error — don't block checkout
+		}
+		for _, v := range variantRows {
+			if v.Variant == li.Size {
+				if v.StockCount < li.Quantity {
+					http.Error(w,
+						fmt.Sprintf("%s (%s) has insufficient stock", li.Name, li.Size),
+						http.StatusConflict,
+					)
+					return
+				}
+				break
+			}
+		}
+	}
 
 	currency := DetectCurrency(r)
 	total := cart.Total()
