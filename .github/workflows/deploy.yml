@@ -3,10 +3,35 @@ name: Deploy to Cloudflare
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  # Test gate (STOP 19): the full api suite — including TestWebhookFulfillmentE2E,
+  # the purchase->fulfillment E2E from commit da74dab — must pass before anything
+  # deploys. All 12 test files are hermetic (httptest servers + t.Setenv fake
+  # credentials; in-memory store fakes, no live Postgres/Stripe/Shippo/Resend),
+  # so NOTHING is skipped in CI as of 2026-07-27. Live-integration paths (real
+  # Stripe webhooks, Shippo label purchase, Resend delivery) are exercised only
+  # in production — if a future test needs live creds, guard it with t.Skip on a
+  # missing env var and document it here; do not fake a pass.
+  test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: api/go.mod
+          cache-dependency-path: api/go.sum
+
+      - name: Run api tests
+        run: cd api && go test ./...
+
   deploy-worker:
     runs-on: ubuntu-latest
+    needs: test-api
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v5
 
@@ -34,7 +59,7 @@ jobs:
 
   deploy-pages:
     runs-on: ubuntu-latest
-    needs: deploy-worker
+    needs: deploy-worker # transitively gated on test-api; skipped on PRs
     steps:
       - uses: actions/checkout@v5
 
