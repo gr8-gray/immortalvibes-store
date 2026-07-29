@@ -6,7 +6,14 @@
   import { browser } from '$app/environment';
   import MissionPlanet, { type ClusterItem, type CarouselSlot } from '$lib/components/MissionPlanet.svelte';
   import { playSystemReformation, REFORMATION_DURATION_MS } from '$lib/animations/system-reformation.ts';
+  import { MISSION_LABELS, SLUG, WR_SET, productBySlug } from '$lib/types/shop';
   import { gsap } from 'gsap';
+
+  // Planet-row facts (names, slugs, mission numbers, environments) come from
+  // the catalog in $lib/types/shop — this page only decides how each mission
+  // is staged: which planet shader, glow color, spin speed, and tilt.
+  const tank   = productBySlug(SLUG.tank)!;
+  const sweats = productBySlug(SLUG.lightSweatpants)!;
 
   // Trucker (Mission 002) decommission intro REMOVED 2026-06-25 — drop ships
   // directly in final state (no implosion/supernova). Kept disabled, not deleted,
@@ -26,10 +33,10 @@
   ];
 
   const setMission = {
-    num: '001',
-    name: 'Warped Reality',
+    num: WR_SET.missionNumber,
+    name: WR_SET.name,
     env: 'The Set Drop',
-    slug: 'warped-reality-set',
+    slug: WR_SET.slug,
     planetType: 'leo' as const,
     carousel: setCarousel,
     glow: '#4FC3F7',
@@ -38,10 +45,10 @@
   };
 
   const tankMission = {
-    num: '003',
-    name: 'Racerback Tanktop',
-    env: 'Stellar Nursery',
-    slug: 'racerback-tanktop',
+    num: tank.mission_number,
+    name: tank.name,
+    env: MISSION_LABELS[tank.mission_number],
+    slug: tank.slug,
     planetType: 'nebula' as const,
     product: '/photos/product-tank.png',
     productScale: 0.55,
@@ -52,10 +59,10 @@
   };
 
   const sweatsMission = {
-    num: '004',
-    name: 'Immortal Light Sweatpants',
-    env: 'Deep Space',
-    slug: 'immortal-light-sweatpants',
+    num: sweats.mission_number,
+    name: sweats.name,
+    env: MISSION_LABELS[sweats.mission_number],
+    slug: sweats.slug,
     planetType: 'mars' as const,
     product: '/photos/_drop/immortal-light-sweatpants-front.png',
     productScale: 0.6,

@@ -1,6 +1,48 @@
-// Shared shop types and mock data — imported by +page.ts and components
+// Shared shop types and catalog data — imported by +page.ts and components.
+//
+// This file is the storefront's single source of truth for WHAT is sold:
+// slugs, names, sizes, baseline prices, and per-colorway imagery. The API
+// layered on top (see +page.ts merge) is the source of truth for LIVE state:
+// Stripe IDs, current prices, and stock counts. Everything else in web/
+// should derive product facts from here rather than restating them.
 
+// Public R2 bucket that serves the heavier model/gallery photography.
+// Product cut-out PNGs ship from /static instead so they survive R2 outages.
 const R2 = 'https://pub-75a66fca0ddd4d93b3bb53bda5d6a29c.r2.dev';
+
+// ─── Canonical slugs ───────────────────────────────────────────────────────
+// Every route, accent map, and mission-order list keys off these strings.
+// They were once retyped by hand in five different files; now a slug rename
+// is a one-line change here. Keys are short internal names, values are the
+// public URL segments under /shop/.
+export const SLUG = {
+  beanie: 'warped-reality-beanie',
+  truckerHat: 'vanguard-trucker-hat',
+  tank: 'racerback-tanktop',
+  tee: 'warped-reality-tee',
+  sweatpants: 'warped-reality-sweatpants',
+  lightSweatpants: 'immortal-light-sweatpants',
+  set: 'warped-reality-set',
+} as const;
+
+// The Warped Reality drop groups three products into one "set" landing page.
+// The set itself is not a product — it has its own route and planet on /shop.
+export const WARPED_REALITY_SET_ID = 'warped-reality';
+export const WR_SET = {
+  slug: SLUG.set,
+  name: 'Warped Reality',
+  missionNumber: '001',
+} as const;
+
+// ─── Mission environments ──────────────────────────────────────────────────
+// Each mission number is themed as a place in space. The product page hero
+// and the /shop planet row both read from this map.
+export const MISSION_LABELS: Record<string, string> = {
+  '001': 'Low Earth Orbit',
+  '002': 'Lunar Surface',
+  '003': 'Stellar Nursery',
+  '004': 'Deep Space',
+};
 
 export interface ProductVariant {
   colorName: string;    // e.g. "Blue", "Green"
@@ -35,7 +77,7 @@ export interface Product {
   variants?: ProductVariant[]; // color variants with standalone + model shots
   stockVariants?: StockVariant[]; // per-variant stock from API; empty/absent = all sizes enabled
   mission_number: '001' | '002' | '003' | '004';
-  setId?: 'warped-reality'; // groups products into a drop set
+  setId?: typeof WARPED_REALITY_SET_ID; // groups products into a drop set
 }
 
 export interface PageData {
@@ -45,7 +87,7 @@ export interface PageData {
 export const MOCK_PRODUCTS: Product[] = [
   {
     id: 'mock_001',
-    slug: 'warped-reality-beanie',
+    slug: SLUG.beanie,
     name: 'Warped Reality Beanie',
     description: 'Knit for those who drift between dimensions. One size, infinite orbits.',
     price_usd: 2000,
@@ -56,7 +98,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sizes: ['OS'],
     image_url: '/photos/_drop/beanie-blue.png',
     mission_number: '001',
-    setId: 'warped-reality',
+    setId: WARPED_REALITY_SET_ID,
     variants: [
       {
         colorName: 'Earth Blue',
@@ -74,7 +116,7 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_002',
-    slug: 'vanguard-trucker-hat',
+    slug: SLUG.truckerHat,
     name: 'Vanguard Trucker Hat',
     description: 'Engineered for the lunar surface. Structured front, breathable mesh, mission-ready.',
     price_usd: 2000,
@@ -102,7 +144,7 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_003',
-    slug: 'racerback-tanktop',
+    slug: SLUG.tank,
     name: 'Racerback Tanktop',
     description: 'Born in the stellar nursery. Lightweight, orbital-grade, built to move.',
     price_usd: 2200,
@@ -127,7 +169,7 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_004',
-    slug: 'warped-reality-tee',
+    slug: SLUG.tee,
     name: 'Warped Reality Tee',
     description: 'Heavyweight oversized cut. Sky-blue collar print on the front, ornate spires graphic on the back. Black only.',
     price_usd: 3000,
@@ -138,7 +180,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
     image_url: '/photos/_drop/tee-front.png',
     mission_number: '001',
-    setId: 'warped-reality',
+    setId: WARPED_REALITY_SET_ID,
     variants: [
       {
         colorName: 'Black',
@@ -152,7 +194,7 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_005',
-    slug: 'warped-reality-sweatpants',
+    slug: SLUG.sweatpants,
     name: 'Warped Reality Sweatpants',
     description: 'Wide-leg, midweight fleece. Arched IMMORTAL VIBES graphic at the waist. Black only.',
     price_usd: 3000,
@@ -163,7 +205,7 @@ export const MOCK_PRODUCTS: Product[] = [
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
     image_url: '/photos/_drop/sweatpants-front.png',
     mission_number: '001',
-    setId: 'warped-reality',
+    setId: WARPED_REALITY_SET_ID,
     variants: [
       {
         colorName: 'Black',
@@ -176,7 +218,7 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_006',
-    slug: 'immortal-light-sweatpants',
+    slug: SLUG.lightSweatpants,
     name: 'Immortal Light Sweatpants',
     description: 'Forged in deep space. All-over rocky serpentine-scale terrain print with a gold IMMORTAL wordmark running the left leg. Drawstring waist, unisex cut.',
     price_usd: 3000,
@@ -202,3 +244,13 @@ export const MOCK_PRODUCTS: Product[] = [
     ],
   },
 ];
+
+/**
+ * Look up a catalog entry by its public slug. Pages that need one product's
+ * facts (name, mission number, sizes) should reach for this instead of
+ * restating those facts in place — that restating is exactly how the /shop
+ * planet row and the set landing page drifted from the catalog in the past.
+ */
+export function productBySlug(slug: string): Product | undefined {
+  return MOCK_PRODUCTS.find((p) => p.slug === slug);
+}
