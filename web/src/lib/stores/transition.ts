@@ -1,5 +1,11 @@
 // web/src/lib/stores/transition.ts
+//
+// Page-to-page transition state. Four cinematic transitions cover the four
+// kinds of navigation the store knows about (see resolveTransition below);
+// this store is how a page hands the overlay its type, origin point, and
+// accent color before the route actually changes.
 import { writable } from 'svelte/store';
+import { SLUG } from '$lib/types/shop';
 
 export type TransitionType = 'T1' | 'T2' | 'T3' | 'T4';
 
@@ -11,6 +17,15 @@ export interface TransitionState {
   missionAccent: string;  // for T2 color tint
 }
 
+// Per-slug accent colors matching each mission environment. Slugs come from
+// the catalog's SLUG map so a renamed product cannot orphan its accent.
+export const MISSION_ACCENT: Record<string, string> = {
+  [SLUG.beanie]: '#4FC3F7',
+  [SLUG.truckerHat]: 'rgba(200,190,180,0.9)',
+  [SLUG.tank]:    'rgba(255,130,50,0.9)',
+  [SLUG.lightSweatpants]: 'rgba(200,80,40,0.9)',
+};
+
 export const transitionStore = writable<TransitionState>({
   active: false,
   type: null,
@@ -19,20 +34,12 @@ export const transitionStore = writable<TransitionState>({
   missionAccent: '#4FC3F7',
 });
 
-// Per-slug accent colors matching each mission environment
-export const MISSION_ACCENT: Record<string, string> = {
-  'warped-reality-beanie': '#4FC3F7',
-  'vanguard-trucker-hat': 'rgba(200,190,180,0.9)',
-  'racerback-tanktop':    'rgba(255,130,50,0.9)',
-  'immortal-light-sweatpants': 'rgba(200,80,40,0.9)',
-};
-
 // Ordered mission slugs for T3 prev/next
-export const MISSION_ORDER = [
-  'warped-reality-beanie',
-  'vanguard-trucker-hat',
-  'racerback-tanktop',
-  'immortal-light-sweatpants',
+export const MISSION_ORDER: string[] = [
+  SLUG.beanie,
+  SLUG.truckerHat,
+  SLUG.tank,
+  SLUG.lightSweatpants,
 ];
 
 // Resolve which transition to use given from/to pathnames

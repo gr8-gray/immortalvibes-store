@@ -3,6 +3,8 @@
   import { page } from '$app/stores';
   import { getOrder } from '$lib/api';
   import type { Order } from '$lib/api';
+  // Shared cents-to-string renderer — one home in $lib/money, no local copy.
+  import { formatPrice } from '$lib/money';
 
   let order: Order | null = null;
   let status: 'loading' | 'polling' | 'paid' | 'error' = 'loading';
@@ -35,11 +37,6 @@
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
   });
-
-  function formatPrice(cents: number, currency: string): string {
-    const symbol = currency.toLowerCase() === 'gbp' ? '£' : '$';
-    return `${symbol}${(cents / 100).toFixed(2)}`;
-  }
 </script>
 
 <svelte:head>

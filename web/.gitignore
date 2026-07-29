@@ -1,5 +1,14 @@
 node_modules
 
+# Playwright artifacts (anchored to web/ on purpose — a wrongly-anchored
+# ignore once let generated auth/state files reach the repo; these patterns
+# only ever match the tool output directories at this level)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
+
 # Output
 .output
 .vercel
