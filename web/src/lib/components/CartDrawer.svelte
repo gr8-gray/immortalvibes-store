@@ -2,11 +2,8 @@
   import { goto } from '$app/navigation';
   import { cart } from '$lib/stores/cart';
   import { isCartOpen, closeCart } from '$lib/stores/cartDrawer';
-
-  function formatPrice(cents: number, currency: string): string {
-    const symbol = currency.toLowerCase() === 'gbp' ? '£' : '$';
-    return `${symbol}${(cents / 100).toFixed(2)}`;
-  }
+  // Shared cents-to-string renderer — one home in $lib/money, no local copy.
+  import { formatPrice } from '$lib/money';
 
   $: subtotalCents = $cart.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
