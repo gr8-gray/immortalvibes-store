@@ -12,8 +12,9 @@
   import { cart } from '$lib/stores/cart';
   import { openCart } from '$lib/stores/cartDrawer';
   import { addItemToCart } from '$lib/api';
-  import type { CartItem } from '$lib/stores/cart';
   import type { StockVariant } from '$lib/types/shop';
+  import { MISSION_LABELS, SLUG } from '$lib/types/shop';
+  import { formatPrice } from '$lib/money';
   import { MISSION_ORDER } from '$lib/stores/transition';
   import { goto } from '$app/navigation';
 
@@ -83,7 +84,7 @@
   // Mission nav — set members all share mission 001 (Warped Reality), so the
   // "next planet" jump from any set member skips other set members and the
   // decommissioned trucker. From standalone missions, walk MISSION_ORDER normally.
-  const DECOMMISSIONED = new Set(['vanguard-trucker-hat']);
+  const DECOMMISSIONED = new Set([SLUG.truckerHat as string]);
   $: setMemberSlugs = inSet
     ? allProducts.filter((p) => p.setId === product.setId).map((p) => p.slug)
     : [];
@@ -123,17 +124,13 @@
   let cartError = '';
   let floatTween: gsap.core.Tween | null = null;
 
-  const missionLabels: Record<string, string> = {
-    '001': 'Low Earth Orbit',
-    '002': 'Lunar Surface',
-    '003': 'Stellar Nursery',
-    '004': 'Deep Space',
-  };
+  // Mission environments come from the catalog (MISSION_LABELS) — the /shop
+  // planet row reads the same map, so the two surfaces can never disagree
+  // about which corner of space a mission lives in.
+  const missionLabels = MISSION_LABELS;
 
-  function formatPrice(cents: number, currency: string): string {
-    return `${currency === 'gbp' ? '£' : '$'}${(cents / 100).toFixed(2)}`;
-  }
-
+  // Price rendering is shared app-wide — see $lib/money for the one true
+  // cents-to-string function (previously copied here verbatim).
   function getDisplayPrice(): string {
     return product.currency === 'gbp'
       ? formatPrice(product.price_gbp, 'gbp')
@@ -179,19 +176,9 @@
         size:       variantLabel || undefined,
       });
 
-      // Map Go line items → CartItem[] for the store
-      const items: CartItem[] = goCart.line_items.map(li => ({
-        variantId:  li.size ? `${li.price_id}:${li.size}` : li.price_id,
-        productId:  li.product_id,
-        priceId:    li.price_id,
-        size:       li.size ?? '',
-        title:      li.name,
-        quantity:   li.quantity,
-        unitPrice:  li.amount,
-        currency:   li.currency,
-      }));
-
-      cart.setCart(goCart.token, items);
+      // The store owns the GoCart -> CartItem translation (including the
+      // variantId dedup key) — no hand-rolled mapping here.
+      cart.setFromGoCart(goCart);
       openCart();
     } catch (err) {
       cartError = err instanceof Error ? err.message : 'Failed to add to cart.';

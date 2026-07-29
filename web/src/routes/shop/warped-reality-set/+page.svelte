@@ -10,6 +10,15 @@
 <script lang="ts">
   import StarField from '$lib/components/StarField.svelte';
   import AutoCycleImage, { type CycleImage } from '$lib/components/AutoCycleImage.svelte';
+  import { SLUG, productBySlug } from '$lib/types/shop';
+
+  // Slugs and names come from the catalog — this page cannot link to a
+  // product the catalog does not know about. The blurbs and labels below
+  // are deliberately NOT the catalog descriptions: they are shorter set-page
+  // marketing copy, kept separate on purpose.
+  const teeProduct    = productBySlug(SLUG.tee)!;
+  const beanieProduct = productBySlug(SLUG.beanie)!;
+  const sweatsProduct = productBySlug(SLUG.sweatpants)!;
 
   interface SetPiece {
     slug: string;
@@ -21,15 +30,15 @@
 
   const pieces: SetPiece[] = [
     {
-      slug: 'warped-reality-tee',
-      name: 'Warped Reality Tee',
+      slug: teeProduct.slug,
+      name: teeProduct.name,
       label: 'Front + Back · Black',
       images: ['/photos/_drop/tee-front.png', '/photos/_drop/tee-back.png'],
       blurb: 'Heavyweight oversized cut. Sky-blue collar print up front, ornate spires graphic at the back.',
     },
     {
-      slug: 'warped-reality-beanie',
-      name: 'Warped Reality Beanie',
+      slug: beanieProduct.slug,
+      name: beanieProduct.name,
       label: 'Earth Blue · Green',
       // Blue PNG has more surrounding whitespace; green is cropped tighter.
       // Per-image scale balances the two so they render the same visual size.
@@ -41,8 +50,8 @@
       blurb: 'Knit for those who drift between dimensions. Two colorways, one frequency.',
     },
     {
-      slug: 'warped-reality-sweatpants',
-      name: 'Warped Reality Sweatpants',
+      slug: sweatsProduct.slug,
+      name: sweatsProduct.name,
       label: 'Black',
       images: [{ src: '/photos/_drop/sweatpants-front.png', scale: 1.25 }],
       blurb: 'Wide-leg midweight fleece. Arched IMMORTAL VIBES graphic at the waist.',

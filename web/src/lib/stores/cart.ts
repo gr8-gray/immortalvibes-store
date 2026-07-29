@@ -1,3 +1,9 @@
+// web/src/lib/stores/cart.ts
+//
+// The client-side view of the cart. The Go API (via CF KV) is the real
+// keeper of cart state — this store mirrors it so the drawer and checkout
+// can render synchronously, and falls back to local-only math whenever the
+// API can't be reached mid-session.
 import { writable, derived, get } from 'svelte/store';
 import { updateCartItem, type GoCart } from '$lib/api';
 
@@ -12,7 +18,13 @@ export interface CartItem {
   currency: string;
 }
 
-function makeVariantId(price_id: string, size: string): string {
+/**
+ * The one place the cart line-item dedup key is built. Same product+size on
+ * two add-to-cart clicks must collapse into one line, so everything that
+ * constructs a variantId — this store and the product page's add-to-cart
+ * mapping — has to agree on the shape. They agree by calling this.
+ */
+export function makeVariantId(price_id: string, size: string): string {
   return size ? `${price_id}:${size}` : price_id;
 }
 
@@ -49,6 +61,15 @@ function createCartStore() {
     subscribe,
     setCart(id: string, items: CartItem[]) {
       set({ id, items });
+    },
+    /**
+     * Replace local state with a server cart response wholesale. Every
+     * surface that receives a GoCart back from the API (layout hydration,
+     * add-to-cart, quantity updates) funnels through the same mapGoCart
+     * translation, so line items always carry identical dedup keys.
+     */
+    setFromGoCart(goCart: GoCart) {
+      set(mapGoCart(goCart));
     },
     addItem(item: CartItem) {
       update((state) => {
