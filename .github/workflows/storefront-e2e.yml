@@ -1,0 +1,102 @@
+# Storefront E2E — separate gate from deploy.yml's test-api job (STOP 19's
+# api gate is untouched; this workflow owns the web/ user journey only).
+#
+# Two gates, two jobs:
+#   e2e-local : hermetic. Builds web/, boots vite preview, mocks the Go API
+#               at the network edge. Runs on every PR and push to main.
+#   e2e-live  : the same journey against https://theimmortalvibes.com.
+#               Creates one clearly-labelled pending order per run (never
+#               confirms payment — the suite hard-stops at the Stripe
+#               Payment Element), so it does NOT run per-push: manual
+#               dispatch plus a weekly smoke schedule.
+name: Storefront E2E
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/storefront-e2e.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/storefront-e2e.yml'
+  workflow_dispatch:
+    inputs:
+      run_live:
+        description: 'Also run the live-site gate'
+        type: boolean
+        default: false
+  schedule:
+    # Weekly live smoke — Mondays 13:00 UTC (morning US Central)
+    - cron: '0 13 * * 1'
+
+jobs:
+  e2e-local:
+    # Skip for schedule events — those exist only to drive the live gate.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Install Playwright Chromium
+        run: cd web && npx playwright install --with-deps chromium
+
+      - name: Build storefront
+        run: cd web && npm run build
+
+      - name: Run local E2E gate (vite preview + mocked API)
+        run: cd web && npm run e2e:local
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-local
+          path: web/playwright-report/
+          retention-days: 14
+
+  e2e-live:
+    # Live runs only when asked for: weekly schedule, or manual dispatch
+    # with run_live=true. Never on PRs — a PR must not poke production.
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.run_live)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Install Playwright Chromium
+        run: cd web && npx playwright install --with-deps chromium
+
+      - name: Run live E2E gate (theimmortalvibes.com, stops at Stripe)
+        run: cd web && npm run e2e:live
+        env:
+          E2E_TARGET: live
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-live
+          path: web/playwright-report/
+          retention-days: 14
