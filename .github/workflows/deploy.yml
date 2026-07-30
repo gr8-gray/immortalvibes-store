@@ -5,6 +5,16 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Rollback drill (STOP 9 evidence): dispatch with rollback_drill=true to exercise
+  # the rollback code path end-to-end WITHOUT reverting — it redeploys the CURRENT
+  # HEAD via the exact rollback steps, proving the "redeploy-from-SHA + notify"
+  # machinery works before we ever have to trust it on a real red deploy.
+  workflow_dispatch:
+    inputs:
+      rollback_drill:
+        description: 'Exercise the rollback path against current HEAD (proves the mechanism; does NOT revert). Leave false for a normal run.'
+        type: boolean
+        default: false
 
 jobs:
   # Test gate (STOP 19): the full api suite — including TestWebhookFulfillmentE2E,
@@ -80,3 +90,149 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  # ── L1: post-deploy live verification ────────────────────────────────────────
+  # Runs the FULL live customer journey (web/e2e/storefront.spec.ts, live project)
+  # against theimmortalvibes.com immediately after each deploy. The journey walks
+  # add-to-cart -> checkout -> Stripe Payment Element and STOPS (never pays), which
+  # leaves ONE clearly-labelled pending order per run ("E2E GATE - DO NOT FULFILL")
+  # — the same harmless side effect the weekly smoke already produces, now per-deploy.
+  # A red result here is the trigger for the rollback job below.
+  verify-live:
+    runs-on: ubuntu-latest
+    needs: deploy-pages
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: Install Playwright Chromium
+        run: cd web && npx playwright install --with-deps chromium
+
+      - name: Run live E2E against production
+        run: cd web && npm run e2e:live
+        env:
+          E2E_TARGET: live
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-verify-live
+          path: web/playwright-report/
+          retention-days: 14
+
+  # ── L1: auto-rollback ─────────────────────────────────────────────────────────
+  # Fires when a deploy SUCCEEDED but the post-deploy live E2E went RED. Restores the
+  # previous good commit by redeploying it (uniform mechanism for Worker + Pages —
+  # CF Pages has no first-class rollback verb, so we redeploy from the prior SHA).
+  # Assumes a linear main history (squash/rebase merges) so HEAD~1 is the last good
+  # deploy. Also runnable as a DRILL (workflow_dispatch, rollback_drill=true): that
+  # path redeploys the CURRENT HEAD instead of reverting, exercising the machinery
+  # end-to-end without changing what is live. If the post-rollback smoke ALSO fails,
+  # the job goes red and notifies for manual intervention — it never loops.
+  rollback:
+    runs-on: ubuntu-latest
+    needs: [deploy-worker, deploy-pages, verify-live]
+    if: >-
+      always() &&
+      (
+        (github.event_name == 'push' &&
+         needs.deploy-worker.result == 'success' &&
+         needs.deploy-pages.result == 'success' &&
+         needs.verify-live.result == 'failure')
+        ||
+        (github.event_name == 'workflow_dispatch' &&
+         github.event.inputs.rollback_drill == 'true')
+      )
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2 # need HEAD~1 to reach the previous commit
+
+      - name: Determine rollback target
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SHA="$(git rev-parse HEAD)"
+            MODE="DRILL (no revert — redeploying current HEAD)"
+          else
+            SHA="$(git rev-parse HEAD~1)"
+            MODE="ROLLBACK (post-deploy E2E red — reverting to previous commit)"
+          fi
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          echo "Rollback target: $SHA — $MODE"
+
+      - name: Check out rollback target
+        run: git checkout ${{ steps.target.outputs.sha }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Redeploy Worker (previous good)
+        run: cd worker && npm ci && npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Redeploy Pages (previous good)
+        run: cd web && npm ci && npm run build && npx wrangler pages deploy web/.svelte-kit/cloudflare --project-name immortalvibes-store --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Install Playwright Chromium
+        run: cd web && npx playwright install --with-deps chromium
+
+      # Post-rollback smoke: render-only (grep-invert the Stripe journey) so the
+      # health confirmation does NOT create another pending order.
+      - name: Verify site healthy after redeploy (render smoke, no order)
+        id: postcheck
+        run: cd web && npx playwright test --project=live --grep-invert "Stripe"
+        env:
+          E2E_TARGET: live
+
+      - name: Record evidence (STOP 9)
+        if: always()
+        run: |
+          {
+            echo "## L1 rollback — ${{ steps.target.outputs.mode }}"
+            echo ""
+            echo "- Redeployed commit: \`${{ steps.target.outputs.sha }}\`"
+            echo "- Triggering run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Post-redeploy render smoke: ${{ steps.postcheck.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify (best-effort — posts only if the secrets exist)
+        if: always()
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          MODE: ${{ steps.target.outputs.mode }}
+          SHA: ${{ steps.target.outputs.sha }}
+          POSTCHECK: ${{ steps.postcheck.outcome }}
+        run: |
+          MSG="IV CD ${MODE}: redeployed ${SHA:0:8}, post-check=${POSTCHECK}. ${RUN_URL}"
+          if [ -n "$NTFY_URL" ] && [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: immortalvibes CD rollback" -d "$MSG" "$NTFY_URL/$NTFY_TOPIC" || true
+          fi
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            curl -fsS "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${MSG}" || true
+          fi
