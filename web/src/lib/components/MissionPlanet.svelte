@@ -297,9 +297,12 @@
       const cx = cw / 2, cy = ch / 2;
       const rx = cx * 0.88, ry = cy * 0.88;
       const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.15, cx, cy, Math.max(rx, ry));
+      // Softer feather: keep the garment fully opaque through the inner 82% so
+      // bright prints (e.g. the tank's white IMMORTAL text) don't let the planet
+      // bleed through and tint them; only the outer rim dissolves into the planet.
       grad.addColorStop(0.0, 'rgba(0,0,0,1)');
-      grad.addColorStop(0.6, 'rgba(0,0,0,0.9)');
-      grad.addColorStop(0.85, 'rgba(0,0,0,0.4)');
+      grad.addColorStop(0.82, 'rgba(0,0,0,1)');
+      grad.addColorStop(0.93, 'rgba(0,0,0,0.55)');
       grad.addColorStop(1.0, 'rgba(0,0,0,0)');
       ctx.globalCompositeOperation = 'destination-in';
       ctx.fillStyle = grad;
