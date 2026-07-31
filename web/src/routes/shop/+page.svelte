@@ -29,7 +29,8 @@
     // centered on the planet sphere instead of drifting toward the top.
     { url: '/photos/_drop/beanie-blue.png', offsetY: -0.18 },
     '/photos/_drop/tee-front.png',
-    '/photos/_drop/sweatpants-front.png',
+    // Enlarged so the pants showcase at a size matching the standalone planet.
+    { url: '/photos/_drop/sweatpants-front.png', scale: 1.25 },
   ];
 
   const setMission = {
@@ -55,7 +56,7 @@
     // shirt shows its true color instead of the purple planet bleeding through
     // (additive blending was tinting it), at the collection's showcase scale.
     productScale: 0.72,
-    productOpacity: 0.95,
+    productOpacity: 1.0,
     spriteBlending: 'normal' as const,
     glow: '#6B0FCC',
     speed: 0.0022,
@@ -71,8 +72,8 @@
     product: '/photos/_drop/immortal-light-sweatpants-front.png',
     // Match the collection's showcase scale + opacity so the sweatpants are fully
     // presented rather than clipped small against the planet fade.
-    productScale: 0.72,
-    productOpacity: 0.95,
+    productScale: 0.82,
+    productOpacity: 1.0,
     spriteBlending: 'normal' as const,
     glow: '#C8503C',
     speed: 0.0016,
