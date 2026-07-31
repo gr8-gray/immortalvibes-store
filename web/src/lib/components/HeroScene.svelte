@@ -324,14 +324,20 @@
     animation: fadeIn 2.5s ease 0.4s both;
   }
 
-  /* UI — locked to screen, never rotates */
+  /* UI — locked to screen, never rotates. Fills the area BELOW the fixed
+     nav+banner (top:5.5rem) and centers its content there, so the headline is
+     centered in the visible space instead of being centered on the full
+     viewport (which pushed the top line up under the header on short laptop
+     heights and clipped "RISE"). */
   .hero {
     position: fixed;
-    top: 42%; left: 50%;
-    transform: translate(-50%, -50%);
+    /* Start at the nav+banner bottom (~7.5rem) so justify-content:center balances
+       the block within the truly-visible area, not the region under the header. */
+    top: 7.5rem; left: 0; right: 0; bottom: 0;
     z-index: 5;
     display: flex; flex-direction: column;
-    align-items: center; gap: 2.5rem;
+    align-items: center; justify-content: center; gap: 2.5rem;
+    padding: 1rem 1.25rem;
     pointer-events: none;
   }
 
@@ -400,6 +406,7 @@
 
   @media (max-width: 640px) {
     .hero__headline { letter-spacing: 0.08em; }
-    .hero { gap: 1.75rem; top: 50%; }
+    /* Shorter mobile nav+banner — anchor the centered area to clear it. */
+    .hero { gap: 1.75rem; top: 6.5rem; }
   }
 </style>
