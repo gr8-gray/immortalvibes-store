@@ -407,10 +407,19 @@
   }
 
   @media (min-width: 641px) {
-    .wr-slot      { transform: translateY(-3vh); }
-    .trucker-slot { transform: translateY(2vh);  }
-    .tank-slot    { transform: translateY(-2vh); }
-    .sweats-slot  { transform: translateY(2vh);  }
+    /* Set + Tank + Sweats sit on one baseline (matched siblings — see note below).
+       Only the transient trucker keeps an offset; it explodes during the intro. */
+    .trucker-slot { transform: translateY(2vh); }
+
+    /* Take the set-badge out of flow on desktop so the set-drop slot is the same
+       height as tank/sweats — that's what keeps the three planet discs aligned. */
+    .set-badge {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 0.5rem;
+    }
   }
 
   @media (max-width: 640px) {
@@ -492,6 +501,9 @@
     align-items: center;
     gap: 0.3rem;
     text-align: center;
+    /* Anchor for the set-badge — kept out of flow so every slot's label is the
+       same height (num/name/env), which keeps the three planet discs aligned. */
+    position: relative;
   }
 
   .num {
@@ -519,6 +531,7 @@
 
   .set-badge {
     margin-top: 0.2rem;
+    white-space: nowrap;
     font-family: 'Inter', sans-serif;
     font-size: 0.45rem;
     letter-spacing: 0.30em;
