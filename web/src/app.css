@@ -27,6 +27,11 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Clip the off-canvas cart drawer (position:fixed, translateX(100%)). It's
+     anchored to the viewport, so body's overflow-x:hidden can't catch it — the
+     document scrolls sideways without this. `clip` (not hidden) avoids making
+     html a scroll container or forcing the vertical axis to auto. */
+  overflow-x: clip;
 }
 
 body {

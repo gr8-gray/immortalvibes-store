@@ -29,7 +29,8 @@
     // centered on the planet sphere instead of drifting toward the top.
     { url: '/photos/_drop/beanie-blue.png', offsetY: -0.18 },
     '/photos/_drop/tee-front.png',
-    '/photos/_drop/sweatpants-front.png',
+    // Enlarged so the pants showcase at a size matching the standalone planet.
+    { url: '/photos/_drop/sweatpants-front.png', scale: 1.25 },
   ];
 
   const setMission = {
@@ -51,8 +52,12 @@
     slug: tank.slug,
     planetType: 'nebula' as const,
     product: '/photos/product-tank.png',
-    productScale: 0.55,
-    spriteBlending: 'additive' as const,
+    // Match the collection's product overlay: normal blend + high opacity so the
+    // shirt shows its true color instead of the purple planet bleeding through
+    // (additive blending was tinting it), at the collection's showcase scale.
+    productScale: 0.72,
+    productOpacity: 1.0,
+    spriteBlending: 'normal' as const,
     glow: '#6B0FCC',
     speed: 0.0022,
     tilt: 0.32,
@@ -65,7 +70,10 @@
     slug: sweats.slug,
     planetType: 'mars' as const,
     product: '/photos/_drop/immortal-light-sweatpants-front.png',
-    productScale: 0.6,
+    // Match the collection's showcase scale + opacity so the sweatpants are fully
+    // presented rather than clipped small against the planet fade.
+    productScale: 0.82,
+    productOpacity: 1.0,
     spriteBlending: 'normal' as const,
     glow: '#C8503C',
     speed: 0.0016,
@@ -301,6 +309,7 @@
           planetType={tankMission.planetType}
           productUrl={tankMission.product}
           productScale={tankMission.productScale}
+          productOpacity={tankMission.productOpacity}
           productBlending={tankMission.spriteBlending}
           glowColor={tankMission.glow}
           rotationSpeed={tankMission.speed}
@@ -322,6 +331,7 @@
           planetType={sweatsMission.planetType}
           productUrl={sweatsMission.product}
           productScale={sweatsMission.productScale}
+          productOpacity={sweatsMission.productOpacity}
           productBlending={sweatsMission.spriteBlending}
           glowColor={sweatsMission.glow}
           rotationSpeed={sweatsMission.speed}
@@ -397,10 +407,19 @@
   }
 
   @media (min-width: 641px) {
-    .wr-slot      { transform: translateY(-3vh); }
-    .trucker-slot { transform: translateY(2vh);  }
-    .tank-slot    { transform: translateY(-2vh); }
-    .sweats-slot  { transform: translateY(2vh);  }
+    /* Set + Tank + Sweats sit on one baseline (matched siblings — see note below).
+       Only the transient trucker keeps an offset; it explodes during the intro. */
+    .trucker-slot { transform: translateY(2vh); }
+
+    /* Take the set-badge out of flow on desktop so the set-drop slot is the same
+       height as tank/sweats — that's what keeps the three planet discs aligned. */
+    .set-badge {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 0.5rem;
+    }
   }
 
   @media (max-width: 640px) {
@@ -482,6 +501,9 @@
     align-items: center;
     gap: 0.3rem;
     text-align: center;
+    /* Anchor for the set-badge — kept out of flow so every slot's label is the
+       same height (num/name/env), which keeps the three planet discs aligned. */
+    position: relative;
   }
 
   .num {
@@ -509,6 +531,7 @@
 
   .set-badge {
     margin-top: 0.2rem;
+    white-space: nowrap;
     font-family: 'Inter', sans-serif;
     font-size: 0.45rem;
     letter-spacing: 0.30em;
