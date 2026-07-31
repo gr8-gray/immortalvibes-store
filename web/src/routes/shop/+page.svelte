@@ -51,8 +51,12 @@
     slug: tank.slug,
     planetType: 'nebula' as const,
     product: '/photos/product-tank.png',
-    productScale: 0.55,
-    spriteBlending: 'additive' as const,
+    // Match the collection's product overlay: normal blend + high opacity so the
+    // shirt shows its true color instead of the purple planet bleeding through
+    // (additive blending was tinting it), at the collection's showcase scale.
+    productScale: 0.72,
+    productOpacity: 0.95,
+    spriteBlending: 'normal' as const,
     glow: '#6B0FCC',
     speed: 0.0022,
     tilt: 0.32,
@@ -65,7 +69,10 @@
     slug: sweats.slug,
     planetType: 'mars' as const,
     product: '/photos/_drop/immortal-light-sweatpants-front.png',
-    productScale: 0.6,
+    // Match the collection's showcase scale + opacity so the sweatpants are fully
+    // presented rather than clipped small against the planet fade.
+    productScale: 0.72,
+    productOpacity: 0.95,
     spriteBlending: 'normal' as const,
     glow: '#C8503C',
     speed: 0.0016,
@@ -301,6 +308,7 @@
           planetType={tankMission.planetType}
           productUrl={tankMission.product}
           productScale={tankMission.productScale}
+          productOpacity={tankMission.productOpacity}
           productBlending={tankMission.spriteBlending}
           glowColor={tankMission.glow}
           rotationSpeed={tankMission.speed}
@@ -322,6 +330,7 @@
           planetType={sweatsMission.planetType}
           productUrl={sweatsMission.product}
           productScale={sweatsMission.productScale}
+          productOpacity={sweatsMission.productOpacity}
           productBlending={sweatsMission.spriteBlending}
           glowColor={sweatsMission.glow}
           rotationSpeed={sweatsMission.speed}
