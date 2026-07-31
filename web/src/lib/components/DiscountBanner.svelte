@@ -95,8 +95,16 @@
   }
 
   /* Mobile nav is shorter (~69px: 42px logo + 0.85rem padding) — anchor the
-     banner to clear it without leaving a large gap. */
+     banner to clear it without leaving a large gap. Also tighten the copy so it
+     stays on one line inside the 34px strip (the full-desktop letter-spacing
+     overflowed narrow phones, wrapping the arrow onto a clipped second line). */
   @media (max-width: 640px) {
-    .banner { top: 4.75rem; }
+    .banner { top: 4.75rem; padding: 0 2.25rem; }
+    .banner-text {
+      font-size: 0.44rem;
+      letter-spacing: 0.16em;
+      white-space: nowrap;
+    }
+    .dismiss { right: 0.5rem; }
   }
 </style>
