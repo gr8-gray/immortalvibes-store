@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -9,6 +10,7 @@ import (
 	"github.com/immortalvibes/api/email"
 	"github.com/immortalvibes/api/handlers"
 	apimiddleware "github.com/immortalvibes/api/middleware"
+	"github.com/immortalvibes/api/notify"
 	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 )
@@ -69,7 +71,8 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	// Exempted inside ProxyAuth by path (global r.Use can't be undone per-route);
 	// authenticated by Stripe signature in the handler.
 	emailSender := email.NewSender(cfg.ResendAPIKey, "orders@theimmortalvibes.com")
-	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail)
+	orderNotifier := notify.New(ntfyEndpoint(cfg.NtfyURL, cfg.NtfyTopic))
+	webhookHandler := handlers.NewWebhookHandler(cfg.StripeWebhookSecret, kv, db, db, emailSender, shippoClient, cfg.OwnerEmail, orderNotifier)
 	r.Post("/api/webhooks/stripe", webhookHandler.HandleWebhook)
 
 	// Subscribe — email capture for discount code
@@ -82,4 +85,15 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.With(apimiddleware.AdminAuth(cfg.AdminSecret)).Get("/api/admin/products/{id}/stock", adminHandler.GetProductStock)
 
 	return r
+}
+
+// ntfyEndpoint composes the full ntfy topic URL from a base + topic, matching
+// the NTFY_URL + NTFY_TOPIC convention the CD rollback workflow uses. Returns ""
+// (notifications disabled) unless BOTH are set, so a half-configured deploy is a
+// safe no-op rather than a POST to a base URL with no topic.
+func ntfyEndpoint(base, topic string) string {
+	if base == "" || topic == "" {
+		return ""
+	}
+	return strings.TrimRight(base, "/") + "/" + topic
 }

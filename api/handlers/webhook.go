@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/immortalvibes/api/models"
 	"github.com/immortalvibes/api/shippo"
@@ -46,6 +48,14 @@ type EmailSender interface {
 	SendShippingFailure(ctx context.Context, ownerEmail, orderID, customerEmail, shippingAddr, errMsg string) error
 }
 
+// OrderNotifier pushes order alerts (e.g. to ntfy) as a backstop for the
+// transactional emails, which can fail silently. Best-effort: a notify error
+// never fails order processing.
+type OrderNotifier interface {
+	NotifyOrderSuccess(ctx context.Context, orderID, total, shipTo, items, tracking, carrier string) error
+	NotifyOrderFailure(ctx context.Context, orderID, email, stage, errMsg string) error
+}
+
 // WebhookHandler handles POST /api/webhooks/stripe.
 type WebhookHandler struct {
 	secret     string
@@ -55,6 +65,7 @@ type WebhookHandler struct {
 	emailer    EmailSender
 	shipper    ShipperClient
 	ownerEmail string
+	notifier   OrderNotifier
 }
 
 // NewWebhookHandler constructs a WebhookHandler.
@@ -66,6 +77,7 @@ func NewWebhookHandler(
 	emailer EmailSender,
 	shipper ShipperClient,
 	ownerEmail string,
+	notifier OrderNotifier,
 ) *WebhookHandler {
 	return &WebhookHandler{
 		secret:     secret,
@@ -75,6 +87,7 @@ func NewWebhookHandler(
 		emailer:    emailer,
 		shipper:    shipper,
 		ownerEmail: ownerEmail,
+		notifier:   notifier,
 	}
 }
 
@@ -123,7 +136,9 @@ func (h *WebhookHandler) handlePaymentIntentSucceeded(w http.ResponseWriter, r *
 	order, err := h.db.GetOrderByPaymentIntent(r.Context(), pi.ID)
 	if err != nil {
 		log.Printf("webhook: GetOrderByPaymentIntent(%s): %v", pi.ID, err)
-		// Acknowledge to prevent Stripe retries for orders we can't find.
+		// A payment succeeded but we can't match it to an order — the owner
+		// needs to know. Acknowledge to prevent Stripe retries regardless.
+		h.pushFailure(pi.ID, email, "order-lookup", err.Error())
 		w.WriteHeader(http.StatusOK)
 		return
 	}
@@ -217,12 +232,24 @@ func (h *WebhookHandler) processShipping(order *store.OrderRow) {
 		log.Printf("webhook: UpdateOrderShipping(%s): %v", order.ID, err)
 	}
 
+	ownerNotified := true
 	if err := h.emailer.SendShippingLabel(context.Background(), h.ownerEmail, order.ID, labelURL, trackingNum, carrier, labelCost, order.TotalAmount, order.Currency, order.LineItems); err != nil {
 		log.Printf("webhook: SendShippingLabel: %v", err)
+		// The owner's manifest email failed — exactly the "owner didn't get
+		// notified" case. Alert loudly instead of a quiet success ping.
+		ownerNotified = false
+		h.pushFailure(order.ID, order.Email, "owner-email", err.Error())
 	}
 
 	if err := h.emailer.SendTrackingUpdate(context.Background(), order.Email, order.ID, trackingNum, carrier); err != nil {
 		log.Printf("webhook: SendTrackingUpdate: %v", err)
+	}
+
+	// Backstop: push a quiet success ping so the owner (and Eric) know an order
+	// landed and shipped even if the emails silently failed. Skipped when the
+	// owner email failed above — that already fired an urgent alert.
+	if ownerNotified {
+		h.pushSuccess(order, trackingNum, carrier)
 	}
 }
 
@@ -232,4 +259,51 @@ func (h *WebhookHandler) notifyShippingFailure(order *store.OrderRow, errMsg str
 	if err := h.emailer.SendShippingFailure(context.Background(), h.ownerEmail, order.ID, order.Email, addr, errMsg); err != nil {
 		log.Printf("webhook: SendShippingFailure: %v", err)
 	}
+	h.pushFailure(order.ID, order.Email, "shipping", errMsg)
+}
+
+// pushSuccess sends the quiet order-received/shipped ntfy. Best-effort.
+func (h *WebhookHandler) pushSuccess(order *store.OrderRow, trackingNum, carrier string) {
+	if h.notifier == nil {
+		return
+	}
+	total := fmt.Sprintf("$%.2f %s", float64(order.TotalAmount)/100, strings.ToUpper(order.Currency))
+	shipTo := strings.TrimSpace(fmt.Sprintf("%s, %s %s", order.City, order.State, order.Country))
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := h.notifier.NotifyOrderSuccess(ctx, order.ID, total, shipTo, summarizeItems(order.LineItems), trackingNum, carrier); err != nil {
+		log.Printf("webhook: NotifyOrderSuccess(%s): %v", order.ID, err)
+	}
+}
+
+// pushFailure sends the urgent order-problem ntfy. Best-effort.
+func (h *WebhookHandler) pushFailure(orderID, email, stage, errMsg string) {
+	if h.notifier == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := h.notifier.NotifyOrderFailure(ctx, orderID, email, stage, errMsg); err != nil {
+		log.Printf("webhook: NotifyOrderFailure(%s): %v", orderID, err)
+	}
+}
+
+// summarizeItems renders a one-line item summary for a push notification,
+// e.g. "2x Immortal Light Sweatpants (L), 1x WR Tee".
+func summarizeItems(items []models.LineItem) string {
+	if len(items) == 0 {
+		return "(no manifest)"
+	}
+	parts := make([]string, 0, len(items))
+	for _, li := range items {
+		name := li.Name
+		if name == "" {
+			name = li.ProductID
+		}
+		if li.Size != "" {
+			name = fmt.Sprintf("%s (%s)", name, li.Size)
+		}
+		parts = append(parts, fmt.Sprintf("%dx %s", li.Quantity, name))
+	}
+	return strings.Join(parts, ", ")
 }
