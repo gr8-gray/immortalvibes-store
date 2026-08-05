@@ -26,6 +26,8 @@ type Config struct {
 	FromCountry       string
 	FromPhone         string
 	OwnerEmail        string
+	NtfyURL           string
+	NtfyTopic         string
 }
 
 func Load() (*Config, error) {
@@ -50,6 +52,8 @@ func Load() (*Config, error) {
 		FromCountry:       getEnv("FROM_COUNTRY", "US"),
 		FromPhone:         os.Getenv("FROM_PHONE"),
 		OwnerEmail:          os.Getenv("OWNER_EMAIL"),
+		NtfyURL:             os.Getenv("NTFY_URL"),
+		NtfyTopic:           os.Getenv("NTFY_TOPIC"),
 	}
 
 	var missing []string

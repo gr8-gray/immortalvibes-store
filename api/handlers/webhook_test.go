@@ -41,6 +41,7 @@ type stubEmailSender struct {
 	labelItems    []models.LineItem    // manifest passed to the owner email
 	trackingCalls int                  // SendTrackingUpdate invocations
 	failureCalls  int                  // SendShippingFailure invocations
+	labelErr      error                // if set, SendShippingLabel returns it
 }
 
 func (s *stubEmailSender) SendOrderConfirmation(ctx context.Context, toEmail, orderID string, totalAmount int64, currency string) error {
@@ -51,7 +52,7 @@ func (s *stubEmailSender) SendOrderConfirmation(ctx context.Context, toEmail, or
 func (s *stubEmailSender) SendShippingLabel(ctx context.Context, ownerEmail, orderID, labelURL, trackingNum, carrier, labelCost string, orderTotal int64, currency string, items []models.LineItem) error {
 	s.labelCalls++
 	s.labelItems = items
-	return nil
+	return s.labelErr
 }
 
 func (s *stubEmailSender) SendTrackingUpdate(ctx context.Context, customerEmail, orderID, trackingNum, carrier string) error {
@@ -77,6 +78,36 @@ func (s *stubShipperClient) RateShop(ctx context.Context, to shippo.Address) (st
 func (s *stubShipperClient) BuyLabel(ctx context.Context, rateID string) (string, string, string, string, error) {
 	s.buyCalls++
 	return "TRACK123", "USPS", "https://shippo.example.com/label.pdf", "6.74 USD", nil
+}
+
+// stubFailingShipper rate-shops fine but fails to buy a label, exercising the
+// shipping-failure notification path.
+type stubFailingShipper struct{}
+
+func (s *stubFailingShipper) RateShop(ctx context.Context, to shippo.Address) (string, error) {
+	return "shp_stub:rate_fail", nil
+}
+
+func (s *stubFailingShipper) BuyLabel(ctx context.Context, rateID string) (string, string, string, string, error) {
+	return "", "", "", "", fmt.Errorf("shippo unavailable")
+}
+
+// stubNotifier records order push notifications.
+type stubNotifier struct {
+	successCalls  int
+	failureCalls  int
+	lastFailStage string
+}
+
+func (n *stubNotifier) NotifyOrderSuccess(ctx context.Context, orderID, total, shipTo, items, tracking, carrier string) error {
+	n.successCalls++
+	return nil
+}
+
+func (n *stubNotifier) NotifyOrderFailure(ctx context.Context, orderID, email, stage, errMsg string) error {
+	n.failureCalls++
+	n.lastFailStage = stage
+	return nil
 }
 
 func signWebhookPayload(t *testing.T, secret string, payload []byte) string {
@@ -151,7 +182,7 @@ func TestWebhookPaymentIntentSucceeded(t *testing.T) {
 	// Seed stock.
 	stubs.stock.stock["prod_1"] = 10
 
-	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com")
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com", &stubNotifier{})
 
 	payload := []byte(`{
 		"type": "payment_intent.succeeded",
@@ -222,7 +253,8 @@ func TestWebhookFulfillmentE2E(t *testing.T) {
 	}
 	stubs.stock.stock["prod_1"] = 10
 
-	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com")
+	notifier := &stubNotifier{}
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com", notifier)
 
 	payload := []byte(`{
 		"type": "payment_intent.succeeded",
@@ -268,6 +300,12 @@ func TestWebhookFulfillmentE2E(t *testing.T) {
 	if shipper.buyCalls != 1 {
 		t.Errorf("BuyLabel calls=%d want 1", shipper.buyCalls)
 	}
+	if notifier.successCalls != 1 {
+		t.Errorf("success notifications=%d want 1", notifier.successCalls)
+	}
+	if notifier.failureCalls != 0 {
+		t.Errorf("failure notifications=%d want 0", notifier.failureCalls)
+	}
 
 	// Second delivery (Stripe resend) — idempotent.
 	if w := fire(); w.Code != http.StatusOK {
@@ -278,6 +316,9 @@ func TestWebhookFulfillmentE2E(t *testing.T) {
 	}
 	if stubs.stock.stock["prod_1"] != 8 {
 		t.Errorf("after resend stock=%d want 8 (no double decrement)", stubs.stock.stock["prod_1"])
+	}
+	if notifier.successCalls != 1 {
+		t.Errorf("after resend success notifications=%d want 1 (no duplicate)", notifier.successCalls)
 	}
 }
 
@@ -311,7 +352,7 @@ func TestWebhookVariantDecrement(t *testing.T) {
 	stubs.stock.stock["prod_1:L"] = 3
 	stubs.stock.stock["prod_1:M"] = 5
 
-	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com")
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com", &stubNotifier{})
 
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_var_001","metadata":{"cart_token":"cart-var","email":"buyer@example.com"},"amount":6000,"currency":"usd"}}}`)
 	sig := signWebhookPayload(t, secret, payload)
@@ -367,7 +408,7 @@ func TestWebhookLegacyCartFallback(t *testing.T) {
 	}
 	stubs.stock.stock["prod_legacy"] = 7 // legacy product_stock
 
-	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com")
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, shipper, "owner@test.com", &stubNotifier{})
 
 	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_leg_001","metadata":{"cart_token":"cart-leg","email":"buyer@example.com"},"amount":3000,"currency":"usd"}}}`)
 	sig := signWebhookPayload(t, secret, payload)
@@ -388,7 +429,7 @@ func TestWebhookLegacyCartFallback(t *testing.T) {
 func TestWebhookInvalidSignature(t *testing.T) {
 	stubs := newWebhookStubs()
 	emailer := &stubEmailSender{}
-	h := handlers.NewWebhookHandler("real_secret", stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com")
+	h := handlers.NewWebhookHandler("real_secret", stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com", &stubNotifier{})
 
 	payload := []byte(`{"type":"payment_intent.succeeded"}`)
 
@@ -399,5 +440,123 @@ func TestWebhookInvalidSignature(t *testing.T) {
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400", w.Code)
+	}
+}
+
+// TestWebhookShippingFailureNotifies verifies that when label purchase fails,
+// the owner gets both the failure email and an urgent push, and no success
+// push fires.
+func TestWebhookShippingFailureNotifies(t *testing.T) {
+	stubs := newWebhookStubs()
+	emailer := &stubEmailSender{}
+	notifier := &stubNotifier{}
+	secret := "whsec_shipfail"
+
+	stubs.db.orders["ord-fail"] = &store.OrderRow{
+		ID:              "ord-fail",
+		PaymentIntentID: "pi_fail_001",
+		Email:           "buyer@example.com",
+		Currency:        "usd",
+		TotalAmount:     3000,
+		Status:          "pending",
+		ShippingName:    "Test User",
+		Line1:           "1 Test St",
+		City:            "Testville",
+		State:           "CA",
+		PostalCode:      "90210",
+		Country:         "US",
+		LineItems:       []models.LineItem{{ProductID: "prod_1", Name: "Tee", Size: "L", Amount: 3000, Quantity: 1}},
+	}
+	stubs.stock.stock["prod_1:L"] = 5
+
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubFailingShipper{}, "owner@test.com", notifier)
+
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_fail_001","metadata":{"email":"buyer@example.com"},"amount":3000,"currency":"usd"}}}`)
+	sig := signWebhookPayload(t, secret, payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sig)
+	w := httptest.NewRecorder()
+	h.HandleWebhook(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
+	}
+	if emailer.failureCalls != 1 {
+		t.Errorf("shipping-failure emails=%d want 1", emailer.failureCalls)
+	}
+	if notifier.failureCalls != 1 || notifier.lastFailStage != "shipping" {
+		t.Errorf("failure pushes=%d stage=%q want 1 stage=shipping", notifier.failureCalls, notifier.lastFailStage)
+	}
+	if notifier.successCalls != 0 {
+		t.Errorf("success pushes=%d want 0 on shipping failure", notifier.successCalls)
+	}
+}
+
+// TestWebhookOwnerEmailFailureNotifies verifies that a successful label but a
+// failed owner manifest email fires an urgent push (not a quiet success),
+// since that is the "owner didn't get notified" case.
+func TestWebhookOwnerEmailFailureNotifies(t *testing.T) {
+	stubs := newWebhookStubs()
+	emailer := &stubEmailSender{labelErr: fmt.Errorf("resend 500")}
+	notifier := &stubNotifier{}
+	secret := "whsec_owneremailfail"
+
+	stubs.db.orders["ord-oe"] = &store.OrderRow{
+		ID:              "ord-oe",
+		PaymentIntentID: "pi_oe_001",
+		Email:           "buyer@example.com",
+		Currency:        "usd",
+		TotalAmount:     3000,
+		Status:          "pending",
+		ShippingName:    "Test User",
+		Line1:           "1 Test St",
+		City:            "Testville",
+		State:           "CA",
+		PostalCode:      "90210",
+		Country:         "US",
+		LineItems:       []models.LineItem{{ProductID: "prod_1", Name: "Tee", Size: "L", Amount: 3000, Quantity: 1}},
+	}
+	stubs.stock.stock["prod_1:L"] = 5
+
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com", notifier)
+
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_oe_001","metadata":{"email":"buyer@example.com"},"amount":3000,"currency":"usd"}}}`)
+	sig := signWebhookPayload(t, secret, payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sig)
+	w := httptest.NewRecorder()
+	h.HandleWebhook(w, req)
+
+	if notifier.failureCalls != 1 || notifier.lastFailStage != "owner-email" {
+		t.Errorf("failure pushes=%d stage=%q want 1 stage=owner-email", notifier.failureCalls, notifier.lastFailStage)
+	}
+	if notifier.successCalls != 0 {
+		t.Errorf("success pushes=%d want 0 when owner email failed", notifier.successCalls)
+	}
+}
+
+// TestWebhookOrderLookupFailureNotifies verifies that a payment with no
+// matching order fires an urgent push so the owner can reconcile.
+func TestWebhookOrderLookupFailureNotifies(t *testing.T) {
+	stubs := newWebhookStubs()
+	emailer := &stubEmailSender{}
+	notifier := &stubNotifier{}
+	secret := "whsec_nolookup"
+
+	h := handlers.NewWebhookHandler(secret, stubs.kv, stubs.stock, stubs.db, emailer, &stubShipperClient{}, "owner@test.com", notifier)
+
+	// No order seeded — GetOrderByPaymentIntent returns ErrOrderNotFound.
+	payload := []byte(`{"type":"payment_intent.succeeded","data":{"object":{"id":"pi_missing","metadata":{"email":"ghost@example.com"},"amount":3000,"currency":"usd"}}}`)
+	sig := signWebhookPayload(t, secret, payload)
+	req := httptest.NewRequest(http.MethodPost, "/api/webhooks/stripe", bytes.NewReader(payload))
+	req.Header.Set("Stripe-Signature", sig)
+	w := httptest.NewRecorder()
+	h.HandleWebhook(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 (ack to stop retries)", w.Code)
+	}
+	if notifier.failureCalls != 1 || notifier.lastFailStage != "order-lookup" {
+		t.Errorf("failure pushes=%d stage=%q want 1 stage=order-lookup", notifier.failureCalls, notifier.lastFailStage)
 	}
 }
