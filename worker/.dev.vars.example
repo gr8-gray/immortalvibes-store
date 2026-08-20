@@ -1,0 +1,4 @@
+# Copy to worker/.dev.vars for local `wrangler dev`.
+# Must match the PROXY_SECRET used by web/src/routes/api/[...path]/+server.ts.
+
+PROXY_SECRET=generate-a-long-random-string

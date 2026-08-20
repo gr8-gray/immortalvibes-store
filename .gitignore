@@ -1,6 +1,5 @@
-# Claude local settings
-.claude/settings.local.json
-.claude/bridge-session
+# Local AI tooling config (not part of the shipped project)
+.claude/
 
 # AI tool caches
 .playwright-mcp/
@@ -20,6 +19,8 @@ process_drop.py
 /photos/
 /_upload_ready/
 /web/static/staging/
+/deploy.sh
+/wargod-preview.html
 
 # Root-level screenshots
 /*.png
