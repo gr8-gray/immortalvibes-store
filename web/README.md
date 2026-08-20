@@ -1,42 +1,32 @@
-# sv
+# web — Immortal Vibes storefront
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit storefront for [theimmortalvibes.com](https://theimmortalvibes.com). See the repo-root
+[`README.md`](../README.md) for the full architecture (storefront → in-app proxy → Worker → Go API).
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
+## Develop
 
 ```sh
-# recreate this project
-npx sv@0.14.1 create --template minimal --types ts --install npm web
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
-
-To create a production version of your app:
+## Build
 
 ```sh
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+Preview the production build with `npm run preview`.
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+## Test
+
+```sh
+npm run build && npm run e2e:local
+```
+
+Do not run `npm run e2e:live` locally — it targets the production site and creates a real
+Stripe-pending order. It's reserved for the post-deploy verification step in CI.
+
+## Environment
+
+Copy `.env.example` to `.env` and fill in `PUBLIC_API_URL`.
