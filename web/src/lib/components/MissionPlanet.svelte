@@ -287,29 +287,12 @@
       const cw = img.naturalWidth  || img.width;
       const ch = img.naturalHeight || img.height;
 
-      // Bake a soft radial vignette into the texture
-      const c = document.createElement('canvas');
-      c.width = cw; c.height = ch;
-      const ctx = c.getContext('2d')!;
-      ctx.drawImage(img, 0, 0);
-
-      // Radial alpha fade — centre full, edges dissolve
-      const cx = cw / 2, cy = ch / 2;
-      const rx = cx * 0.88, ry = cy * 0.88;
-      const grad = ctx.createRadialGradient(cx, cy, Math.min(rx, ry) * 0.15, cx, cy, Math.max(rx, ry));
-      // Softer feather: keep the garment fully opaque through the inner 82% so
-      // bright prints (e.g. the tank's white IMMORTAL text) don't let the planet
-      // bleed through and tint them; only the outer rim dissolves into the planet.
-      grad.addColorStop(0.0, 'rgba(0,0,0,1)');
-      grad.addColorStop(0.82, 'rgba(0,0,0,1)');
-      grad.addColorStop(0.93, 'rgba(0,0,0,0.55)');
-      grad.addColorStop(1.0, 'rgba(0,0,0,0)');
-      ctx.globalCompositeOperation = 'destination-in';
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, cw, ch);
-
-      const fadedTex = new THREE.CanvasTexture(c);
-      fadedTex.colorSpace = THREE.SRGBColorSpace;
+      // Render the product with its own clean alpha edges — identical to the
+      // product-page <img>. The old radial-vignette bake dissolved the outer
+      // rim into the planet, which on a tall garment (tank) chewed the sides
+      // unevenly and read as rough edges. Use the texture directly instead.
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const fadedTex = tex;
 
       const aspect = cw / ch;
       const spriteH = 1.5 * scale;
