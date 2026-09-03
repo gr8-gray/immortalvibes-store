@@ -290,7 +290,6 @@
 {#if showHero}
 <!-- UI overlay — stays fixed, never spins -->
 <div class="hero">
-  <h1 class="hero__headline">Rise Beyond<br>the Mortal Plane</h1>
   <a href="/shop" class="hero__cta">Enter the Missions →</a>
 </div>
 
@@ -341,19 +340,6 @@
     pointer-events: none;
   }
 
-  .hero__headline {
-    font-family: 'GodOfWar', 'Gods of War', serif;
-    font-weight: 200;
-    font-size: clamp(2.25rem, 6.2vw, 5.25rem);
-    line-height: 1.04; letter-spacing: 0.12em;
-    text-align: center; text-transform: uppercase;
-    color: rgba(240,237,230,0.96);
-    text-shadow: 0 0 80px rgba(240,237,230,0.14), 0 0 160px rgba(240,237,230,0.05);
-    max-width: 22ch;
-    opacity: 0;
-    animation: fadeUp 2.8s cubic-bezier(0.16,1,0.3,1) 0.8s forwards;
-  }
-
   .hero__cta {
     display: inline-block;
     border: 1px solid rgba(240,237,230,0.3);
@@ -393,19 +379,14 @@
     50%      { border-bottom-color: rgba(200,146,42,0.72); }
   }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  @keyframes fadeUp {
-    from { opacity:0; transform:translateY(16px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
 
   @media (prefers-reduced-motion: reduce) {
     .mw-photo { animation: none; opacity: 0.86; }
     .hero-canvas { animation: none; }
-    .hero__headline, .hero__cta, .stamp { animation: none; opacity: 1; transform: none; }
+    .hero__cta, .stamp { animation: none; opacity: 1; transform: none; }
   }
 
   @media (max-width: 640px) {
-    .hero__headline { letter-spacing: 0.08em; }
     /* Shorter mobile nav+banner — anchor the centered area to clear it. */
     .hero { gap: 1.75rem; top: 6.5rem; }
   }
