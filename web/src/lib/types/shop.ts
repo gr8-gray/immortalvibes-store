@@ -221,8 +221,8 @@ export const MOCK_PRODUCTS: Product[] = [
     slug: SLUG.phantomShorts,
     name: 'Phantom Basketball Shorts',
     description: 'Cut for the deep-space court. Navy body with electric-white side panels, embroidered Immortal Vibes logo, and an elastic drawstring waist. Unisex fit.',
-    price_usd: 0, // TODO(price): Eric to set — do not ship
-    price_gbp: 0, // TODO(price): Eric to set — do not ship
+    price_usd: 2000, // $20 (Eric, 2026-09-04)
+    price_gbp: 1600, // £16 — derived from IV's $30/£24 (0.8) ratio; confirm
     price_id: '',
     currency: 'usd',
     status: 'available',
