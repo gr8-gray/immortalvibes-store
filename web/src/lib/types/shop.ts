@@ -21,7 +21,7 @@ export const SLUG = {
   tank: 'racerback-tanktop',
   tee: 'warped-reality-tee',
   sweatpants: 'warped-reality-sweatpants',
-  lightSweatpants: 'immortal-light-sweatpants',
+  phantomShorts: 'phantom-basketball-shorts',
   set: 'warped-reality-set',
 } as const;
 
@@ -218,27 +218,27 @@ export const MOCK_PRODUCTS: Product[] = [
   },
   {
     id: 'mock_006',
-    slug: SLUG.lightSweatpants,
-    name: 'Immortal Light Sweatpants',
-    description: 'Forged in deep space. All-over rocky serpentine-scale terrain print with a gold IMMORTAL wordmark running the left leg. Drawstring waist, unisex cut.',
-    price_usd: 3000,
-    price_gbp: 2400,
+    slug: SLUG.phantomShorts,
+    name: 'Phantom Basketball Shorts',
+    description: 'Cut for the deep-space court. Navy body with electric-white side panels, embroidered Immortal Vibes logo, and an elastic drawstring waist. Unisex fit.',
+    price_usd: 0, // TODO(price): Eric to set — do not ship
+    price_gbp: 0, // TODO(price): Eric to set — do not ship
     price_id: '',
     currency: 'usd',
     status: 'available',
     sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
-    image_url: `${R2}/sweatpants/model-1-hero.jpg`,
+    image_url: '/photos/product-phantom-shorts.png',
     mission_number: '004',
     variants: [
       {
-        colorName: 'Mars Rust',
-        hex: '#6B4A38',
-        productImage: '/photos/_drop/immortal-light-sweatpants-front.png',
+        colorName: 'Navy',
+        hex: '#0E2A4A',
+        productImage: '/photos/product-phantom-shorts.png',
         gallery: [
-          `${R2}/sweatpants/model-1-hero.jpg`,
-          `${R2}/sweatpants/model-porch.jpg`,
-          `${R2}/sweatpants/model-willow.jpg`,
-          `${R2}/sweatpants/model-lake.jpg`,
+          '/photos/phantom-shorts-1.jpg',
+          '/photos/phantom-shorts-2.jpg',
+          '/photos/phantom-shorts-3.jpg',
+          '/photos/phantom-shorts-4.jpg',
         ],
       },
     ],

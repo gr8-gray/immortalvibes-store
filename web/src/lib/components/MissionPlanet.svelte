@@ -13,7 +13,7 @@
     blending?: 'normal' | 'additive';
   }
 
-  export let planetType: 'earth' | 'leo' | 'lunar' | 'nebula' | 'mars' = 'earth';
+  export let planetType: 'earth' | 'leo' | 'lunar' | 'nebula' | 'mars' | 'phantom' = 'earth';
   export let photoUrl: string   = '';
   export let productUrl: string   = '';   // single sprite path (legacy)
   export let products: ClusterItem[] = [];  // multi-sprite cluster (overrides productUrl when non-empty)
@@ -146,6 +146,36 @@
       // Dusty atmosphere limb — pale rust haze
       float limb=pow(max(0.0,1.0-abs(dot(vNormal,vec3(0,0,1)))),2.4);
       col+=vec3(0.85,0.45,0.28)*limb*lit*0.30+vec3(0.45,0.18,0.10)*limb*limb*0.22;
+      gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);}
+  `;
+
+  // ── Phantom — deep-navy ion-storm world ────────────────────────────────────
+  const phantomFrag = /* glsl */`
+    varying vec3 vNormal,vPos; uniform vec3 sunDir; uniform float time; ${NOISE3_GLSL}
+    void main(){
+      float c=cos(time*0.010),s=sin(time*0.010);
+      vec3 rp=vec3(c*vPos.x+s*vPos.z,vPos.y,-s*vPos.x+c*vPos.z);
+      vec3 warp=rp+vec3(fbm(rp*3.4)*0.18,fbm(rp*2.8+vec3(6.1,2.4,1.0))*0.09,0.0);
+      float t1=fbm(warp*5.2),t2=fbm(warp*11.0+vec3(2.2,7.6,3.1));
+      float band=fract(vPos.y*3.0+t1*0.55);
+      vec3 base=vec3(0.03,0.08,0.22);        // deep navy base
+      vec3 storm=vec3(0.85,0.92,1.0);        // electric white / pale-cyan
+      vec3 mid=vec3(0.10,0.22,0.48);         // mid-tone navy transition
+      vec3 bandCol;
+      if(band<0.30)bandCol=mix(base,mid,band/0.30);
+      else if(band<0.55)bandCol=mix(mid,storm,(band-0.30)/0.25);
+      else if(band<0.80)bandCol=mix(storm,mid,(band-0.55)/0.25);
+      else bandCol=mix(mid,base,(band-0.80)/0.20);
+      bandCol+=(t2-0.5)*0.07;
+      // Ion-storm eye — a brighter fbm-driven vortex patch
+      vec3 sc=normalize(vec3(-0.5,0.2,0.75));
+      float sdst=acos(clamp(dot(normalize(vPos),sc),-1.0,1.0)),eye=smoothstep(0.30,0.08,sdst);
+      bandCol=mix(bandCol,storm,eye*0.6)+vec3(eye*0.05);
+      bandCol=clamp(bandCol,0.0,1.0);
+      float diff=max(0.0,dot(vNormal,sunDir));
+      vec3 col=bandCol*(diff*0.80+0.20);
+      float limb=pow(max(0.0,1.0-dot(vNormal,vec3(0,0,1))),2.2);
+      col+=vec3(0.18,0.43,0.88)*limb*0.48;
       gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);}
   `;
 
@@ -355,6 +385,12 @@
         vertexShader: SHARED_VERT, fragmentShader: marsFrag,
         uniforms: { sunDir: { value: SUN } },
       });
+    } else if (planetType === 'phantom') {
+      timeUniform = { value: 0 };
+      mat = new THREE.ShaderMaterial({
+        vertexShader: SHARED_VERT, fragmentShader: phantomFrag,
+        uniforms: { sunDir: { value: SUN }, time: timeUniform },
+      });
     } else {
       const tex = new THREE.TextureLoader().load(photoUrl);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -366,7 +402,7 @@
     scene.add(planet);
 
     // Atmosphere rim — BackSide wraps around planet edge AND over the sprite
-    const atmoOpacity = planetType === 'nebula' ? 0.20 : planetType === 'leo' ? 0.18 : planetType === 'mars' ? 0.16 : 0.12;
+    const atmoOpacity = planetType === 'nebula' ? 0.20 : planetType === 'leo' ? 0.18 : planetType === 'mars' ? 0.16 : planetType === 'phantom' ? 0.18 : 0.12;
     const atmoMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color(glowColor), transparent: true,
       opacity: atmoOpacity, side: THREE.BackSide,
