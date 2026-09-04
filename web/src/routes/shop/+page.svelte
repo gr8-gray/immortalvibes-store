@@ -13,7 +13,7 @@
   // the catalog in $lib/types/shop — this page only decides how each mission
   // is staged: which planet shader, glow color, spin speed, and tilt.
   const tank   = productBySlug(SLUG.tank)!;
-  const sweats = productBySlug(SLUG.lightSweatpants)!;
+  const sweats = productBySlug(SLUG.phantomShorts)!;
 
   // Trucker (Mission 002) decommission intro REMOVED 2026-06-25 — drop ships
   // directly in final state (no implosion/supernova). Kept disabled, not deleted,
@@ -68,16 +68,16 @@
     name: sweats.name,
     env: MISSION_LABELS[sweats.mission_number],
     slug: sweats.slug,
-    planetType: 'mars' as const,
-    product: '/photos/_drop/immortal-light-sweatpants-front.png',
+    planetType: 'phantom' as const,
+    product: '/photos/product-phantom-shorts.png',
     // Match the collection's showcase scale + opacity so the sweatpants are fully
     // presented rather than clipped small against the planet fade.
     productScale: 0.82,
     productOpacity: 1.0,
     spriteBlending: 'normal' as const,
-    glow: '#C8503C',
-    speed: 0.0016,
-    tilt: 0.26,
+    glow: '#2E6FE0',
+    speed: 0.0020,
+    tilt: 0.28,
   };
 
   // ── Intro state ──────────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ export const MISSION_ACCENT: Record<string, string> = {
   [SLUG.beanie]: '#4FC3F7',
   [SLUG.truckerHat]: 'rgba(200,190,180,0.9)',
   [SLUG.tank]:    'rgba(255,130,50,0.9)',
-  [SLUG.lightSweatpants]: 'rgba(200,80,40,0.9)',
+  [SLUG.phantomShorts]: 'rgba(46,111,224,0.9)',
 };
 
 export const transitionStore = writable<TransitionState>({
@@ -39,7 +39,7 @@ export const MISSION_ORDER: string[] = [
   SLUG.beanie,
   SLUG.truckerHat,
   SLUG.tank,
-  SLUG.lightSweatpants,
+  SLUG.phantomShorts,
 ];
 
 // Resolve which transition to use given from/to pathnames
