@@ -70,9 +70,9 @@
     slug: sweats.slug,
     planetType: 'phantom' as const,
     product: '/photos/product-phantom-shorts.png',
-    // Match the collection's showcase scale + opacity so the sweatpants are fully
-    // presented rather than clipped small against the planet fade.
-    productScale: 0.82,
+    // Zoom out to match the set/beanie showcase scale (0.72) so the shorts sit
+    // on the planet at the same proportion as the other missions.
+    productScale: 0.72,
     productOpacity: 1.0,
     spriteBlending: 'normal' as const,
     glow: '#2E6FE0',

@@ -237,8 +237,6 @@ export const MOCK_PRODUCTS: Product[] = [
         gallery: [
           '/photos/phantom-shorts-1.jpg',
           '/photos/phantom-shorts-2.jpg',
-          '/photos/phantom-shorts-3.jpg',
-          '/photos/phantom-shorts-4.jpg',
         ],
       },
     ],
