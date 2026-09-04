@@ -89,7 +89,7 @@ test.describe('storefront purchase journey (stops at Stripe)', () => {
     // two standalone missions link straight to their product pages.
     await expect(page.locator(`a[href="/shop/warped-reality-set"]`)).toBeVisible();
     await expect(page.locator('.mission-label .name', { hasText: 'Racerback Tanktop' })).toBeVisible();
-    await expect(page.locator('.mission-label .name', { hasText: 'Immortal Light Sweatpants' })).toBeVisible();
+    await expect(page.locator('.mission-label .name', { hasText: 'Phantom Basketball Shorts' })).toBeVisible();
   });
 
   test('set landing page lists the three pieces with catalog names', async ({ page }) => {
