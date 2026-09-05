@@ -23,6 +23,12 @@
   export let carousel: CarouselSlot[] = [];
   export let carouselInterval: number = 3500; // ms between transitions
   export let carouselFade: number     = 850;  // ms crossfade duration
+  // Radial alpha vignette on carousel sprites softly dissolves edges into the
+  // planet. Good for garments framed with canvas margin (WR set), but it chews
+  // the sides of a content-tight, edge-to-edge sprite (phantom shorts) — same
+  // rough-edge problem loadProductSprite already fixed for the tank. Off = use
+  // the sprite's own clean alpha, identical to the product-page <img>.
+  export let carouselFadeEdges: boolean = true;
   export let productScale: number   = 1.0;   // default per-sprite size
   export let productOffsetY: number  = 0.0;          // default vertical shift
   export let productOpacity: number  = 0.72;         // default opacity
@@ -211,7 +217,7 @@
         ? { url: it, offsetY: 0, scale: 1 }
         : { url: it.url, offsetY: it.offsetY ?? 0, scale: it.scale ?? 1 },
     );
-    const slots: { tex: THREE.CanvasTexture; w: number; h: number; offsetY: number; scale: number }[] = [];
+    const slots: { tex: THREE.Texture; w: number; h: number; offsetY: number; scale: number }[] = [];
     let intervalId: number | null = null;
 
     // Two sprites — one shown, one hidden, swap roles each tick.
@@ -272,8 +278,15 @@
     items.forEach((it, i) => {
       loader.load(it.url, (tex) => {
         const img = tex.image as HTMLImageElement;
+        let slotTex: THREE.Texture;
+        if (carouselFadeEdges) {
+          slotTex = buildFadedTexture(img);
+        } else {
+          tex.colorSpace = THREE.SRGBColorSpace; // raw sprite — clean own alpha
+          slotTex = tex;
+        }
         slots[i] = {
-          tex: buildFadedTexture(img),
+          tex: slotTex,
           w: img.naturalWidth || img.width,
           h: img.naturalHeight || img.height,
           offsetY: it.offsetY,
