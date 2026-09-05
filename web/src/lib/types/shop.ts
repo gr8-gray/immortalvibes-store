@@ -220,7 +220,7 @@ export const MOCK_PRODUCTS: Product[] = [
     id: 'mock_006',
     slug: SLUG.phantomShorts,
     name: 'Phantom Basketball Shorts',
-    description: 'Cut for the deep-space court. Navy body with electric-white side panels, embroidered Immortal Vibes logo, and an elastic drawstring waist. Unisex fit.',
+    description: 'Cut for the deep-space court. Electric-white side panels, embroidered Immortal Vibes logo, and an elastic drawstring waist. Available in navy and black. Unisex fit.',
     price_usd: 2000, // $20 (Eric, 2026-09-04)
     price_gbp: 1600, // £16 — derived from IV's $30/£24 (0.8) ratio; confirm
     price_id: '',
@@ -237,6 +237,20 @@ export const MOCK_PRODUCTS: Product[] = [
         gallery: [
           '/photos/phantom-shorts-1.jpg',
           '/photos/phantom-shorts-2.jpg',
+        ],
+      },
+      {
+        // Black colorway (added 2026-09-05). Sprite is a color-matched cutout
+        // derived from the navy full-res cutout — same garment, identical white
+        // side-panel/logo silhouette — because the black flat-lay was shot on a
+        // white sheet (white panels can't be segmented from a white background).
+        // Gallery: black-on-model shot (IMG_1362), EXIF-corrected + downscaled to
+        // 1600px long-edge, same pipeline as the navy gallery shots.
+        colorName: 'Black',
+        hex: '#0E0E12',
+        productImage: '/photos/product-phantom-shorts-black.png',
+        gallery: [
+          '/photos/phantom-shorts-black-1.jpg',
         ],
       },
     ],

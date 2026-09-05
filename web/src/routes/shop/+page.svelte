@@ -69,10 +69,17 @@
     env: MISSION_LABELS[sweats.mission_number],
     slug: sweats.slug,
     planetType: 'phantom' as const,
-    product: '/photos/product-phantom-shorts.png',
-    // Zoom out to match the set/beanie showcase scale (0.72) so the shorts sit
-    // on the planet at the same proportion as the other missions.
-    productScale: 0.72,
+    // Navy + black colorways auto-rotate on the planet, same treatment as the
+    // WR-set carousel — showcases both colorways from the mission-select screen.
+    carousel: [
+      '/photos/product-phantom-shorts.png',        // navy
+      '/photos/product-phantom-shorts-black.png',  // black
+    ] as CarouselSlot[],
+    // Shorts are a WIDE garment; MissionPlanet sizes sprites by HEIGHT and derives
+    // width from aspect, so 0.72 (matched to the tall tee/sweats) made the shorts
+    // ~2x too wide and fill the disc edge-to-edge. Scale by the binding dimension
+    // (width): 0.38 lands the shorts at the tee/sweats footprint. See design-refs/.
+    productScale: 0.38,
     productOpacity: 1.0,
     spriteBlending: 'normal' as const,
     glow: '#2E6FE0',
@@ -329,7 +336,10 @@
       <div class="planet-wrap">
         <MissionPlanet
           planetType={sweatsMission.planetType}
-          productUrl={sweatsMission.product}
+          carousel={sweatsMission.carousel}
+          carouselInterval={3500}
+          carouselFade={850}
+          carouselFadeEdges={false}
           productScale={sweatsMission.productScale}
           productOpacity={sweatsMission.productOpacity}
           productBlending={sweatsMission.spriteBlending}
