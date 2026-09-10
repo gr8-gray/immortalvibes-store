@@ -7,7 +7,7 @@
 import { writable } from 'svelte/store';
 import { SLUG } from '$lib/types/shop';
 
-export type TransitionType = 'T1' | 'T2' | 'T3' | 'T4';
+export type TransitionType = 'T1' | 'T2' | 'T3' | 'T4' | 'T5';
 
 export interface TransitionState {
   active: boolean;
@@ -44,10 +44,13 @@ export const MISSION_ORDER: string[] = [
 
 // Resolve which transition to use given from/to pathnames
 export function resolveTransition(from: string, to: string): TransitionType | null {
-  if (to === '/') return 'T4';
-  if (to === '/shop') return 'T1';
-  if (to.startsWith('/shop/') && from === '/shop') return 'T2';
-  if (to.startsWith('/shop/') && from.startsWith('/shop/')) return 'T3';
+  // The radial hyperspace jump (T5) is the signature space-travel transition:
+  // leaving Earth for the store, returning to Earth, and the info pages.
+  if (to === '/') return 'T5';       // back to Earth (was T4 re-entry)
+  if (to === '/shop') return 'T5';   // enter / return to the store (was T1 ascent)
+  if (to.startsWith('/shop/') && from === '/shop') return 'T2';           // enter a planet
+  if (to.startsWith('/shop/') && from.startsWith('/shop/')) return 'T3';  // between planets
+  if (to === '/about' || to === '/contact') return 'T5';                  // info pages
   return null;
 }
 
