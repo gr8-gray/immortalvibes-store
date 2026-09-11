@@ -7,9 +7,10 @@
   import { playT2, type T2Elements } from '$lib/transitions/t2-hyperspace';
   import { playT3, type T3Elements } from '$lib/transitions/t3-ring';
   import { playT4, type T4Elements } from '$lib/transitions/t4-return';
+  import { playT5, type T5Elements } from '$lib/transitions/t5-hyperspace';
 
   export function triggerOut(
-    type: 'T1' | 'T2' | 'T3' | 'T4',
+    type: 'T1' | 'T2' | 'T3' | 'T4' | 'T5',
     opts: { clickX?: number; clickY?: number; accentColor?: string; mainContent?: HTMLElement },
     onMidpoint: () => void
   ): Promise<void> {
@@ -24,11 +25,13 @@
         playT3(getT3Els(), opts.mainContent!, onMidpoint, resolve);
       } else if (type === 'T4') {
         playT4(getT4Els(), onMidpoint, resolve);
+      } else if (type === 'T5') {
+        playT5(getT5Els(), onMidpoint, resolve);
       }
     });
   }
 
-  export function triggerIn(type: 'T1' | 'T2' | 'T3' | 'T4', onComplete: () => void): void {
+  export function triggerIn(type: 'T1' | 'T2' | 'T3' | 'T4' | 'T5', onComplete: () => void): void {
     if (!browser) { onComplete(); return; }
     if (type === 'T1') playT1In(getT1Els(), onComplete);
     else onComplete();
@@ -62,6 +65,9 @@
   let t4Atmo: HTMLElement;
   let t4City: HTMLElement;
 
+  // T5
+  let t5Canvas: HTMLCanvasElement;
+
   function getT1Els(): T1Elements {
     return { overlay: overlayEl, flash: t1Flash, horizon: t1Horizon, streakCanvas: t1StreakCanvas, atmoLeft: t1AtmoLeft, atmoRight: t1AtmoRight };
   }
@@ -73,6 +79,9 @@
   }
   function getT4Els(): T4Elements {
     return { overlay: overlayEl, spaceStars: t4SpaceStars, heat: t4Heat, craft: t4Craft, trail: t4Trail, atmo: t4Atmo, cityline: t4City };
+  }
+  function getT5Els(): T5Elements {
+    return { overlay: overlayEl, canvas: t5Canvas };
   }
 
   onMount(() => {
@@ -131,6 +140,11 @@
         <path d="M0,120 L0,80 L40,80 L40,50 L60,50 L60,30 L80,30 L80,50 L100,50 L100,60 L140,60 L140,40 L160,40 L160,20 L180,20 L180,40 L200,40 L200,55 L240,55 L240,35 L260,35 L260,55 L280,55 L280,70 L320,70 L320,45 L350,45 L350,25 L370,25 L370,45 L390,45 L390,60 L420,60 L420,80 L460,80 L460,55 L490,55 L490,70 L520,70 L520,45 L540,45 L540,30 L560,30 L560,45 L580,45 L580,65 L620,65 L620,80 L660,80 L660,50 L680,50 L680,35 L700,35 L700,50 L720,50 L720,60 L760,60 L760,40 L800,40 L800,55 L840,55 L840,75 L880,75 L880,50 L910,50 L910,30 L930,30 L930,50 L960,50 L960,65 L1000,65 L1000,80 L1040,80 L1040,55 L1070,55 L1070,40 L1090,40 L1090,55 L1110,55 L1110,70 L1150,70 L1150,45 L1180,45 L1180,60 L1220,60 L1220,80 L1260,80 L1260,50 L1290,50 L1290,35 L1310,35 L1310,50 L1340,50 L1340,65 L1380,65 L1380,80 L1440,80 L1440,120 Z" fill="rgba(20,40,80,0.9)"/>
       </svg>
     </div>
+  </div>
+
+  <!-- T5 LAYER -->
+  <div class="t5-layer">
+    <canvas bind:this={t5Canvas} class="t5-canvas"></canvas>
   </div>
 
 </div>
@@ -295,6 +309,10 @@
     overflow: hidden; opacity: 0;
   }
   .t4-city svg { width: 100%; height: 100%; }
+
+  /* T5 */
+  .t5-layer { position: absolute; inset: 0; }
+  .t5-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   @media (prefers-reduced-motion: reduce) {
     .t-overlay { transition: opacity 0.2s !important; }

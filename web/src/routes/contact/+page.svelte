@@ -21,10 +21,10 @@
         <a href="mailto:immortalvibesco@gmail.com" class="channel-value">immortalvibesco@gmail.com</a>
       </div>
 
-      <!-- Social placeholder — owner to supply -->
+      <!-- Social -->
       <div class="channel">
         <span class="channel-label">Instagram</span>
-        <span class="channel-value coming">Coming soon</span>
+        <a href="https://www.instagram.com/immortalvibesco" target="_blank" rel="noopener noreferrer" class="channel-value">@immortalvibesco</a>
       </div>
     </div>
 
@@ -119,11 +119,8 @@
     transition: color 0.2s ease;
   }
 
-  .channel-value.coming {
-    font-size: 0.55rem;
-    letter-spacing: 0.2em;
-    color: rgba(240,237,230,0.2);
-    text-transform: uppercase;
+  a.channel-value:hover {
+    color: #F0EDE6;
   }
 
   .divider {
