@@ -4,10 +4,8 @@
   import { browser } from '$app/environment';
   import gsap from 'gsap';
   import { playT1Out, playT1In, type T1Elements } from '$lib/transitions/t1-ascent';
-  import { playT2, type T2Elements } from '$lib/transitions/t2-hyperspace';
-  import { playT3, type T3Elements } from '$lib/transitions/t3-ring';
   import { playT4, type T4Elements } from '$lib/transitions/t4-return';
-  import { playT5, type T5Elements } from '$lib/transitions/t5-hyperspace';
+  import { playT5, playT2, playT3, type T5Elements } from '$lib/transitions/t5-hyperspace';
 
   export function triggerOut(
     type: 'T1' | 'T2' | 'T3' | 'T4' | 'T5',
@@ -20,9 +18,11 @@
         playT1Out(getT1Els(), onMidpoint);
         resolve();
       } else if (type === 'T2') {
-        playT2(getT2Els(), opts.clickX ?? 0.5, opts.clickY ?? 0.5, opts.accentColor ?? '#4FC3F7', onMidpoint, resolve);
+        // Dive into the clicked planet — hyperspace origin at the click point.
+        playT2(getT5Els(), opts.clickX ?? 0.5, opts.clickY ?? 0.5, onMidpoint, resolve);
       } else if (type === 'T3') {
-        playT3(getT3Els(), opts.mainContent!, onMidpoint, resolve);
+        // Quick hyperspace jump between planets — center origin.
+        playT3(getT5Els(), onMidpoint, resolve);
       } else if (type === 'T4') {
         playT4(getT4Els(), onMidpoint, resolve);
       } else if (type === 'T5') {
@@ -47,16 +47,6 @@
   let t1AtmoLeft: HTMLElement;
   let t1AtmoRight: HTMLElement;
 
-  // T2
-  let t2StreakEls: HTMLElement[] = [];
-  let t2Flash: HTMLElement;
-  let t2Mist: HTMLElement;
-
-  // T3
-  let t3RingEls: HTMLElement[] = [];
-  let t3Core: HTMLElement;
-  let t3RayEls: HTMLElement[] = [];
-
   // T4
   let t4SpaceStars: HTMLElement;
   let t4Heat: HTMLElement;
@@ -65,17 +55,11 @@
   let t4Atmo: HTMLElement;
   let t4City: HTMLElement;
 
-  // T5
+  // T2 / T3 / T5 all share the hyperspace canvas
   let t5Canvas: HTMLCanvasElement;
 
   function getT1Els(): T1Elements {
     return { overlay: overlayEl, flash: t1Flash, horizon: t1Horizon, streakCanvas: t1StreakCanvas, atmoLeft: t1AtmoLeft, atmoRight: t1AtmoRight };
-  }
-  function getT2Els(): T2Elements {
-    return { overlay: overlayEl, streaks: t2StreakEls, flash: t2Flash, mist: t2Mist };
-  }
-  function getT3Els(): T3Elements {
-    return { overlay: overlayEl, rings: t3RingEls, core: t3Core, rays: t3RayEls };
   }
   function getT4Els(): T4Elements {
     return { overlay: overlayEl, spaceStars: t4SpaceStars, heat: t4Heat, craft: t4Craft, trail: t4Trail, atmo: t4Atmo, cityline: t4City };
@@ -101,26 +85,6 @@
     <div bind:this={t1AtmoRight} class="t1-atmo-right"></div>
   </div>
 
-  <!-- T2 LAYERS -->
-  <div class="t2-layer">
-    <div bind:this={t2Mist} class="t2-mist"></div>
-    {#each Array(16) as _, i}
-      <div bind:this={t2StreakEls[i]} class="t2-streak"></div>
-    {/each}
-    <div bind:this={t2Flash} class="t2-flash"></div>
-  </div>
-
-  <!-- T3 LAYERS -->
-  <div class="t3-layer">
-    {#each Array(8) as _, i}
-      <div bind:this={t3RayEls[i]} class="t3-ray" style="transform: rotate({i * 45}deg);"></div>
-    {/each}
-    {#each Array(5) as _, i}
-      <div bind:this={t3RingEls[i]} class="t3-ring" style="width: {40 + i * 16}vmin; height: {40 + i * 16}vmin;"></div>
-    {/each}
-    <div bind:this={t3Core} class="t3-core"></div>
-  </div>
-
   <!-- T4 LAYERS -->
   <div class="t4-layer">
     <div bind:this={t4SpaceStars} class="t4-space-stars">
@@ -142,7 +106,7 @@
     </div>
   </div>
 
-  <!-- T5 LAYER -->
+  <!-- HYPERSPACE LAYER (T2 / T3 / T5) -->
   <div class="t5-layer">
     <canvas bind:this={t5Canvas} class="t5-canvas"></canvas>
   </div>
@@ -224,48 +188,6 @@
     opacity: 0;
   }
 
-  /* T2 */
-  .t2-layer { position: absolute; inset: 0; }
-  .t2-mist { position: absolute; inset: 0; opacity: 0; }
-  .t2-streak {
-    position: absolute;
-    height: 1px;
-    background: linear-gradient(to right, transparent 0%, rgba(160,210,255,0.9) 30%, rgba(255,255,255,0.95) 60%, transparent 100%);
-    opacity: 0;
-    transform-origin: 0% 50%;
-  }
-  .t2-flash { position: absolute; inset: 0; background: #ffffff; opacity: 0; }
-
-  /* T3 */
-  .t3-layer { position: absolute; inset: 0; }
-  .t3-ring {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    border-radius: 50%;
-    border: 1px solid #C8922A;
-    box-shadow: 0 0 12px rgba(200,146,42,0.25);
-    opacity: 0;
-  }
-  .t3-core {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    width: 12px; height: 12px;
-    border-radius: 50%;
-    background: radial-gradient(ellipse, rgba(200,146,42,1), rgba(200,146,42,0.3) 70%);
-    box-shadow: 0 0 30px rgba(200,146,42,0.8);
-    opacity: 0;
-  }
-  .t3-ray {
-    position: absolute;
-    top: 50%; left: 50%;
-    height: 1px; width: 50vw;
-    transform-origin: 0% 50%;
-    background: linear-gradient(to right, rgba(200,146,42,0.5), transparent);
-    opacity: 0;
-  }
-
   /* T4 */
   .t4-layer { position: absolute; inset: 0; }
   .t4-space-stars { position: absolute; inset: 0; opacity: 0; }
@@ -310,7 +232,7 @@
   }
   .t4-city svg { width: 100%; height: 100%; }
 
-  /* T5 */
+  /* Hyperspace (T2 / T3 / T5) */
   .t5-layer { position: absolute; inset: 0; }
   .t5-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
