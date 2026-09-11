@@ -54,12 +54,27 @@
     return s;
   })();
 
-  // For colorway products (beanie), variant label = colorName of active colorway.
-  // For size products, variant label = selectedSize.
+  // Variant keying, three shapes:
+  //   colorway-only (beanie): one size 'OS', label = active colorName.
+  //   dual-axis (phantom shorts): many sizes AND many colorways — label combines
+  //     both as "Color / Size" so stock + cart tell e.g. Navy M from Black M apart.
+  //   size-only (tee/tank/sweats): label = selectedSize.
   $: isColorwayProduct = hasVariants && product.sizes.length === 1 && product.sizes[0] === 'OS';
+  $: isDualAxis = hasVariants && variants.length > 1 && !isColorwayProduct;
   $: selectedVariantLabel = isColorwayProduct
     ? (activeVariant?.colorName ?? '')
-    : selectedSize;
+    : isDualAxis
+      ? (activeVariant && selectedSize ? `${activeVariant.colorName} / ${selectedSize}` : '')
+      : selectedSize;
+
+  // Sizes sold out FOR THE ACTIVE COLORWAY. Dual-axis stock rows are keyed
+  // "Color / Size"; SizeSelector wants plain size labels, so project the active
+  // color's rows down to sizes. Non-dual-axis passes the raw set through.
+  $: soldOutForSize = (() => {
+    if (!(isDualAxis && activeVariant)) return soldOutSizes;
+    const color = activeVariant.colorName;
+    return new Set(product.sizes.filter((sz) => soldOutSizes.has(`${color} / ${sz}`)));
+  })();
   $: galleryImages  = activeVariant?.gallery ?? [];
   $: hasBack        = !!activeVariant?.backImage;
 
@@ -75,6 +90,12 @@
   function selectVariant(idx: number) {
     activeVariantIdx = idx;
     activeView = 'front';
+    // Dual-axis: if the chosen size is out for the newly selected color, drop it
+    // so a sold-out Color/Size combo can't sit selected across a color switch.
+    if (isDualAxis && selectedSize) {
+      const color = variants[idx]?.colorName;
+      if (color && soldOutSizes.has(`${color} / ${selectedSize}`)) selectedSize = '';
+    }
   }
 
   function selectGallery(idx: number) { activeView = idx; }
@@ -156,6 +177,10 @@
     if (!isColorwayProduct && !selectedSize) {
       cartError = 'Please select a size.';
       gsap.to('.size-selector', { x: [-6, 6, -4, 4, 0], duration: 0.35, ease: 'none' });
+      return;
+    }
+    if (isDualAxis && soldOutForSize.has(selectedSize)) {
+      cartError = 'That color / size is sold out.';
       return;
     }
     cartError = '';
@@ -304,7 +329,9 @@
             <p class="field-label">COLOR — {activeVariant?.colorName ?? ''}</p>
             <div class="swatches">
               {#each variants as v, i}
-                {@const colorSoldOut = soldOutSizes.has(v.colorName)}
+                {@const colorSoldOut = isDualAxis
+                  ? product.sizes.every((sz) => soldOutSizes.has(`${v.colorName} / ${sz}`))
+                  : soldOutSizes.has(v.colorName)}
                 <button
                   class="swatch"
                   class:active={activeVariantIdx === i}
@@ -326,7 +353,7 @@
           {#if !isColorwayProduct}
             <div class="reveal-child">
               <p class="field-label">SELECT SIZE</p>
-              <SizeSelector sizes={product.sizes} bind:selected={selectedSize} soldOut={soldOutSizes} />
+              <SizeSelector sizes={product.sizes} bind:selected={selectedSize} soldOut={soldOutForSize} />
               {#if cartError}<p class="cart-error">{cartError}</p>{/if}
             </div>
           {:else}
