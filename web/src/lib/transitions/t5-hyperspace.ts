@@ -1,13 +1,18 @@
 // web/src/lib/transitions/t5-hyperspace.ts
 //
-// T5 — Radial Hyperspace Jump. Used for non-mission navigation (About / Contact).
-// A true 3D projected starfield: stars streak outward from a center vanishing
-// point, neon-blue at the edges ramping to white-blue at the throat, additive
-// compositing so the throat blooms. Timeline: charge -> violent accel -> brief
-// lightspeed -> decelerate (coast to a stop) -> settle. The route swaps at the
-// midpoint under a gentle blue-white cover veil; no harsh full-frame flash.
+// Hyperspace engine — a true 3D projected starfield. Stars streak outward from a
+// vanishing point (the "origin"), neon-blue at the edges ramping to white-blue at
+// the throat, additive compositing so the throat blooms. Timeline: charge ->
+// violent accel -> brief lightspeed -> decelerate (coast to a stop) -> settle. The
+// route swaps at the midpoint under a gentle blue-white cover veil; no harsh flash.
 //
-// Tuned live with Eric (2026-09-05). Adjust the character here in CFG.
+// One engine drives three transitions, differing only in origin + character:
+//   T5 — interstellar jump, center origin. About / Contact / enter-store / to-Earth.
+//   T2 — dive INTO the clicked planet: origin set to the planet's screen position.
+//   T3 — quick jump between planets, center origin, snappier.
+//
+// Tuned live with Eric (T5 2026-09-05; T2/T3 origin-aware 2026-09-11). Character
+// lives in HYPER_PROFILES; the shared frame math lives in playHyperspace.
 import gsap from 'gsap';
 
 export interface T5Elements {
@@ -15,28 +20,45 @@ export interface T5Elements {
   canvas: HTMLCanvasElement;
 }
 
-const CFG = {
-  dur: 2.0,       // total seconds
-  density: 1600,  // star count
-  streak: 2.0,    // motion-blur (streak) length multiplier
-  warp: 1.25,     // peak acceleration intensity
-  swirl: 0.5,     // rotational twist as stars near the camera (0 = pure radial)
-  cover: 0.35,    // blue-white mask alpha at the swap point (0 = none, 1 = full cover)
-  mid: 0.58,      // progress at which the route swaps (== peakEnd)
+export interface HyperProfile {
+  dur: number;      // total seconds
+  density: number;  // star count
+  streak: number;   // motion-blur (streak) length multiplier
+  warp: number;     // peak acceleration intensity
+  swirl: number;    // rotational twist as stars near the camera (0 = pure radial)
+  cover: number;    // blue-white mask alpha at the swap point (0 = none, 1 = full)
+  mid: number;      // progress at which the route swaps (== peakEnd)
+  originX: number;  // vanishing point, normalised 0..1 (0.5 = screen center)
+  originY: number;
+}
+
+const BASE: HyperProfile = {
+  dur: 2.0, density: 1600, streak: 2.0, warp: 1.25,
+  swirl: 0.5, cover: 0.35, mid: 0.58, originX: 0.5, originY: 0.5,
 };
 
-// Phase boundaries as fractions of dur.
-const T = { hold: 0.08, peakStart: 0.44, peakEnd: 0.58, decelEnd: 0.92 };
+// Per-transition character. Origin for T2 is overridden per-click at call time.
+export const HYPER_PROFILES = {
+  T5: { ...BASE },
+  T2: { ...BASE, dur: 1.5, density: 1400, warp: 1.4, swirl: 0.62, cover: 0.4, mid: 0.55 },
+  T3: { ...BASE, dur: 1.2, density: 1200, warp: 1.5, swirl: 0.72, cover: 0.42, mid: 0.5 },
+} satisfies Record<string, HyperProfile>;
+
 const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 
 interface Star { x: number; y: number; z: number; }
 
-export function playT5(
+// The shared engine. Origin + character come from `p` (a HyperProfile).
+export function playHyperspace(
   els: T5Elements,
+  prof: HyperProfile,
   onMidpoint: () => void,
   onComplete: () => void
 ): gsap.core.Timeline {
   const { overlay, canvas } = els;
+  const CFG = prof;
+  // Phase boundaries as fractions of dur, anchored to the swap point (peakEnd == mid).
+  const T = { hold: 0.08, peakStart: CFG.mid - 0.14, peakEnd: CFG.mid, decelEnd: CFG.mid + 0.34 };
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // Reduced motion: skip the warp — quick calm cross-fade with the swap under cover.
@@ -60,7 +82,7 @@ export function playT5(
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    cx = W / 2; cy = H / 2;
+    cx = W * CFG.originX; cy = H * CFG.originY;   // origin-aware vanishing point
     maxDim = Math.hypot(W, H);
     scale = Math.min(W, H) * 0.62;
   }
@@ -203,4 +225,34 @@ export function playT5(
 
   rafId = requestAnimationFrame(loop);
   return tl;
+}
+
+// T5 — interstellar jump, center origin. Kept as the named entry the overlay uses
+// for About / Contact / enter-store / return-to-Earth.
+export function playT5(
+  els: T5Elements,
+  onMidpoint: () => void,
+  onComplete: () => void
+): gsap.core.Timeline {
+  return playHyperspace(els, HYPER_PROFILES.T5, onMidpoint, onComplete);
+}
+
+// T2 — dive into the clicked planet. origin = the planet's screen position (0..1).
+export function playT2(
+  els: T5Elements,
+  originX: number,
+  originY: number,
+  onMidpoint: () => void,
+  onComplete: () => void
+): gsap.core.Timeline {
+  return playHyperspace(els, { ...HYPER_PROFILES.T2, originX, originY }, onMidpoint, onComplete);
+}
+
+// T3 — quick jump between planets, center origin.
+export function playT3(
+  els: T5Elements,
+  onMidpoint: () => void,
+  onComplete: () => void
+): gsap.core.Timeline {
+  return playHyperspace(els, HYPER_PROFILES.T3, onMidpoint, onComplete);
 }
