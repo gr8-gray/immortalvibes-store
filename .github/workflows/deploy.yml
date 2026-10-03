@@ -15,6 +15,10 @@ on:
         description: 'Exercise the rollback path against current HEAD (proves the mechanism; does NOT revert). Leave false for a normal run.'
         type: boolean
         default: false
+      api_rollback_drill:
+        description: 'Exercise the API rollback path by redeploying the CURRENTLY RUNNING image (proves the mechanism; changes nothing). Leave false for a normal run.'
+        type: boolean
+        default: false
 
 jobs:
   # Test gate (STOP 19): the full api suite — including TestWebhookFulfillmentE2E,
@@ -38,38 +42,124 @@ jobs:
       - name: Run api tests
         run: cd api && go test ./...
 
-  deploy-worker:
+  # ── API tier: deploy + verify + rollback (issue #7) ──────────────────────────
+  # The Go API terminates the money path — /api/checkout, /api/webhooks/stripe,
+  # /api/admin/*. Before this job it shipped BY HAND with no post-deploy check and
+  # no revert, which is how a config change took /api/* down for 6m40s on 2026-10-02.
+  #
+  # SCOPE, stated because it is easy to assume otherwise: this covers CODE deploys.
+  # It canNOT recover a bad SECRET/config change. Fly secret changes create a new
+  # release that REUSES the existing image (17 distinct images across 25 releases),
+  # so redeploying "the previous image" is a silent no-op against a config regression.
+  # Secret rotations follow Claude/secret-rotation-2026-10-01.md, not this job.
+  deploy-api:
     runs-on: ubuntu-latest
     needs: test-api
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event.inputs.api_rollback_drill == 'true'
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
         with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: worker/package-lock.json
+          fetch-depth: 0 # need history to diff the push range
 
-      - name: Install Worker dependencies
-        run: cd worker && npm ci
+      - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy Worker
-        run: cd worker && npx wrangler deploy
+      - name: Decide whether the API needs deploying
+        id: scope
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=drill" >> "$GITHUB_OUTPUT"; echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "DRILL — will redeploy the running image, changing nothing."; exit 0
+          fi
+          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+          # If the push range cannot be resolved, deploy rather than silently skip.
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Push range unresolvable — deploying (fail toward shipping, not toward skipping)."
+          elif git diff --name-only "$BEFORE" "${{ github.sha }}" -- api/ | grep -q .; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"; echo "api/ changed — deploying."
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"; echo "api/ unchanged — skipping deploy."
+          fi
 
-      - name: Set Worker PROXY_SECRET
-        run: cd worker && echo "$PROXY_SECRET" | npx wrangler secret put PROXY_SECRET
+      # Captured BEFORE deploying. This is the only reliable rollback target: the
+      # image that is actually serving right now. The previous RELEASE is not a
+      # safe target because secret-change releases carry the same image forward.
+      - name: Capture the running image (rollback target)
+        id: prev
+        if: steps.scope.outputs.deploy == 'true' || steps.scope.outputs.mode == 'drill'
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          PROXY_SECRET: ${{ secrets.WORKER_PROXY_SECRET }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          IMG=$(flyctl releases --image -j -a immortalvibes-api | jq -r '.[0].ImageRef')
+          if [ -z "$IMG" ] || [ "$IMG" = "null" ]; then
+            echo "Could not determine the running image — refusing to deploy without a rollback target." >&2
+            exit 1
+          fi
+          echo "image=$IMG" >> "$GITHUB_OUTPUT"
+          echo "rollback target: $IMG"
+
+      - name: Deploy API to Fly
+        if: steps.scope.outputs.deploy == 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: cd api && flyctl deploy --remote-only --now --wait-timeout 300
+
+      - name: Redeploy the running image (DRILL — proves the mechanism)
+        if: steps.scope.outputs.mode == 'drill'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy -i "${{ steps.prev.outputs.image }}" -a immortalvibes-api --now --yes --wait-timeout 300
+
+      # /health is EXEMPT from the proxy-secret middleware and returns 200 against a
+      # completely wrong secret, so it can never be the check on its own. The three
+      # assertions below are the ones that can actually fail independently.
+      - name: Smoke the API
+        id: smoke
+        if: steps.scope.outputs.deploy == 'true' || steps.scope.outputs.mode == 'drill'
+        run: ./.github/scripts/smoke-api.sh
+
+      - name: Roll back to the previously running image
+        id: rb
+        if: failure() && steps.prev.outputs.image != '' && steps.scope.outputs.deploy == 'true'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "Smoke failed — restoring ${{ steps.prev.outputs.image }}"
+          flyctl deploy -i "${{ steps.prev.outputs.image }}" -a immortalvibes-api --now --yes --wait-timeout 300
+
+      - name: Re-smoke after rollback
+        if: always() && steps.rb.outcome == 'success'
+        run: ./.github/scripts/smoke-api.sh
+
+      - name: Record evidence (STOP 9)
+        if: always()
+        run: |
+          {
+            echo "## API tier — ${{ steps.scope.outputs.mode }}"
+            echo "- deploy attempted: ${{ steps.scope.outputs.deploy }}"
+            echo "- rollback target image: \`${{ steps.prev.outputs.image }}\`"
+            echo "- smoke: ${{ steps.smoke.outcome }}"
+            echo "- rollback: ${{ steps.rb.outcome }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify (best-effort — posts only if the secrets exist)
+        if: failure()
+        env:
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          MSG="IV API deploy FAILED (smoke=${{ steps.smoke.outcome }}, rollback=${{ steps.rb.outcome }}). ${RUN_URL}"
+          if [ -n "$NTFY_URL" ] && [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: immortalvibes API deploy" -d "$MSG" "$NTFY_URL/$NTFY_TOPIC" || true
+          fi
 
   deploy-pages:
     runs-on: ubuntu-latest
-    needs: deploy-worker # transitively gated on test-api; skipped on PRs
+    needs: test-api # the Worker job is gone (see below); gate is the api test suite
     if: github.event_name == 'push' # defense-in-depth: never deploy on PRs
     steps:
       - uses: actions/checkout@v5
@@ -144,12 +234,11 @@ jobs:
   # the job goes red and notifies for manual intervention — it never loops.
   rollback:
     runs-on: ubuntu-latest
-    needs: [deploy-worker, deploy-pages, verify-live]
+    needs: [deploy-pages, verify-live]
     if: >-
       always() &&
       (
         (github.event_name == 'push' &&
-         needs.deploy-worker.result == 'success' &&
          needs.deploy-pages.result == 'success' &&
          needs.verify-live.result == 'failure')
         ||
@@ -192,12 +281,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: worker/package-lock.json
-
-      - name: Redeploy Worker (previous good)
-        run: cd worker && npm ci && npx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Redeploy Pages (previous good)
         # Path is relative to web/ (we cd there first) — must NOT be prefixed with
