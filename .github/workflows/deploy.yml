@@ -30,7 +30,7 @@ jobs:
   # in production — if a future test needs live creds, guard it with t.Skip on a
   # missing env var and document it here; do not fake a pass.
   test-api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
 
@@ -53,7 +53,7 @@ jobs:
   # so redeploying "the previous image" is a silent no-op against a config regression.
   # Secret rotations follow Claude/secret-rotation-2026-10-01.md, not this job.
   deploy-api:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test-api
     if: github.event_name == 'push' || github.event.inputs.api_rollback_drill == 'true'
     steps:
@@ -158,7 +158,7 @@ jobs:
           fi
 
   deploy-pages:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: test-api # the Worker job is gone (see below); gate is the api test suite
     if: github.event_name == 'push' # defense-in-depth: never deploy on PRs
     steps:
@@ -190,7 +190,7 @@ jobs:
   # — the same harmless side effect the weekly smoke already produces, now per-deploy.
   # A red result here is the trigger for the rollback job below.
   verify-live:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: deploy-pages
     if: github.event_name == 'push'
     steps:
@@ -233,7 +233,7 @@ jobs:
   # end-to-end without changing what is live. If the post-rollback smoke ALSO fails,
   # the job goes red and notifies for manual intervention — it never loops.
   rollback:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [deploy-pages, verify-live]
     if: >-
       always() &&
