@@ -121,14 +121,23 @@ func catalogPriceFromStripe(p *stripe.Price) (CatalogPrice, error) {
 
 // CachedPriceCatalog memoizes successful lookups from an underlying catalog
 // for a fixed TTL. Failures are never cached, so a price that becomes
-// unavailable stops selling within one TTL.
+// unavailable stops selling within one TTL. Concurrent misses for the same
+// price share a single upstream lookup.
 type CachedPriceCatalog struct {
 	next PriceCatalog
 	ttl  time.Duration
 	now  func() time.Time
 
-	mu      sync.Mutex
-	entries map[string]cachedPrice
+	mu       sync.Mutex
+	entries  map[string]cachedPrice
+	inflight map[string]*priceCall
+}
+
+// priceCall is an upstream lookup shared by concurrent callers.
+type priceCall struct {
+	done  chan struct{}
+	price CatalogPrice
+	err   error
 }
 
 type cachedPrice struct {
@@ -138,27 +147,48 @@ type cachedPrice struct {
 
 // NewCachedPriceCatalog wraps next with a TTL cache.
 func NewCachedPriceCatalog(next PriceCatalog, ttl time.Duration) *CachedPriceCatalog {
-	return &CachedPriceCatalog{next: next, ttl: ttl, now: time.Now, entries: map[string]cachedPrice{}}
+	return &CachedPriceCatalog{
+		next:     next,
+		ttl:      ttl,
+		now:      time.Now,
+		entries:  map[string]cachedPrice{},
+		inflight: map[string]*priceCall{},
+	}
 }
 
 // Lookup implements PriceCatalog.
+//
+// The shared upstream lookup runs with the context of the caller that started
+// it; a waiter whose own context ends first returns its context error.
 func (c *CachedPriceCatalog) Lookup(ctx context.Context, priceID string) (CatalogPrice, error) {
-	now := c.now()
 	c.mu.Lock()
-	e, ok := c.entries[priceID]
-	c.mu.Unlock()
-	if ok && now.Before(e.expires) {
+	if e, ok := c.entries[priceID]; ok && c.now().Before(e.expires) {
+		c.mu.Unlock()
 		return e.price, nil
 	}
-
-	cp, err := c.next.Lookup(ctx, priceID)
-	if err != nil {
-		return CatalogPrice{}, err
+	if call, ok := c.inflight[priceID]; ok {
+		c.mu.Unlock()
+		select {
+		case <-call.done:
+			return call.price, call.err
+		case <-ctx.Done():
+			return CatalogPrice{}, ctx.Err()
+		}
 	}
-	c.mu.Lock()
-	c.entries[priceID] = cachedPrice{price: cp, expires: now.Add(c.ttl)}
+	call := &priceCall{done: make(chan struct{})}
+	c.inflight[priceID] = call
 	c.mu.Unlock()
-	return cp, nil
+
+	call.price, call.err = c.next.Lookup(ctx, priceID)
+
+	c.mu.Lock()
+	delete(c.inflight, priceID)
+	if call.err == nil {
+		c.entries[priceID] = cachedPrice{price: call.price, expires: c.now().Add(c.ttl)}
+	}
+	c.mu.Unlock()
+	close(call.done)
+	return call.price, call.err
 }
 
 // validQuantity reports whether q is an acceptable line item quantity.
