@@ -5,7 +5,10 @@
 // can render synchronously, and falls back to local-only math whenever the
 // API can't be reached mid-session.
 import { writable, derived, get } from 'svelte/store';
-import { updateCartItem, type GoCart } from '$lib/api';
+import { ApiError, updateCartItem, type GoCart } from '$lib/api';
+
+/** Mirrors the API's per-line quantity bound (handlers.MaxLineQuantity). */
+export const MAX_LINE_QUANTITY = 20;
 
 export interface CartItem {
   variantId: string;  // dedup key: `${price_id}:${size}` (size may be empty for OS)
@@ -102,7 +105,7 @@ function createCartStore() {
     async setItemQuantity(variantId: string, quantity: number) {
       const state = get({ subscribe });
       const token = state.id;
-      const clamped = Math.max(0, Math.floor(quantity));
+      const clamped = Math.min(MAX_LINE_QUANTITY, Math.max(0, Math.floor(quantity)));
 
       const localFallback = () => {
         update((s) =>
@@ -132,7 +135,11 @@ function createCartStore() {
       try {
         const goCart = await updateCartItem(token, item.priceId, item.size, clamped);
         set(mapGoCart(goCart));
-      } catch {
+      } catch (err) {
+        // A 4xx is the server rejecting the change; the server cart is
+        // unchanged, so keep local state in sync with it. Only fall back to a
+        // local-only update when the API is unreachable or failing.
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500) return;
         localFallback();
       }
     },

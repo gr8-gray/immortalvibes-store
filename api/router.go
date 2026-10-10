@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -32,8 +33,9 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Get("/api/products/{id}", productsHandler.GetProduct)
 
 	// Authoritative pricing for cart and checkout. stripe.Key is set above by
-	// NewStripeProductService.
-	catalog := handlers.StripePriceCatalog{}
+	// NewStripeProductService. Cached briefly to keep Stripe off the hot path
+	// of every add-to-cart; a deactivated price stops selling within the TTL.
+	catalog := handlers.NewCachedPriceCatalog(handlers.StripePriceCatalog{}, time.Minute)
 
 	// Cart
 	cartHandler := handlers.NewCartHandler(kv, catalog)

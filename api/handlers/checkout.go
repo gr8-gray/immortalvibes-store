@@ -156,27 +156,24 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Variant stock guard: reject checkout if any line item's variant stock is
-	// known and insufficient. Non-atomic (no reservation) — same oversell window
-	// as before, but blocks the obvious case.
+	// known and insufficient. A variant with no stock row is untracked and
+	// sellable, matching the storefront. Non-atomic (no reservation) — same
+	// oversell window as before, but blocks the obvious case.
 	for _, li := range cart.LineItems {
-		if li.ProductID == "" || li.Size == "" {
+		if li.Size == "" {
 			continue
 		}
 		variantRows, err := h.db.GetVariantStocks(r.Context(), li.ProductID)
 		if err != nil {
 			continue // DB error — don't block checkout
 		}
-		for _, v := range variantRows {
-			if v.Variant == li.Size {
-				if v.StockCount < li.Quantity {
-					http.Error(w,
-						fmt.Sprintf("%s (%s) has insufficient stock", li.Name, li.Size),
-						http.StatusConflict,
-					)
-					return
-				}
-				break
-			}
+		row, ok := findVariant(variantRows, li.Size)
+		if ok && row.StockCount < li.Quantity {
+			http.Error(w,
+				fmt.Sprintf("%s (%s) has insufficient stock", li.Name, li.Size),
+				http.StatusConflict,
+			)
+			return
 		}
 	}
 

@@ -112,6 +112,12 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	size, err := normalizeVariant(req.Size)
+	if err != nil {
+		writePricingError(w, err)
+		return
+	}
+
 	cp, err := h.catalog.Lookup(r.Context(), req.PriceID)
 	if err != nil {
 		writePricingError(w, err)
@@ -140,7 +146,7 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	found := false
 	for i := range cart.LineItems {
 		li := &cart.LineItems[i]
-		if li.PriceID == req.PriceID && li.Size == req.Size {
+		if li.PriceID == req.PriceID && li.Size == size {
 			if !validQuantity(li.Quantity + req.Quantity) {
 				writePricingError(w, ErrInvalidQuantity)
 				return
@@ -152,6 +158,10 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !found {
+		if len(cart.LineItems) >= MaxCartLines {
+			writePricingError(w, ErrCartFull)
+			return
+		}
 		for _, li := range cart.LineItems {
 			if li.Currency != "" && li.Currency != cp.Currency {
 				writePricingError(w, ErrMixedCurrency)
@@ -162,7 +172,7 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 			PriceID:  req.PriceID,
 			ImageURL: req.ImageURL,
 			Quantity: req.Quantity,
-			Size:     req.Size,
+			Size:     size,
 		}
 		applyCatalogPrice(&li, cp)
 		cart.LineItems = append(cart.LineItems, li)
@@ -218,12 +228,8 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If no price_id in body, update the first item (convenience for single-item carts).
-	if req.PriceID == "" && len(cart.LineItems) > 0 {
-		req.PriceID = cart.LineItems[0].PriceID
-		req.Size = cart.LineItems[0].Size
-	}
-
+	// Lines are matched exactly on (price_id, size), including empty values, so
+	// a line with a missing price_id can still be removed.
 	if req.Quantity > MaxLineQuantity {
 		writePricingError(w, ErrInvalidQuantity)
 		return
@@ -254,17 +260,31 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 }
 
 // writePricingError maps catalog and line item validation errors to HTTP
-// responses. Unclassified errors are upstream failures and are logged.
+// responses. Errors attributed to a stored line item name it, so the buyer
+// knows which item to remove. Unclassified errors are upstream failures and
+// are logged.
 func writePricingError(w http.ResponseWriter, err error) {
+	var msg string
+	status := http.StatusConflict
 	switch {
 	case errors.Is(err, ErrInvalidQuantity):
-		http.Error(w, "invalid quantity", http.StatusBadRequest)
+		msg, status = "invalid quantity", http.StatusBadRequest
+	case errors.Is(err, ErrInvalidVariant):
+		msg = "selected option is unavailable"
 	case errors.Is(err, ErrPriceUnavailable):
-		http.Error(w, "item unavailable", http.StatusConflict)
+		msg = "item unavailable"
 	case errors.Is(err, ErrMixedCurrency):
-		http.Error(w, "item cannot be combined with cart contents", http.StatusConflict)
+		msg = "item cannot be combined with cart contents"
+	case errors.Is(err, ErrCartFull):
+		msg = "cart is full"
 	default:
-		log.Printf("pricing: catalog lookup failed: %v", err)
+		log.Printf("pricing: lookup failed: %q", err.Error())
 		http.Error(w, "pricing temporarily unavailable", http.StatusBadGateway)
+		return
 	}
+	var lie *LineItemError
+	if errors.As(err, &lie) && lie.Name != "" {
+		msg = lie.Name + ": " + msg
+	}
+	http.Error(w, msg, status)
 }
