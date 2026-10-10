@@ -5,8 +5,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
 	"testing"
+	"time"
 
 	"github.com/immortalvibes/api/handlers"
 	"github.com/immortalvibes/api/models"
@@ -213,8 +214,15 @@ func TestStripePriceCatalog_Lookup(t *testing.T) {
 	if got != want {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
-	if len(*paths) != 1 || !strings.Contains((*paths)[0], "expand") {
-		t.Errorf("requests = %v, want one request expanding product", *paths)
+	if len(*paths) != 1 {
+		t.Fatalf("requests = %v, want exactly one", *paths)
+	}
+	u, err := url.Parse((*paths)[0])
+	if err != nil {
+		t.Fatalf("parse request URI: %v", err)
+	}
+	if u.Path != "/v1/prices/price_1" || u.Query().Get("expand[0]") != "product" {
+		t.Errorf("request = %s, want GET /v1/prices/price_1 with expand[0]=product", (*paths)[0])
 	}
 }
 
@@ -245,5 +253,79 @@ func TestStripePriceCatalog_LookupErrors(t *testing.T) {
 				t.Errorf("errors.Is(ErrPriceUnavailable) = %v, want %v (err: %v)", got, tc.unavailable, err)
 			}
 		})
+	}
+}
+
+func TestRepriceLineItems_AttributesErrorsToLineItem(t *testing.T) {
+	items := []models.LineItem{
+		{PriceID: "price_usd", Name: "Tee", Quantity: 1},
+		{PriceID: "", Name: "Legacy Hat", Quantity: 1},
+	}
+	_, err := handlers.RepriceLineItems(context.Background(), newFakeCatalog(), items)
+	var lie *handlers.LineItemError
+	if !errors.As(err, &lie) {
+		t.Fatalf("err = %v, want *LineItemError", err)
+	}
+	if lie.Name != "Legacy Hat" || !errors.Is(err, handlers.ErrPriceUnavailable) {
+		t.Errorf("err = %v, want Legacy Hat / ErrPriceUnavailable", err)
+	}
+}
+
+func TestRepriceLineItems_LooksUpEachPriceOnce(t *testing.T) {
+	cat := newFakeCatalog()
+	items := []models.LineItem{
+		{PriceID: "price_usd", Size: "S", Quantity: 1},
+		{PriceID: "price_usd", Size: "M", Quantity: 1},
+		{PriceID: "price_hat", Quantity: 1},
+	}
+	if _, err := handlers.RepriceLineItems(context.Background(), cat, items); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cat.lookups != 2 {
+		t.Errorf("lookups = %d, want 2", cat.lookups)
+	}
+}
+
+func TestRepriceLineItems_RejectsTooManyLines(t *testing.T) {
+	items := make([]models.LineItem, handlers.MaxCartLines+1)
+	for i := range items {
+		items[i] = models.LineItem{PriceID: "price_usd", Quantity: 1}
+	}
+	if _, err := handlers.RepriceLineItems(context.Background(), newFakeCatalog(), items); !errors.Is(err, handlers.ErrCartFull) {
+		t.Fatalf("err = %v, want ErrCartFull", err)
+	}
+}
+
+func TestCachedPriceCatalog(t *testing.T) {
+	inner := newFakeCatalog()
+	now := time.Unix(0, 0)
+	c := handlers.NewCachedPriceCatalog(inner, time.Minute)
+	handlers.SetCatalogClock(c, func() time.Time { return now })
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		if _, err := c.Lookup(ctx, "price_usd"); err != nil {
+			t.Fatalf("lookup %d: %v", i, err)
+		}
+	}
+	if inner.lookups != 1 {
+		t.Errorf("lookups within TTL = %d, want 1", inner.lookups)
+	}
+
+	now = now.Add(time.Minute)
+	if _, err := c.Lookup(ctx, "price_usd"); err != nil {
+		t.Fatalf("lookup after expiry: %v", err)
+	}
+	if inner.lookups != 2 {
+		t.Errorf("lookups after expiry = %d, want 2", inner.lookups)
+	}
+
+	for i := 0; i < 2; i++ {
+		if _, err := c.Lookup(ctx, "price_gone"); !errors.Is(err, handlers.ErrPriceUnavailable) {
+			t.Fatalf("err = %v, want ErrPriceUnavailable", err)
+		}
+	}
+	if inner.lookups != 4 {
+		t.Errorf("failed lookups cached: lookups = %d, want 4", inner.lookups)
 	}
 }

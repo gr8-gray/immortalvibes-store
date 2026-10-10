@@ -94,7 +94,8 @@ async function apiFetch<T>(
     try {
       const body = await response.json();
       code = body.code ?? code;
-      message = body.message ?? message;
+      // The SvelteKit proxy wraps plain-text API errors as { error, status }.
+      message = body.message ?? body.error ?? message;
     } catch {
       // response body is not JSON — use defaults
     }
