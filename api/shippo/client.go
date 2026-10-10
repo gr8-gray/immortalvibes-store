@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const baseURL = "https://api.goshippo.com"
@@ -33,12 +34,16 @@ type Client struct {
 	http     *http.Client
 }
 
+// requestTimeout bounds every Shippo call. Checkout waits on a rate quote, so
+// an unresponsive carrier API must fail the request rather than hang it.
+const requestTimeout = 20 * time.Second
+
 // NewClient constructs a Shippo client with a fixed from-address.
 func NewClient(apiKey string, from Address) *Client {
 	return &Client{
 		apiKey:   apiKey,
 		fromAddr: from,
-		http:     &http.Client{},
+		http:     &http.Client{Timeout: requestTimeout},
 	}
 }
 

@@ -40,6 +40,14 @@
   let shippingLoading = false;
   let shippingDebounce: ReturnType<typeof setTimeout> | null = null;
 
+  // Amount the payment intent was created for. Once set, it is the total
+  // shown, so the buyer always sees exactly what will be charged.
+  let chargedTotal: number | null = null;
+
+  // Checkout fails server-side without a shipping quote, so payment cannot
+  // start until one has resolved.
+  $: shippingReady = !shippingLoading && !!shippingEstimate?.rate;
+
   function shippingCostCents(): number {
     return shippingEstimate?.rate?.amount ?? 0;
   }
@@ -146,6 +154,7 @@
       const session = await createCheckout($cart.id!, email, address, appliedCode || undefined, shippingCostCents() || undefined);
       const clientSecret = session.client_secret;
       orderId = session.order_id;
+      chargedTotal = session.total_amount;
       elements = stripe!.elements({ clientSecret });
       paymentElement = elements.create('payment');
       paymentElement.mount(mountNode);
@@ -246,10 +255,10 @@
         </div>
       {/if}
 
-      {#if promoDiscount || shippingEstimate}
+      {#if promoDiscount || shippingEstimate || chargedTotal !== null}
         <div class="summary-row summary-total-row">
           <span class="summary-item summary-total-label">TOTAL</span>
-          <span class="summary-price">${(discountedTotal() / 100).toFixed(2)}</span>
+          <span class="summary-price">${((chargedTotal ?? discountedTotal()) / 100).toFixed(2)}</span>
         </div>
       {/if}
     </div>
@@ -355,7 +364,7 @@
           </p>
         {/if}
 
-        <button class="pay-btn" on:click={initPayment} disabled={submitting || !email}>
+        <button class="pay-btn" on:click={initPayment} disabled={submitting || !email || !shippingReady}>
           {submitting ? 'PREPARING…' : 'CONTINUE TO PAYMENT'}
         </button>
       </div>
