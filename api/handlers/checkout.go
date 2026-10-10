@@ -14,29 +14,8 @@ import (
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/coupon"
 	"github.com/stripe/stripe-go/v76/paymentintent"
-	"github.com/stripe/stripe-go/v76/price"
 	"github.com/stripe/stripe-go/v76/promotioncode"
 )
-
-// enrichSizes resolves each line item's variant/size from its Stripe price
-// nickname, best-effort — a failed lookup leaves Size empty and never blocks
-// checkout. Mutates the slice in place.
-// Only fills Size when it is already empty (legacy carts); never overwrites a
-// frontend-provided value.
-func enrichSizes(items []models.LineItem) {
-	for i := range items {
-		if items[i].Size != "" {
-			continue // frontend already set the size — trust it
-		}
-		if items[i].PriceID == "" {
-			continue
-		}
-		p, err := price.Get(items[i].PriceID, nil)
-		if err == nil && p != nil {
-			items[i].Size = p.Nickname
-		}
-	}
-}
 
 // manifestSummary builds a compact one-line summary for Stripe PI metadata,
 // e.g. "2x Immortal Light Sweatpants (L); 1x Tee (M)". Capped at 480 chars
@@ -119,12 +98,14 @@ type CheckoutHandler struct {
 	stripeKey string
 	kv        CheckoutKV
 	db        *store.DB
+	catalog   PriceCatalog
 }
 
-// NewCheckoutHandler constructs a CheckoutHandler.
-func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db *store.DB) *CheckoutHandler {
+// NewCheckoutHandler constructs a CheckoutHandler. catalog is the source of
+// truth for line item pricing at checkout.
+func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db *store.DB, catalog PriceCatalog) *CheckoutHandler {
 	stripe.Key = stripeKey
-	return &CheckoutHandler{stripeKey: stripeKey, kv: kv, db: db}
+	return &CheckoutHandler{stripeKey: stripeKey, kv: kv, db: db, catalog: catalog}
 }
 
 // Checkout handles POST /api/checkout.
@@ -167,8 +148,12 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Resolve sizes so the persisted manifest is human-readable (STOP 18).
-	enrichSizes(cart.LineItems)
+	// Re-resolve every line item against the catalog. Stored cart amounts are
+	// never trusted; this also fills sizes for the persisted manifest (STOP 18).
+	if _, err := repriceLineItems(r.Context(), h.catalog, cart.LineItems); err != nil {
+		writePricingError(w, err)
+		return
+	}
 
 	// Variant stock guard: reject checkout if any line item's variant stock is
 	// known and insufficient. Non-atomic (no reservation) — same oversell window
