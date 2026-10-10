@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/immortalvibes/api/config"
 	"github.com/immortalvibes/api/store"
@@ -29,8 +30,18 @@ func main() {
 
 	router := newRouter(cfg, db, kv)
 
+	// WriteTimeout must exceed the slowest handler: the payment webhook can
+	// create a shipment and buy a label (shippo.purchaseTimeout each).
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      150 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 	log.Printf("listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, router); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("server: %v", err)
 	}
 }

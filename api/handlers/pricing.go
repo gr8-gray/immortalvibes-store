@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -158,37 +159,54 @@ func NewCachedPriceCatalog(next PriceCatalog, ttl time.Duration) *CachedPriceCat
 
 // Lookup implements PriceCatalog.
 //
-// The shared upstream lookup runs with the context of the caller that started
-// it; a waiter whose own context ends first returns its context error.
+// The shared upstream lookup is detached from any single caller's
+// cancellation and bounded by lookupTimeout, so one caller going away does
+// not fail the others. Each caller still returns when its own context ends.
 func (c *CachedPriceCatalog) Lookup(ctx context.Context, priceID string) (CatalogPrice, error) {
 	c.mu.Lock()
 	if e, ok := c.entries[priceID]; ok && c.now().Before(e.expires) {
 		c.mu.Unlock()
 		return e.price, nil
 	}
-	if call, ok := c.inflight[priceID]; ok {
-		c.mu.Unlock()
-		select {
-		case <-call.done:
-			return call.price, call.err
-		case <-ctx.Done():
-			return CatalogPrice{}, ctx.Err()
+	call, ok := c.inflight[priceID]
+	if !ok {
+		call = &priceCall{done: make(chan struct{})}
+		c.inflight[priceID] = call
+		go c.fetch(context.WithoutCancel(ctx), priceID, call)
+	}
+	c.mu.Unlock()
+
+	select {
+	case <-call.done:
+		return call.price, call.err
+	case <-ctx.Done():
+		return CatalogPrice{}, ctx.Err()
+	}
+}
+
+// lookupTimeout bounds a shared upstream lookup.
+const lookupTimeout = 15 * time.Second
+
+// fetch performs the shared lookup and publishes its result. Cleanup is
+// deferred so a panicking catalog cannot leave the price permanently
+// in flight.
+func (c *CachedPriceCatalog) fetch(ctx context.Context, priceID string, call *priceCall) {
+	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
+	defer cancel()
+	defer func() {
+		if r := recover(); r != nil {
+			call.err = fmt.Errorf("price lookup %s panicked: %v", priceID, r)
+			log.Printf("pricing: %v", call.err)
 		}
-	}
-	call := &priceCall{done: make(chan struct{})}
-	c.inflight[priceID] = call
-	c.mu.Unlock()
-
+		c.mu.Lock()
+		delete(c.inflight, priceID)
+		if call.err == nil {
+			c.entries[priceID] = cachedPrice{price: call.price, expires: c.now().Add(c.ttl)}
+		}
+		c.mu.Unlock()
+		close(call.done)
+	}()
 	call.price, call.err = c.next.Lookup(ctx, priceID)
-
-	c.mu.Lock()
-	delete(c.inflight, priceID)
-	if call.err == nil {
-		c.entries[priceID] = cachedPrice{price: call.price, expires: c.now().Add(c.ttl)}
-	}
-	c.mu.Unlock()
-	close(call.done)
-	return call.price, call.err
 }
 
 // validQuantity reports whether q is an acceptable line item quantity.
