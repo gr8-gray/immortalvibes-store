@@ -66,7 +66,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Post("/api/shipping/estimate", shippingHandler.Estimate)
 
 	// Checkout
-	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db, catalog)
+	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db, catalog, shippoClient)
 	r.Post("/api/checkout", checkoutHandler.Checkout)
 
 	// Orders

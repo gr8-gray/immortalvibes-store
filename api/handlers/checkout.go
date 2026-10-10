@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/immortalvibes/api/models"
+	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
 	"github.com/stripe/stripe-go/v76/coupon"
@@ -77,7 +79,10 @@ type CheckoutRequest struct {
 	PostalCode   string `json:"postal_code"`
 	Country      string `json:"country"`
 	DiscountCode string `json:"discount_code,omitempty"`
-	ShippingCost int    `json:"shipping_cost,omitempty"`
+	// ShippingCost is accepted for backward compatibility with older
+	// storefront builds but is NEVER used to price the order — the server
+	// recomputes shipping itself (see quoteShipping). A mismatch is logged.
+	ShippingCost int `json:"shipping_cost,omitempty"`
 }
 
 // CheckoutResponse is returned to the SvelteKit frontend.
@@ -93,19 +98,37 @@ type CheckoutKV interface {
 	GetCart(ctx context.Context, token string) (*models.Cart, error)
 }
 
+// CheckoutStore is the subset of store.DB needed by CheckoutHandler.
+type CheckoutStore interface {
+	GetVariantStocks(ctx context.Context, productID string) ([]store.VariantStockRow, error)
+	SaveOrder(ctx context.Context, o store.OrderRow) error
+}
+
 // CheckoutHandler handles POST /api/checkout.
 type CheckoutHandler struct {
 	stripeKey string
 	kv        CheckoutKV
-	db        *store.DB
+	db        CheckoutStore
 	catalog   PriceCatalog
+	shipping  ShippoEstimator
+	// newPaymentIntent is paymentintent.New in production; overridable in tests.
+	newPaymentIntent func(*stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
 }
 
 // NewCheckoutHandler constructs a CheckoutHandler. catalog is the source of
-// truth for line item pricing at checkout.
-func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db *store.DB, catalog PriceCatalog) *CheckoutHandler {
+// truth for line item pricing at checkout. shipping prices shipping
+// server-side; it must be the same estimator the storefront's
+// /api/shipping/estimate uses.
+func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db CheckoutStore, catalog PriceCatalog, shipping ShippoEstimator) *CheckoutHandler {
 	stripe.Key = stripeKey
-	return &CheckoutHandler{stripeKey: stripeKey, kv: kv, db: db, catalog: catalog}
+	return &CheckoutHandler{
+		stripeKey:        stripeKey,
+		kv:               kv,
+		db:               db,
+		catalog:          catalog,
+		shipping:         shipping,
+		newPaymentIntent: paymentintent.New,
+	}
 }
 
 // Checkout handles POST /api/checkout.
@@ -182,11 +205,26 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Quote shipping with the same logic as /api/shipping/estimate. The
+	// request's shipping_cost is informational only. If no rate is available
+	// for the address, checkout fails rather than proceeding without shipping.
+	shippingCents, err := h.serverShippingCents(r.Context(), req)
+	if err != nil {
+		log.Printf("checkout: shipping quote failed: to=%s,%s,%s err=%v", req.City, req.State, req.PostalCode, err)
+		http.Error(w, "unable to calculate shipping for this address; please check the address and try again", http.StatusBadGateway)
+		return
+	}
+	if req.ShippingCost != 0 && int64(req.ShippingCost) != shippingCents {
+		log.Printf("checkout: ignoring client shipping_cost=%d (server=%d) cart=%s", req.ShippingCost, shippingCents, req.CartToken)
+	}
+
+	// Currency behavior is unchanged: shipping cents are added to the cart
+	// total exactly as the client-supplied value was before.
 	currency := DetectCurrency(r)
 	total := cart.Total()
 
 	// Add shipping cost to total.
-	total += int64(req.ShippingCost)
+	total += shippingCents
 
 	// Apply discount if a code was provided.
 	var appliedCouponID string
@@ -213,7 +251,7 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 			"items": manifestSummary(cart.LineItems),
 		},
 	}
-	pi, err := paymentintent.New(piParams)
+	pi, err := h.newPaymentIntent(piParams)
 	if err != nil {
 		http.Error(w, "failed to create payment intent", http.StatusInternalServerError)
 		return
@@ -248,6 +286,21 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		Currency:     currency,
 		TotalAmount:  total,
 	})
+}
+
+// serverShippingCents quotes shipping for the checkout's address using the
+// same address mapping and pricing as ShippingHandler.Estimate.
+func (h *CheckoutHandler) serverShippingCents(ctx context.Context, req CheckoutRequest) (int64, error) {
+	to := shippo.Address{
+		Name:    req.ShippingName,
+		Street1: req.Line1,
+		City:    req.City,
+		State:   req.State,
+		Zip:     req.PostalCode,
+		Country: req.Country,
+	}
+	_, cents, err := quoteShipping(ctx, h.shipping, to)
+	return cents, err
 }
 
 // resolveDiscount tries to resolve a human-readable promo code or direct
