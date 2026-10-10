@@ -5,7 +5,7 @@
 // can render synchronously, and falls back to local-only math whenever the
 // API can't be reached mid-session.
 import { writable, derived, get } from 'svelte/store';
-import { ApiError, updateCartItem, type GoCart } from '$lib/api';
+import { ApiError, getCurrentCart, updateCartItem, type GoCart } from '$lib/api';
 
 /** Mirrors the API's per-line quantity bound (handlers.MaxLineQuantity). */
 export const MAX_LINE_QUANTITY = 20;
@@ -136,10 +136,18 @@ function createCartStore() {
         const goCart = await updateCartItem(token, item.priceId, item.size, clamped);
         set(mapGoCart(goCart));
       } catch (err) {
-        // A 4xx is the server rejecting the change; the server cart is
-        // unchanged, so keep local state in sync with it. Only fall back to a
+        // A 4xx is the server rejecting the change (bad quantity, or a cart
+        // that expired or no longer matches the cookie). Resync with the
+        // server cart rather than diverging from it. Only fall back to a
         // local-only update when the API is unreachable or failing.
-        if (err instanceof ApiError && err.status >= 400 && err.status < 500) return;
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+          try {
+            set(mapGoCart(await getCurrentCart()));
+          } catch {
+            // Leave local state as is; the next hydration will reconcile.
+          }
+          return;
+        }
         localFallback();
       }
     },

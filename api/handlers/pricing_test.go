@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -327,5 +328,17 @@ func TestCachedPriceCatalog(t *testing.T) {
 	}
 	if inner.lookups != 4 {
 		t.Errorf("failed lookups cached: lookups = %d, want 4", inner.lookups)
+	}
+}
+
+func TestRepriceLineItems_TruncatesErrorName(t *testing.T) {
+	items := []models.LineItem{{PriceID: "", Name: strings.Repeat("n", 500), Quantity: 1}}
+	_, err := handlers.RepriceLineItems(context.Background(), newFakeCatalog(), items)
+	var lie *handlers.LineItemError
+	if !errors.As(err, &lie) {
+		t.Fatalf("err = %v, want *LineItemError", err)
+	}
+	if len(lie.Name) != 80 {
+		t.Errorf("name length = %d, want 80", len(lie.Name))
 	}
 }
