@@ -3,6 +3,8 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -98,7 +100,7 @@ func (h *ShippingHandler) Estimate(w http.ResponseWriter, r *http.Request) {
 		Country: country,
 	}
 
-	estimate, err := h.shippo.EstimateRate(r.Context(), to)
+	estimate, cents, err := quoteShipping(r.Context(), h.shippo, to)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		log.Printf("shipping estimate failed: to=%s,%s,%s err=%v", to.City, to.State, to.Zip, err)
@@ -107,13 +109,34 @@ func (h *ShippingHandler) Estimate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cents := int(math.Round(estimate.Amount * 100))
 	json.NewEncoder(w).Encode(shippingEstimateResponse{
 		Rate: &shippingRate{
 			Provider: estimate.Provider,
 			Service:  estimate.Service,
-			Amount:   cents,
+			Amount:   int(cents),
 			Currency: strings.ToUpper(estimate.Currency),
 		},
 	})
+}
+
+// quoteShipping is the single source of truth for the shipping price. Both the
+// storefront estimate (Estimate) and checkout use it, so the amount the buyer
+// is shown is the amount the server charges. Returns the raw estimate and its
+// amount in cents. A negative amount is treated as an error.
+func quoteShipping(ctx context.Context, est ShippoEstimator, to shippo.Address) (*shippo.RateEstimate, int64, error) {
+	if est == nil {
+		return nil, 0, errors.New("shipping estimator not configured")
+	}
+	estimate, err := est.EstimateRate(ctx, to)
+	if err != nil {
+		return nil, 0, err
+	}
+	if estimate == nil {
+		return nil, 0, errors.New("shippo: empty estimate")
+	}
+	cents := int64(math.Round(estimate.Amount * 100))
+	if cents < 0 {
+		return nil, 0, fmt.Errorf("shippo: negative rate %d", cents)
+	}
+	return estimate, cents, nil
 }
