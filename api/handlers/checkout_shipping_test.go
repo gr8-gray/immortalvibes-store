@@ -124,16 +124,13 @@ func (fx *checkoutFixture) assertCharged(t *testing.T, w *httptest.ResponseRecor
 	}
 }
 
-func TestCheckout_NegativeClientShippingIgnored(t *testing.T) {
-	fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
-	w := fx.do(t, map[string]any{"shipping_cost": -5000})
-	fx.assertCharged(t, w, cartSubtotal+750)
-}
-
-func TestCheckout_ZeroClientShippingIgnoredWhenServerPositive(t *testing.T) {
+func TestCheckout_ShippingFromServerQuote(t *testing.T) {
 	for name, extra := range map[string]map[string]any{
-		"explicit zero": {"shipping_cost": 0},
-		"omitted":       nil,
+		"field omitted":   nil,
+		"field zero":      {"shipping_cost": 0},
+		"field below":     {"shipping_cost": -1},
+		"field above":     {"shipping_cost": 1000},
+		"field unrelated": {"shipping_cost": 123},
 	} {
 		t.Run(name, func(t *testing.T) {
 			fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
@@ -141,12 +138,6 @@ func TestCheckout_ZeroClientShippingIgnoredWhenServerPositive(t *testing.T) {
 			fx.assertCharged(t, w, cartSubtotal+750)
 		})
 	}
-}
-
-func TestCheckout_InflatedClientShippingIgnored(t *testing.T) {
-	fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
-	w := fx.do(t, map[string]any{"shipping_cost": 99999})
-	fx.assertCharged(t, w, cartSubtotal+750)
 }
 
 func TestCheckout_ShippingQuotedForCheckoutAddress(t *testing.T) {
