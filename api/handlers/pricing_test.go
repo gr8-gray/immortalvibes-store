@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -340,5 +341,66 @@ func TestRepriceLineItems_TruncatesErrorName(t *testing.T) {
 	}
 	if len(lie.Name) != 80 {
 		t.Errorf("name length = %d, want 80", len(lie.Name))
+	}
+}
+
+// gatedCatalog blocks every lookup until release is closed.
+type gatedCatalog struct {
+	release chan struct{}
+	mu      sync.Mutex
+	calls   int
+}
+
+func (g *gatedCatalog) Lookup(ctx context.Context, priceID string) (handlers.CatalogPrice, error) {
+	g.mu.Lock()
+	g.calls++
+	g.mu.Unlock()
+	<-g.release
+	return handlers.CatalogPrice{PriceID: priceID, Currency: "usd", UnitAmount: 100}, nil
+}
+
+func TestCachedPriceCatalog_SharesConcurrentMisses(t *testing.T) {
+	g := &gatedCatalog{release: make(chan struct{})}
+	c := handlers.NewCachedPriceCatalog(g, time.Minute)
+
+	const n = 50
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := c.Lookup(context.Background(), "price_1")
+			errs <- err
+		}()
+	}
+	// Let every goroutine reach the cache before releasing the lookup.
+	time.Sleep(50 * time.Millisecond)
+	close(g.release)
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("lookup: %v", err)
+		}
+	}
+	if g.calls != 1 {
+		t.Errorf("upstream calls = %d, want 1", g.calls)
+	}
+}
+
+func TestCachedPriceCatalog_WaiterHonorsOwnContext(t *testing.T) {
+	g := &gatedCatalog{release: make(chan struct{})}
+	defer close(g.release)
+	c := handlers.NewCachedPriceCatalog(g, time.Minute)
+
+	go func() { _, _ = c.Lookup(context.Background(), "price_1") }()
+	time.Sleep(20 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if _, err := c.Lookup(ctx, "price_1"); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want DeadlineExceeded", err)
 	}
 }

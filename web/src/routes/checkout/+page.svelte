@@ -8,6 +8,7 @@
   import { createCheckout, validatePromo, estimateShipping } from '$lib/api';
   import type { Stripe, StripeElements } from '@stripe/stripe-js';
   import type { ShippingAddress, PromoDiscount, ShippingEstimate } from '$lib/api';
+  import { discountCents as computeDiscount } from '$lib/pricing';
 
   let stripe: Stripe | null = null;
   let elements: StripeElements | null = null;
@@ -52,14 +53,21 @@
     return shippingEstimate?.rate?.amount ?? 0;
   }
 
-  // Trigger estimate whenever required address fields are all filled
+  // Sequence number of the latest estimate request; responses to older
+  // requests are discarded so a slow reply cannot overwrite a newer address.
+  let shippingSeq = 0;
+
+  // Re-estimate whenever the address changes. The previous estimate is
+  // cleared immediately so it is never shown against a different address.
   $: if (line1 && city && addrState && postalCode) {
     if (shippingDebounce) clearTimeout(shippingDebounce);
+    const seq = ++shippingSeq;
+    shippingLoading = true;
+    shippingEstimate = null;
     shippingDebounce = setTimeout(async () => {
-      shippingLoading = true;
-      shippingEstimate = null;
+      let result: ShippingEstimate;
       try {
-        shippingEstimate = await estimateShipping({
+        result = await estimateShipping({
           shipping_name: shippingName || 'Recipient',
           line1,
           line2: line2 || undefined,
@@ -69,12 +77,16 @@
           country: country || 'US',
         });
       } catch {
-        shippingEstimate = { rate: null, error: 'Unable to calculate shipping' };
-      } finally {
-        shippingLoading = false;
+        result = { rate: null, error: 'Unable to calculate shipping' };
       }
+      if (seq !== shippingSeq) return;
+      shippingEstimate = result;
+      shippingLoading = false;
     }, 600);
   } else {
+    if (shippingDebounce) clearTimeout(shippingDebounce);
+    shippingSeq++;
+    shippingLoading = false;
     shippingEstimate = null;
   }
 
@@ -82,17 +94,16 @@
     return cartSnapshot.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   }
 
+  // Discount on the current estimate, mirroring the server: percentage codes
+  // apply to items plus shipping.
+  function discountAmount(): number {
+    if (!promoDiscount) return 0;
+    const r = computeDiscount(cartSnapshot.items, shippingCostCents(), promoDiscount);
+    return r.ok ? r.cents : 0;
+  }
+
   function discountedTotal(): number {
-    const raw = cartTotal();
-    let subtotal = raw;
-    if (promoDiscount) {
-      if (promoDiscount.type === 'percent_off') {
-        subtotal = Math.round(raw * (1 - promoDiscount.value / 100));
-      } else {
-        subtotal = Math.max(0, raw - promoDiscount.value);
-      }
-    }
-    return subtotal + shippingCostCents();
+    return cartTotal() + shippingCostCents() - discountAmount();
   }
 
   async function applyPromo() {
@@ -104,7 +115,10 @@
     appliedCode = '';
     try {
       const res = await validatePromo(code);
-      if (res.valid && res.discount) {
+      const min = res.discount?.minimum_amount ?? 0;
+      if (res.valid && res.discount && min > 0 && cartTotal() < min) {
+        promoError = `This code requires an order of $${(min / 100).toFixed(2)} or more.`;
+      } else if (res.valid && res.discount) {
         promoDiscount = res.discount;
         appliedCode = code;
       } else {
@@ -250,7 +264,7 @@
             {/if}
           </span>
           <span class="summary-price promo-applied">
-            –${((cartTotal() - (discountedTotal() - shippingCostCents())) / 100).toFixed(2)}
+            –${(discountAmount() / 100).toFixed(2)}
           </span>
         </div>
       {/if}

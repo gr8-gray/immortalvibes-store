@@ -20,3 +20,6 @@ func SetCatalogClock(c *CachedPriceCatalog, now func() time.Time) { c.now = now 
 func (h *CheckoutHandler) SetPaymentIntentFunc(f func(*stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)) {
 	h.newPaymentIntent = f
 }
+
+// DiscountFromPromotionCode exposes discountFromPromotionCode.
+var DiscountFromPromotionCode = discountFromPromotionCode

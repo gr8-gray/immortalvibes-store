@@ -37,6 +37,10 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	// of every add-to-cart; a deactivated price stops selling within the TTL.
 	catalog := handlers.NewCachedPriceCatalog(handlers.StripePriceCatalog{}, time.Minute)
 
+	// Promotion codes, shared by promo validation and checkout so both apply
+	// the same rules.
+	discounts := handlers.NewStripeDiscountResolver(handlers.StripeRedemptionCounter{})
+
 	// Cart
 	cartHandler := handlers.NewCartHandler(kv, catalog, db)
 	r.Get("/api/cart", cartHandler.GetCurrentCart)
@@ -45,7 +49,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Put("/api/cart/{token}", cartHandler.UpdateCart)
 
 	// Promo code validation
-	promoHandler := handlers.NewPromoHandler()
+	promoHandler := handlers.NewPromoHandler(discounts)
 	r.Post("/api/promo/validate", promoHandler.Validate)
 
 	// Shared Shippo client
@@ -66,7 +70,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Post("/api/shipping/estimate", shippingHandler.Estimate)
 
 	// Checkout
-	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db, catalog, shippoClient)
+	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db, catalog, shippoClient, discounts)
 	r.Post("/api/checkout", checkoutHandler.Checkout)
 
 	// Orders

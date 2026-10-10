@@ -14,9 +14,7 @@ import (
 	"github.com/immortalvibes/api/shippo"
 	"github.com/immortalvibes/api/store"
 	stripe "github.com/stripe/stripe-go/v76"
-	"github.com/stripe/stripe-go/v76/coupon"
 	"github.com/stripe/stripe-go/v76/paymentintent"
-	"github.com/stripe/stripe-go/v76/promotioncode"
 )
 
 // manifestSummary builds a compact one-line summary for Stripe PI metadata,
@@ -36,35 +34,6 @@ func manifestSummary(items []models.LineItem) string {
 		out = out[:477] + "..."
 	}
 	return out
-}
-
-// eurCountries is the set of ISO country codes that map to EUR.
-var eurCountries = map[string]bool{
-	"AT": true, "BE": true, "CY": true, "EE": true, "FI": true,
-	"FR": true, "DE": true, "GR": true, "IE": true, "IT": true,
-	"LV": true, "LT": true, "LU": true, "MT": true, "NL": true,
-	"PT": true, "SK": true, "SI": true, "ES": true,
-}
-
-// audCountries maps to AUD.
-var audCountries = map[string]bool{
-	"AU": true, "NZ": true,
-}
-
-// DetectCurrency returns the ISO currency code (lowercase) based on the
-// CF-IPCountry header. Defaults to "usd" for unknown or missing country.
-func DetectCurrency(r *http.Request) string {
-	country := r.Header.Get("CF-IPCountry")
-	if country == "GB" {
-		return "gbp"
-	}
-	if audCountries[country] {
-		return "aud"
-	}
-	if eurCountries[country] {
-		return "eur"
-	}
-	return "usd"
 }
 
 // CheckoutRequest is the JSON body for POST /api/checkout.
@@ -111,6 +80,7 @@ type CheckoutHandler struct {
 	db        CheckoutStore
 	catalog   PriceCatalog
 	shipping  ShippoEstimator
+	discounts DiscountResolver
 	// newPaymentIntent is paymentintent.New in production; overridable in tests.
 	newPaymentIntent func(*stripe.PaymentIntentParams) (*stripe.PaymentIntent, error)
 }
@@ -118,8 +88,8 @@ type CheckoutHandler struct {
 // NewCheckoutHandler constructs a CheckoutHandler. catalog is the source of
 // truth for line item pricing at checkout. shipping prices shipping
 // server-side; it must be the same estimator the storefront's
-// /api/shipping/estimate uses.
-func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db CheckoutStore, catalog PriceCatalog, shipping ShippoEstimator) *CheckoutHandler {
+// /api/shipping/estimate uses. discounts resolves promotion codes.
+func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db CheckoutStore, catalog PriceCatalog, shipping ShippoEstimator, discounts DiscountResolver) *CheckoutHandler {
 	stripe.Key = stripeKey
 	return &CheckoutHandler{
 		stripeKey:        stripeKey,
@@ -127,6 +97,7 @@ func NewCheckoutHandler(stripeKey string, kv CheckoutKV, db CheckoutStore, catal
 		db:               db,
 		catalog:          catalog,
 		shipping:         shipping,
+		discounts:        discounts,
 		newPaymentIntent: paymentintent.New,
 	}
 }
@@ -173,7 +144,8 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 
 	// Re-resolve every line item against the catalog. Stored cart amounts are
 	// never trusted; this also fills sizes for the persisted manifest (STOP 18).
-	if _, err := repriceLineItems(r.Context(), h.catalog, cart.LineItems); err != nil {
+	currency, err := repriceLineItems(r.Context(), h.catalog, cart.LineItems)
+	if err != nil {
 		writePricingError(w, err)
 		return
 	}
@@ -208,7 +180,7 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 	// Quote shipping with the same logic as /api/shipping/estimate. The
 	// request's shipping_cost is informational only. If no rate is available
 	// for the address, checkout fails rather than proceeding without shipping.
-	shippingCents, err := h.serverShippingCents(r.Context(), req)
+	shippingCents, err := h.serverShippingCents(r.Context(), req, currency)
 	if err != nil {
 		log.Printf("checkout: shipping quote failed: to=%s,%s,%s err=%v", req.City, req.State, req.PostalCode, err)
 		http.Error(w, "unable to calculate shipping for this address; please check the address and try again", http.StatusBadGateway)
@@ -218,34 +190,36 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 		log.Printf("checkout: ignoring client shipping_cost=%d (server=%d) cart=%s", req.ShippingCost, shippingCents, req.CartToken)
 	}
 
-	// Currency behavior is unchanged: shipping cents are added to the cart
-	// total exactly as the client-supplied value was before.
-	currency := DetectCurrency(r)
-	total := cart.Total()
+	// The order is charged in the catalog currency of its line items, the
+	// currency every displayed price is in.
+	total := cart.Total() + shippingCents
 
-	// Add shipping cost to total.
-	total += shippingCents
-
-	// Apply discount if a code was provided.
-	var appliedCouponID string
+	var discount Discount
 	if req.DiscountCode != "" {
-		resolvedCouponID, discountedTotal, ok := resolveDiscount(req.DiscountCode, total)
-		if ok {
-			appliedCouponID = resolvedCouponID
-			total = discountedTotal
+		discount, err = h.discounts.Resolve(r.Context(), req.DiscountCode)
+		if err != nil {
+			writeDiscountError(w, err)
+			return
 		}
-		// If the code is invalid we silently continue at full price —
-		// the frontend validates first; this is just a safety net.
+		off, err := discount.Amount(cart.LineItems, shippingCents, currency)
+		if err != nil {
+			writeDiscountError(w, err)
+			return
+		}
+		total -= off
 	}
 
 	piParams := &stripe.PaymentIntentParams{
 		Amount:   stripe.Int64(total),
 		Currency: stripe.String(currency),
 		Metadata: map[string]string{
-			"cart_token":    req.CartToken,
-			"email":         req.Email,
-			"discount_code": req.DiscountCode,
-			"coupon_id":     appliedCouponID,
+			"cart_token": req.CartToken,
+			"email":      req.Email,
+			// coupon_id and promotion_code_id are counted to enforce
+			// redemption limits (StripeRedemptionCounter).
+			"discount_code":     discount.Code,
+			"coupon_id":         discount.CouponID,
+			"promotion_code_id": discount.PromotionCodeID,
 			// Manifest summary so the owner can see contents on the Stripe
 			// dashboard and it survives in the webhook event (STOP 18).
 			"items": manifestSummary(cart.LineItems),
@@ -289,8 +263,9 @@ func (h *CheckoutHandler) Checkout(w http.ResponseWriter, r *http.Request) {
 }
 
 // serverShippingCents quotes shipping for the checkout's address using the
-// same address mapping and pricing as ShippingHandler.Estimate.
-func (h *CheckoutHandler) serverShippingCents(ctx context.Context, req CheckoutRequest) (int64, error) {
+// same address mapping and pricing as ShippingHandler.Estimate. The quote must
+// be in the order currency.
+func (h *CheckoutHandler) serverShippingCents(ctx context.Context, req CheckoutRequest, currency string) (int64, error) {
 	to := shippo.Address{
 		Name:    req.ShippingName,
 		Street1: req.Line1,
@@ -299,51 +274,28 @@ func (h *CheckoutHandler) serverShippingCents(ctx context.Context, req CheckoutR
 		Zip:     req.PostalCode,
 		Country: req.Country,
 	}
-	_, cents, err := quoteShipping(ctx, h.shipping, to)
-	return cents, err
+	est, cents, err := quoteShipping(ctx, h.shipping, to)
+	if err != nil {
+		return 0, err
+	}
+	if !strings.EqualFold(est.Currency, currency) {
+		return 0, fmt.Errorf("shipping quote currency %q does not match order currency %q", est.Currency, currency)
+	}
+	return cents, nil
 }
 
-// resolveDiscount tries to resolve a human-readable promo code or direct
-// coupon ID via Stripe, then returns the coupon ID, discounted total, and ok.
-func resolveDiscount(code string, total int64) (couponID string, discountedTotal int64, ok bool) {
-	// Try PromotionCode first.
-	pcParams := &stripe.PromotionCodeListParams{}
-	pcParams.Filters.AddFilter("code", "", code)
-	pcParams.Filters.AddFilter("active", "", "true")
-	pcParams.Filters.AddFilter("limit", "", "1")
-	iter := promotioncode.List(pcParams)
-	for iter.Next() {
-		pc := iter.PromotionCode()
-		if pc.Coupon != nil {
-			return applyStripeCoupon(pc.Coupon, total, pc.Coupon.ID)
-		}
+// writeDiscountError maps discount resolution errors to HTTP responses.
+// Unclassified errors are upstream failures and are logged.
+func writeDiscountError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrInvalidDiscount):
+		http.Error(w, "discount code is not valid", http.StatusConflict)
+	case errors.Is(err, ErrDiscountExhausted):
+		http.Error(w, "discount code is no longer available", http.StatusConflict)
+	case errors.Is(err, ErrDiscountNotApplicable):
+		http.Error(w, "discount code does not apply to this order", http.StatusConflict)
+	default:
+		log.Printf("discount: resolve failed: %q", err.Error())
+		http.Error(w, "unable to apply discount right now; try again", http.StatusBadGateway)
 	}
-	if iter.Err() != nil {
-		return "", total, false
-	}
-
-	// Fall back to direct Coupon ID.
-	c, err := coupon.Get(code, nil)
-	if err != nil || !c.Valid {
-		return "", total, false
-	}
-	return applyStripeCoupon(c, total, c.ID)
-}
-
-func applyStripeCoupon(c *stripe.Coupon, total int64, id string) (string, int64, bool) {
-	if c == nil {
-		return "", total, false
-	}
-	if c.PercentOff > 0 {
-		discount := int64(float64(total) * float64(c.PercentOff) / 100.0)
-		return id, total - discount, true
-	}
-	if c.AmountOff > 0 {
-		discounted := total - c.AmountOff
-		if discounted < 0 {
-			discounted = 0
-		}
-		return id, discounted, true
-	}
-	return "", total, false
 }

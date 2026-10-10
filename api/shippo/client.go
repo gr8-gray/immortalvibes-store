@@ -34,22 +34,29 @@ type Client struct {
 	http     *http.Client
 }
 
-// requestTimeout bounds every Shippo call. Checkout waits on a rate quote, so
-// an unresponsive carrier API must fail the request rather than hang it.
-const requestTimeout = 20 * time.Second
+const (
+	// quoteTimeout bounds a rate estimate. Checkout waits on it, so an
+	// unresponsive carrier API must fail the request rather than hang it.
+	quoteTimeout = 20 * time.Second
+	// purchaseTimeout bounds shipment creation and label purchase, which run
+	// from the payment webhook and can be slow on the carrier side.
+	purchaseTimeout = 60 * time.Second
+)
 
 // NewClient constructs a Shippo client with a fixed from-address.
 func NewClient(apiKey string, from Address) *Client {
 	return &Client{
 		apiKey:   apiKey,
 		fromAddr: from,
-		http:     &http.Client{Timeout: requestTimeout},
+		http:     &http.Client{},
 	}
 }
 
 // RateShop creates a Shippo shipment and returns "rateID:carrier" for the
 // cheapest available rate. The opaque token is consumed by BuyLabel.
 func (c *Client) RateShop(ctx context.Context, to Address) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, purchaseTimeout)
+	defer cancel()
 	type addrFields struct {
 		Name    string `json:"name"`
 		Street1 string `json:"street1"`
@@ -151,6 +158,8 @@ type RateEstimate struct {
 // EstimateRate creates a Shippo shipment and returns the cheapest rate details.
 // Unlike RateShop, it returns full rate info suitable for display pre-purchase.
 func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, error) {
+	ctx, cancel := context.WithTimeout(ctx, quoteTimeout)
+	defer cancel()
 	type addrFields struct {
 		Name    string `json:"name"`
 		Street1 string `json:"street1"`
@@ -252,6 +261,8 @@ func (c *Client) EstimateRate(ctx context.Context, to Address) (*RateEstimate, e
 // from RateShop. Returns tracking number, carrier name, label PDF URL, and the
 // label cost (e.g. "6.74 USD") for owner-facing reporting.
 func (c *Client) BuyLabel(ctx context.Context, token string) (trackingNumber, carrier, labelURL, cost string, err error) {
+	ctx, cancel := context.WithTimeout(ctx, purchaseTimeout)
+	defer cancel()
 	parts := strings.SplitN(token, ":", 4)
 	if len(parts) < 2 {
 		return "", "", "", "", fmt.Errorf("shippo: invalid rate token %q", token)

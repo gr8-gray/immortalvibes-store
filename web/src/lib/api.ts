@@ -232,6 +232,8 @@ export function estimateShipping(addr: ShippingAddress): Promise<ShippingEstimat
 export interface PromoDiscount {
   type:  'percent_off' | 'amount_off';
   value: number; // percent (0-100) or cents
+  product_ids?:    string[]; // restricts the discount to these products; shipping then excluded
+  minimum_amount?: number;   // item subtotal required, in cents
 }
 
 export interface PromoValidateResponse {

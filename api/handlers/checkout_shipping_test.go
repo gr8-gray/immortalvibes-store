@@ -18,10 +18,11 @@ import (
 
 // fakeShippo is a test double for handlers.ShippoEstimator.
 type fakeShippo struct {
-	amount float64 // dollars, as Shippo returns
-	err    error
-	calls  int
-	lastTo shippo.Address
+	amount   float64 // dollars, as Shippo returns
+	currency string  // defaults to USD
+	err      error
+	calls    int
+	lastTo   shippo.Address
 }
 
 func (f *fakeShippo) EstimateRate(ctx context.Context, to shippo.Address) (*shippo.RateEstimate, error) {
@@ -30,7 +31,11 @@ func (f *fakeShippo) EstimateRate(ctx context.Context, to shippo.Address) (*ship
 	if f.err != nil {
 		return nil, f.err
 	}
-	return &shippo.RateEstimate{Provider: "USPS", Service: "Ground Advantage", Amount: f.amount, Currency: "USD"}, nil
+	currency := f.currency
+	if currency == "" {
+		currency = "USD"
+	}
+	return &shippo.RateEstimate{Provider: "USPS", Service: "Ground Advantage", Amount: f.amount, Currency: currency}, nil
 }
 
 // fakeCheckoutStore is a test double for handlers.CheckoutStore.
@@ -49,12 +54,14 @@ func (s *fakeCheckoutStore) SaveOrder(ctx context.Context, o store.OrderRow) err
 }
 
 type checkoutFixture struct {
-	h        *handlers.CheckoutHandler
-	shippo   *fakeShippo
-	db       *fakeCheckoutStore
-	catalog  *fakeCatalog
-	kv       *inMemoryKV
-	piAmount []int64 // amounts passed to Stripe
+	h         *handlers.CheckoutHandler
+	shippo    *fakeShippo
+	db        *fakeCheckoutStore
+	catalog   *fakeCatalog
+	discounts *fakeDiscounts
+	kv        *inMemoryKV
+	piAmount  []int64 // amounts passed to Stripe
+	piParams  []*stripe.PaymentIntentParams
 }
 
 const cartSubtotal = int64(2 * 3500) // 2 x $35.00
@@ -69,10 +76,11 @@ func newCheckoutFixture(sh *fakeShippo) *checkoutFixture {
 	}
 	cat := newFakeCatalog()
 	cat.prices["price_tee35"] = handlers.CatalogPrice{PriceID: "price_tee35", ProductID: "prod_tee", ProductName: "Tee", Currency: "usd", UnitAmount: 3500}
-	fx := &checkoutFixture{shippo: sh, db: &fakeCheckoutStore{}, catalog: cat, kv: kv}
-	fx.h = handlers.NewCheckoutHandler("sk_test_dummy", kv, fx.db, cat, sh)
+	fx := &checkoutFixture{shippo: sh, db: &fakeCheckoutStore{}, catalog: cat, discounts: newFakeDiscounts(), kv: kv}
+	fx.h = handlers.NewCheckoutHandler("sk_test_dummy", kv, fx.db, cat, sh, fx.discounts)
 	fx.h.SetPaymentIntentFunc(func(p *stripe.PaymentIntentParams) (*stripe.PaymentIntent, error) {
 		fx.piAmount = append(fx.piAmount, *p.Amount)
+		fx.piParams = append(fx.piParams, p)
 		return &stripe.PaymentIntent{ID: "pi_test", ClientSecret: "pi_test_secret"}, nil
 	})
 	return fx
@@ -232,5 +240,79 @@ func TestCheckout_TrackedVariants(t *testing.T) {
 				t.Errorf("persisted size = %q, want %q", fx.db.saved[0].LineItems[0].Size, tc.wantSize)
 			}
 		})
+	}
+}
+
+func TestCheckout_ChargesCatalogCurrency(t *testing.T) {
+	fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
+	req := httptest.NewRequest(http.MethodPost, "/api/checkout", bytes.NewReader(checkoutBody(nil)))
+	req.Header.Set("CF-IPCountry", "GB")
+	w := httptest.NewRecorder()
+	fx.h.Checkout(w, req)
+
+	fx.assertCharged(t, w, cartSubtotal+750)
+	if got := *fx.piParams[0].Currency; got != "usd" {
+		t.Errorf("payment intent currency = %q, want usd", got)
+	}
+	if got := fx.db.saved[0].Currency; got != "usd" {
+		t.Errorf("order currency = %q, want usd", got)
+	}
+}
+
+func TestCheckout_RejectsShippingQuoteInOtherCurrency(t *testing.T) {
+	fx := newCheckoutFixture(&fakeShippo{amount: 7.50, currency: "GBP"})
+	w := fx.do(t, nil)
+	if w.Code != http.StatusBadGateway {
+		t.Fatalf("status = %d, want 502", w.Code)
+	}
+	if len(fx.piAmount) != 0 {
+		t.Errorf("payment intent created: %v", fx.piAmount)
+	}
+}
+
+func TestCheckout_PercentDiscountAppliesAfterShipping(t *testing.T) {
+	fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
+	w := fx.do(t, map[string]any{"discount_code": "vibe10"})
+
+	total := cartSubtotal + 750
+	fx.assertCharged(t, w, total-total/10)
+	md := fx.piParams[0].Metadata
+	if md["discount_code"] != "VIBE10" || md["coupon_id"] != "cpn_10" || md["promotion_code_id"] != "promo_vibe10" {
+		t.Errorf("metadata = %v", md)
+	}
+}
+
+func TestCheckout_DiscountFailures(t *testing.T) {
+	cases := []struct {
+		name     string
+		code     string
+		err      error
+		wantCode int
+	}{
+		{"unknown code", "NOPE", nil, http.StatusConflict},
+		{"exhausted", "VIBE10", handlers.ErrDiscountExhausted, http.StatusConflict},
+		{"stripe failure", "VIBE10", errors.New("stripe down"), http.StatusBadGateway},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
+			fx.discounts.err = tc.err
+			w := fx.do(t, map[string]any{"discount_code": tc.code})
+			if w.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d", w.Code, tc.wantCode)
+			}
+			if len(fx.piAmount) != 0 || len(fx.db.saved) != 0 {
+				t.Errorf("payment intents = %v, orders = %d; want none", fx.piAmount, len(fx.db.saved))
+			}
+		})
+	}
+}
+
+func TestCheckout_DiscountNotApplicable(t *testing.T) {
+	fx := newCheckoutFixture(&fakeShippo{amount: 7.50})
+	fx.discounts.codes["BIG"] = handlers.Discount{Code: "BIG", PercentOff: 10, MinimumAmount: 100000, MinimumCurrency: "usd"}
+	w := fx.do(t, map[string]any{"discount_code": "BIG"})
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", w.Code)
 	}
 }
