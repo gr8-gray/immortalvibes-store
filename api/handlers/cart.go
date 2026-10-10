@@ -23,15 +23,19 @@ type CartKV interface {
 
 // CartHandler handles cart CRUD endpoints.
 type CartHandler struct {
-	kv CartKV
+	kv      CartKV
+	catalog PriceCatalog
 }
 
-// NewCartHandler constructs a CartHandler with the given KV client.
-func NewCartHandler(kv CartKV) *CartHandler {
-	return &CartHandler{kv: kv}
+// NewCartHandler constructs a CartHandler. catalog is the source of truth for
+// line item pricing; client-supplied amounts are never stored.
+func NewCartHandler(kv CartKV, catalog PriceCatalog) *CartHandler {
+	return &CartHandler{kv: kv, catalog: catalog}
 }
 
-// AddToCartRequest is the JSON body for POST /api/cart.
+// AddToCartRequest is the JSON body for POST /api/cart. Name, Currency and
+// Amount are accepted for compatibility with existing clients but ignored;
+// they are resolved from the price catalog.
 type AddToCartRequest struct {
 	PriceID   string `json:"price_id"`
 	ProductID string `json:"product_id"`
@@ -99,6 +103,20 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.PriceID == "" {
+		http.Error(w, "price_id required", http.StatusBadRequest)
+		return
+	}
+	if !validQuantity(req.Quantity) {
+		writePricingError(w, ErrInvalidQuantity)
+		return
+	}
+
+	cp, err := h.catalog.Lookup(r.Context(), req.PriceID)
+	if err != nil {
+		writePricingError(w, err)
+		return
+	}
 
 	token := ""
 	if c, err := r.Cookie("cart_token"); err == nil {
@@ -120,24 +138,34 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 	// Merge: if same PriceID+Size exists, increment quantity; else append.
 	// Dedup key is price_id:size so different sizes are distinct line items.
 	found := false
-	for i, li := range cart.LineItems {
+	for i := range cart.LineItems {
+		li := &cart.LineItems[i]
 		if li.PriceID == req.PriceID && li.Size == req.Size {
-			cart.LineItems[i].Quantity += req.Quantity
+			if !validQuantity(li.Quantity + req.Quantity) {
+				writePricingError(w, ErrInvalidQuantity)
+				return
+			}
+			li.Quantity += req.Quantity
+			applyCatalogPrice(li, cp)
 			found = true
 			break
 		}
 	}
 	if !found {
-		cart.LineItems = append(cart.LineItems, models.LineItem{
-			PriceID:   req.PriceID,
-			ProductID: req.ProductID,
-			Name:      req.Name,
-			ImageURL:  req.ImageURL,
-			Currency:  req.Currency,
-			Amount:    req.Amount,
-			Quantity:  req.Quantity,
-			Size:      req.Size,
-		})
+		for _, li := range cart.LineItems {
+			if li.Currency != "" && li.Currency != cp.Currency {
+				writePricingError(w, ErrMixedCurrency)
+				return
+			}
+		}
+		li := models.LineItem{
+			PriceID:  req.PriceID,
+			ImageURL: req.ImageURL,
+			Quantity: req.Quantity,
+			Size:     req.Size,
+		}
+		applyCatalogPrice(&li, cp)
+		cart.LineItems = append(cart.LineItems, li)
 	}
 
 	if err := h.kv.SetCart(r.Context(), cart); err != nil {
@@ -196,6 +224,11 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 		req.Size = cart.LineItems[0].Size
 	}
 
+	if req.Quantity > MaxLineQuantity {
+		writePricingError(w, ErrInvalidQuantity)
+		return
+	}
+
 	updated := cart.LineItems[:0]
 	for _, li := range cart.LineItems {
 		if li.PriceID == req.PriceID && li.Size == req.Size {
@@ -218,4 +251,20 @@ func (h *CartHandler) UpdateCart(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cart)
+}
+
+// writePricingError maps catalog and line item validation errors to HTTP
+// responses. Unclassified errors are upstream failures and are logged.
+func writePricingError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, ErrInvalidQuantity):
+		http.Error(w, "invalid quantity", http.StatusBadRequest)
+	case errors.Is(err, ErrPriceUnavailable):
+		http.Error(w, "item unavailable", http.StatusConflict)
+	case errors.Is(err, ErrMixedCurrency):
+		http.Error(w, "item cannot be combined with cart contents", http.StatusConflict)
+	default:
+		log.Printf("pricing: catalog lookup failed: %v", err)
+		http.Error(w, "pricing temporarily unavailable", http.StatusBadGateway)
+	}
 }

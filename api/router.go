@@ -31,8 +31,12 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Get("/api/products", productsHandler.ListProducts)
 	r.Get("/api/products/{id}", productsHandler.GetProduct)
 
+	// Authoritative pricing for cart and checkout. stripe.Key is set above by
+	// NewStripeProductService.
+	catalog := handlers.StripePriceCatalog{}
+
 	// Cart
-	cartHandler := handlers.NewCartHandler(kv)
+	cartHandler := handlers.NewCartHandler(kv, catalog)
 	r.Get("/api/cart", cartHandler.GetCurrentCart)
 	r.Get("/api/cart/{token}", cartHandler.GetCart)
 	r.Post("/api/cart", cartHandler.AddToCart)
@@ -60,7 +64,7 @@ func newRouter(cfg *config.Config, db *store.DB, kv *store.KVClient) http.Handle
 	r.Post("/api/shipping/estimate", shippingHandler.Estimate)
 
 	// Checkout
-	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db)
+	checkoutHandler := handlers.NewCheckoutHandler(cfg.StripeSecretKey, kv, db, catalog)
 	r.Post("/api/checkout", checkoutHandler.Checkout)
 
 	// Orders
