@@ -404,3 +404,65 @@ func TestCachedPriceCatalog_WaiterHonorsOwnContext(t *testing.T) {
 		t.Fatalf("err = %v, want DeadlineExceeded", err)
 	}
 }
+
+func TestCachedPriceCatalog_CancelledCallerDoesNotFailOthers(t *testing.T) {
+	g := &gatedCatalog{release: make(chan struct{})}
+	c := handlers.NewCachedPriceCatalog(g, time.Minute)
+
+	first, cancelFirst := context.WithCancel(context.Background())
+	firstErr := make(chan error, 1)
+	go func() {
+		_, err := c.Lookup(first, "price_1")
+		firstErr <- err
+	}()
+	time.Sleep(20 * time.Millisecond)
+
+	second := make(chan error, 1)
+	go func() {
+		_, err := c.Lookup(context.Background(), "price_1")
+		second <- err
+	}()
+	time.Sleep(20 * time.Millisecond)
+
+	cancelFirst()
+	if err := <-firstErr; !errors.Is(err, context.Canceled) {
+		t.Fatalf("first caller err = %v, want Canceled", err)
+	}
+	close(g.release)
+	if err := <-second; err != nil {
+		t.Fatalf("second caller err = %v, want nil", err)
+	}
+	if g.calls != 1 {
+		t.Errorf("upstream calls = %d, want 1", g.calls)
+	}
+}
+
+// panicOnceCatalog panics on its first lookup and succeeds afterwards.
+type panicOnceCatalog struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (p *panicOnceCatalog) Lookup(_ context.Context, priceID string) (handlers.CatalogPrice, error) {
+	p.mu.Lock()
+	p.calls++
+	n := p.calls
+	p.mu.Unlock()
+	if n == 1 {
+		panic("boom")
+	}
+	return handlers.CatalogPrice{PriceID: priceID, Currency: "usd", UnitAmount: 100}, nil
+}
+
+func TestCachedPriceCatalog_PanicDoesNotWedgePrice(t *testing.T) {
+	c := handlers.NewCachedPriceCatalog(&panicOnceCatalog{}, time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if _, err := c.Lookup(ctx, "price_1"); err == nil || errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("first lookup err = %v, want panic converted to error", err)
+	}
+	if _, err := c.Lookup(ctx, "price_1"); err != nil {
+		t.Fatalf("second lookup err = %v, want nil", err)
+	}
+}

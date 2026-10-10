@@ -28,6 +28,9 @@
   let submitting = false;
   let errorMsg = '';
   let cartSnapshot = $cart;
+  // Track the live cart (the drawer can edit it here) until the payment
+  // intent exists; after that the order is fixed.
+  $: if (!elements) cartSnapshot = $cart;
 
   // Promo code state
   let promoCode = '';
@@ -94,6 +97,30 @@
     return cartSnapshot.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
   }
 
+  function discountProblem(reason: 'minimum' | 'not_applicable', d: PromoDiscount): string {
+    return reason === 'minimum'
+      ? `This code requires an order of $${((d.minimum_amount ?? 0) / 100).toFixed(2)} or more.`
+      : 'This code does not apply to the items in your cart.';
+  }
+
+  function clearPromo() {
+    promoDiscount = null;
+    appliedCode = '';
+    promoCode = '';
+    promoError = '';
+  }
+
+  // Re-check an applied code whenever the cart or shipping changes, so a code
+  // that stops applying is removed here rather than rejected at checkout.
+  $: if (promoDiscount && !elements) {
+    const r = computeDiscount(cartSnapshot.items, shippingEstimate?.rate?.amount ?? 0, promoDiscount);
+    if (!r.ok) {
+      const msg = discountProblem(r.reason, promoDiscount);
+      clearPromo();
+      promoError = msg;
+    }
+  }
+
   // Discount on the current estimate, mirroring the server: percentage codes
   // apply to items plus shipping.
   function discountAmount(): number {
@@ -115,9 +142,11 @@
     appliedCode = '';
     try {
       const res = await validatePromo(code);
-      const min = res.discount?.minimum_amount ?? 0;
-      if (res.valid && res.discount && min > 0 && cartTotal() < min) {
-        promoError = `This code requires an order of $${(min / 100).toFixed(2)} or more.`;
+      const check = res.valid && res.discount
+        ? computeDiscount(cartSnapshot.items, shippingCostCents(), res.discount)
+        : null;
+      if (res.discount && check && !check.ok) {
+        promoError = discountProblem(check.reason, res.discount);
       } else if (res.valid && res.discount) {
         promoDiscount = res.discount;
         appliedCode = code;
@@ -356,13 +385,17 @@
             disabled={!!appliedCode || promoApplying}
             on:keydown={(e) => e.key === 'Enter' && applyPromo()}
           />
-          <button
-            class="promo-btn"
-            on:click={applyPromo}
-            disabled={!promoCode.trim() || !!appliedCode || promoApplying}
-          >
-            {promoApplying ? '…' : appliedCode ? 'APPLIED' : 'APPLY'}
-          </button>
+          {#if appliedCode}
+            <button class="promo-btn" on:click={clearPromo}>REMOVE</button>
+          {:else}
+            <button
+              class="promo-btn"
+              on:click={applyPromo}
+              disabled={!promoCode.trim() || promoApplying}
+            >
+              {promoApplying ? '…' : 'APPLY'}
+            </button>
+          {/if}
         </div>
         {#if promoError}
           <p class="promo-error">{promoError}</p>
