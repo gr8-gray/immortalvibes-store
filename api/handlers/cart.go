@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -23,14 +24,16 @@ type CartKV interface {
 
 // CartHandler handles cart CRUD endpoints.
 type CartHandler struct {
-	kv      CartKV
-	catalog PriceCatalog
+	kv       CartKV
+	catalog  PriceCatalog
+	variants VariantReader
 }
 
 // NewCartHandler constructs a CartHandler. catalog is the source of truth for
-// line item pricing; client-supplied amounts are never stored.
-func NewCartHandler(kv CartKV, catalog PriceCatalog) *CartHandler {
-	return &CartHandler{kv: kv, catalog: catalog}
+// line item pricing; client-supplied amounts are never stored. variants
+// canonicalizes variant labels against stock rows.
+func NewCartHandler(kv CartKV, catalog PriceCatalog, variants VariantReader) *CartHandler {
+	return &CartHandler{kv: kv, catalog: catalog, variants: variants}
 }
 
 // AddToCartRequest is the JSON body for POST /api/cart. Name, Currency and
@@ -120,6 +123,15 @@ func (h *CartHandler) AddToCart(w http.ResponseWriter, r *http.Request) {
 
 	cp, err := h.catalog.Lookup(r.Context(), req.PriceID)
 	if err != nil {
+		writePricingError(w, err)
+		return
+	}
+	rows, err := h.variants.GetVariantStocks(r.Context(), cp.ProductID)
+	if err != nil {
+		writePricingError(w, fmt.Errorf("variant stocks for %s: %w", cp.ProductID, err))
+		return
+	}
+	if size, err = canonicalVariant(rows, size); err != nil {
 		writePricingError(w, err)
 		return
 	}
@@ -276,7 +288,7 @@ func writePricingError(w http.ResponseWriter, err error) {
 	case errors.Is(err, ErrMixedCurrency):
 		msg = "item cannot be combined with cart contents"
 	case errors.Is(err, ErrCartFull):
-		msg = "cart is full"
+		msg = "too many items in cart; remove some and try again"
 	default:
 		log.Printf("pricing: lookup failed: %q", err.Error())
 		http.Error(w, "pricing temporarily unavailable", http.StatusBadGateway)

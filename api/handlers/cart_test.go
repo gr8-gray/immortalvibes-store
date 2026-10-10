@@ -44,9 +44,20 @@ func (m *inMemoryKV) DeleteCart(ctx context.Context, token string) error {
 	return nil
 }
 
+// fakeVariants serves variant stock rows by product ID. err, when set, is
+// returned for every read.
+type fakeVariants struct {
+	rows map[string][]store.VariantStockRow
+	err  error
+}
+
+func (f fakeVariants) GetVariantStocks(_ context.Context, productID string) ([]store.VariantStockRow, error) {
+	return f.rows[productID], f.err
+}
+
 func TestGetCart_NoToken(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 
 	r := chi.NewRouter()
 	r.Get("/api/cart/{token}", h.GetCart)
@@ -62,7 +73,7 @@ func TestGetCart_NoToken(t *testing.T) {
 
 func TestPostCart_CreatesNewCart(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 
 	body := handlers.AddToCartRequest{
 		PriceID:   "price_usd",
@@ -116,7 +127,7 @@ func TestPostCart_CreatesNewCart(t *testing.T) {
 
 func TestPostCart_ExistingToken_AppendsItem(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 
 	// Seed a cart
 	_ = kv.SetCart(context.Background(), &models.Cart{
@@ -155,7 +166,7 @@ func TestPostCart_ExistingToken_AppendsItem(t *testing.T) {
 
 func TestPutCart_UpdatesQuantity(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token: "upd-tok",
@@ -204,7 +215,7 @@ func postCart(t *testing.T, h *handlers.CartHandler, body handlers.AddToCartRequ
 
 func TestPostCart_IgnoresClientPricing(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 
 	w := postCart(t, h, handlers.AddToCartRequest{
 		PriceID:   "price_usd",
@@ -253,7 +264,7 @@ func TestPostCart_RejectsInvalidRequests(t *testing.T) {
 			kv := newInMemoryKV()
 			cat := newFakeCatalog()
 			cat.err = tc.catErr
-			h := handlers.NewCartHandler(kv, cat)
+			h := handlers.NewCartHandler(kv, cat, fakeVariants{})
 
 			w := postCart(t, h, tc.body, "")
 			if w.Code != tc.wantCode {
@@ -268,7 +279,7 @@ func TestPostCart_RejectsInvalidRequests(t *testing.T) {
 
 func TestPostCart_MergeCannotExceedMaxQuantity(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token: "tok",
 		LineItems: []models.LineItem{
@@ -287,7 +298,7 @@ func TestPostCart_MergeCannotExceedMaxQuantity(t *testing.T) {
 
 func TestPostCart_MergeRepricesExistingLine(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token: "tok",
 		LineItems: []models.LineItem{
@@ -307,7 +318,7 @@ func TestPostCart_MergeRepricesExistingLine(t *testing.T) {
 
 func TestPostCart_RejectsMixedCurrency(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token:     "tok",
 		LineItems: []models.LineItem{{PriceID: "price_usd", Currency: "usd", Amount: 2500, Quantity: 1}},
@@ -324,7 +335,7 @@ func TestPostCart_RejectsMixedCurrency(t *testing.T) {
 
 func TestPutCart_RejectsQuantityOverMax(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token:     "tok",
 		LineItems: []models.LineItem{{PriceID: "price_usd", Currency: "usd", Amount: 2500, Quantity: 1}},
@@ -363,7 +374,7 @@ func putCart(t *testing.T, h *handlers.CartHandler, token string, body handlers.
 
 func TestPutCart_EmptyPriceIDTargetsOnlyThatLine(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	_ = kv.SetCart(context.Background(), &models.Cart{
 		Token: "tok",
 		LineItems: []models.LineItem{
@@ -394,7 +405,7 @@ func TestPostCart_RepeatedAddsMergeOneLine(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			kv := newInMemoryKV()
-			h := handlers.NewCartHandler(kv, newFakeCatalog())
+			h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 			token := ""
 			for _, size := range tc.sizes {
 				w := postCart(t, h, handlers.AddToCartRequest{PriceID: "price_usd", Size: size, Quantity: 1}, token)
@@ -417,7 +428,7 @@ func TestPostCart_RepeatedAddsMergeOneLine(t *testing.T) {
 
 func TestPostCart_RejectsOversizedVariant(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	w := postCart(t, h, handlers.AddToCartRequest{PriceID: "price_usd", Size: strings.Repeat("x", 65), Quantity: 1}, "")
 	if w.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want 409", w.Code)
@@ -426,7 +437,7 @@ func TestPostCart_RejectsOversizedVariant(t *testing.T) {
 
 func TestPostCart_RejectsLineBeyondMax(t *testing.T) {
 	kv := newInMemoryKV()
-	h := handlers.NewCartHandler(kv, newFakeCatalog())
+	h := handlers.NewCartHandler(kv, newFakeCatalog(), fakeVariants{})
 	items := make([]models.LineItem, handlers.MaxCartLines)
 	for i := range items {
 		items[i] = models.LineItem{PriceID: "price_usd", Size: fmt.Sprintf("v%d", i), Currency: "usd", Amount: 2500, Quantity: 1}
@@ -440,5 +451,51 @@ func TestPostCart_RejectsLineBeyondMax(t *testing.T) {
 	w = postCart(t, h, handlers.AddToCartRequest{PriceID: "price_usd", Size: "v0", Quantity: 1}, "tok")
 	if w.Code != http.StatusOK {
 		t.Fatalf("merge into existing line: status = %d, want 200", w.Code)
+	}
+}
+
+func TestPostCart_VariantLabels(t *testing.T) {
+	tracked := fakeVariants{rows: map[string][]store.VariantStockRow{
+		"prod_1": {{Variant: "M", StockCount: 0}, {Variant: "Black / L", StockCount: 3}},
+	}}
+	cases := []struct {
+		name     string
+		variants fakeVariants
+		size     string
+		wantCode int
+		wantSize string
+	}{
+		{"exact tracked", tracked, "M", http.StatusOK, "M"},
+		{"case-folded to row spelling", tracked, "black / l", http.StatusOK, "Black / L"},
+		{"untracked label on tracked product", tracked, "XXL", http.StatusOK, "XXL"},
+		{"empty on tracked product", tracked, "", http.StatusConflict, ""},
+		{"zero-width character", tracked, "M\u200b", http.StatusConflict, ""},
+		{"control character", tracked, "M\x00", http.StatusConflict, ""},
+		{"empty on untracked product", fakeVariants{}, "", http.StatusOK, ""},
+		{"variant store failure", fakeVariants{err: errors.New("db down")}, "M", http.StatusBadGateway, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			kv := newInMemoryKV()
+			h := handlers.NewCartHandler(kv, newFakeCatalog(), tc.variants)
+
+			w := postCart(t, h, handlers.AddToCartRequest{PriceID: "price_usd", Size: tc.size, Quantity: 1}, "")
+			if w.Code != tc.wantCode {
+				t.Fatalf("status = %d, want %d: %s", w.Code, tc.wantCode, w.Body)
+			}
+			if tc.wantCode != http.StatusOK {
+				if len(kv.carts) != 0 {
+					t.Error("cart persisted on rejected request")
+				}
+				return
+			}
+			var cart models.Cart
+			if err := json.NewDecoder(w.Body).Decode(&cart); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if got := cart.LineItems[0].Size; got != tc.wantSize {
+				t.Errorf("size = %q, want %q", got, tc.wantSize)
+			}
+		})
 	}
 }

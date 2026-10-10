@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/immortalvibes/api/models"
 	"github.com/immortalvibes/api/store"
@@ -21,6 +22,8 @@ const (
 	MaxCartLines = 25
 	// maxVariantLen bounds the length of a variant label.
 	maxVariantLen = 64
+	// maxErrorNameLen bounds an item name echoed in an error response.
+	maxErrorNameLen = 80
 )
 
 var (
@@ -31,7 +34,8 @@ var (
 	ErrInvalidQuantity = errors.New("invalid quantity")
 	// ErrMixedCurrency means the cart contains prices in more than one currency.
 	ErrMixedCurrency = errors.New("mixed currencies")
-	// ErrInvalidVariant means the variant label is malformed.
+	// ErrInvalidVariant means the variant label is malformed, or missing for a
+	// product that tracks variants.
 	ErrInvalidVariant = errors.New("invalid variant")
 	// ErrCartFull means the cart already holds MaxCartLines line items.
 	ErrCartFull = errors.New("cart full")
@@ -46,6 +50,12 @@ type LineItemError struct {
 
 func (e *LineItemError) Error() string { return fmt.Sprintf("line item %q: %v", e.Name, e.Err) }
 func (e *LineItemError) Unwrap() error { return e.Err }
+
+// VariantReader reads per-variant stock rows. A product with no rows does not
+// track variants.
+type VariantReader interface {
+	GetVariantStocks(ctx context.Context, productID string) ([]store.VariantStockRow, error)
+}
 
 // CatalogPrice is the authoritative, sellable view of a single price.
 type CatalogPrice struct {
@@ -157,16 +167,38 @@ func validQuantity(q int) bool {
 }
 
 // normalizeVariant trims a client-supplied variant label and rejects
-// oversized values. Labels are not checked against variant stock rows: a
-// variant without a row is untracked and sellable, so membership cannot be
-// enforced without rejecting legitimate selections. MaxCartLines bounds what
-// distinct labels can do to a cart.
+// oversized labels and labels containing non-printable characters.
 func normalizeVariant(s string) (string, error) {
 	s = strings.TrimSpace(s)
 	if len(s) > maxVariantLen {
 		return "", ErrInvalidVariant
 	}
+	for _, r := range s {
+		if !unicode.IsPrint(r) {
+			return "", ErrInvalidVariant
+		}
+	}
 	return s, nil
+}
+
+// canonicalVariant resolves a normalized label against the product's variant
+// stock rows. For a product that tracks variants, an empty label is rejected
+// and a case-insensitive match returns the row's own spelling so stock checks
+// apply. A label with no row is returned as is: the storefront treats a
+// variant without a row as untracked and sellable.
+func canonicalVariant(rows []store.VariantStockRow, label string) (string, error) {
+	if len(rows) == 0 {
+		return label, nil
+	}
+	if label == "" {
+		return "", ErrInvalidVariant
+	}
+	for _, row := range rows {
+		if strings.EqualFold(row.Variant, label) {
+			return row.Variant, nil
+		}
+	}
+	return label, nil
 }
 
 // findVariant returns the row for variant, if present.
@@ -203,7 +235,7 @@ func repriceLineItems(ctx context.Context, catalog PriceCatalog, items []models.
 	for i := range items {
 		li := &items[i]
 		fail := func(err error) (string, error) {
-			return "", &LineItemError{Name: li.Name, Err: err}
+			return "", &LineItemError{Name: truncateName(li.Name), Err: err}
 		}
 		if li.PriceID == "" {
 			return fail(ErrPriceUnavailable)
@@ -230,4 +262,13 @@ func repriceLineItems(ctx context.Context, catalog PriceCatalog, items []models.
 		}
 	}
 	return currency, nil
+}
+
+// truncateName caps a stored item name for use in an error response.
+func truncateName(s string) string {
+	r := []rune(s)
+	if len(r) <= maxErrorNameLen {
+		return s
+	}
+	return string(r[:maxErrorNameLen])
 }
