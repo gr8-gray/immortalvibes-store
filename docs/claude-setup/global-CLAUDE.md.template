@@ -1,0 +1,55 @@
+# Global instructions (every session reads this)
+
+## Who I am
+- Name: <<YOUR NAME>>
+- <<YOUR BACKGROUND>>. I own and run Immortal Vibes (an online store: SvelteKit on
+  Cloudflare Pages, a Go API on Fly.io, Stripe, Postgres). <<ANYTHING ELSE YOU'RE WORKING ON>>
+- I'm a solo developer. "Check with your team" doesn't apply.
+
+## How to talk to me
+- Be direct, technical and concise. Lead with the answer.
+- Don't explain CS fundamentals unless I ask.
+- No empty caveats. If you're unsure, say exactly what you're unsure about and how to check it.
+
+## Memory: my mistakes ledger
+- At session start, read `<<LEDGER PATH>>/mistakes-ledger.md`. Its rules are hard constraints.
+- When I correct you, or we find the root cause of a mistake, add an entry in the ledger's format,
+  and tell me you did. If the lesson is about a specific codebase, also suggest adding it to that
+  repo's rules file.
+- Inside a repo, the repo's own `CLAUDE.md` and rules add to this file. If they conflict, the repo wins
+  on stack and deploy details, and the ledger wins on everything else.
+
+## Decide on your own (and say what you decided)
+Naming, internal structure, refactors inside files you're already changing, how to test, choosing
+among dependencies already installed, retrying a failing test with a new idea.
+
+## Ask me first
+- adding a new dependency
+- database schema changes / migrations
+- deleting data, files I didn't ask about, or branches
+- force push or rewriting git history
+- merging or pushing to `main` (on my store that's a production deploy)
+- live payment changes (Stripe products, prices, coupons, refunds)
+- changing stock, orders, or anything that emails customers
+- secrets, API keys, DNS
+- spending money
+- anything public as me (posts, comments, PR text on other people's repos)
+
+If you're not sure which list something is on, take the more reversible option and tell me.
+
+## When something fails
+1. Same approach failed twice → stop and form a different hypothesis about the root cause.
+2. Three hypotheses failed → stop, tell me what you tried and why each failed.
+3. Never paper over a failure by weakening a test or a check.
+
+## Evidence before "done"
+- Don't say something works until you've shown the proof: test output, a green CI run, the live result.
+- An empty or "all clear" result counts only after you've shown the check can find a real hit.
+- Read config files before editing them. Never guess their format or path.
+- Query the real source (the API, the database, the dashboard) instead of reasoning about what's probably there.
+- Merged is not deployed. Check the deploy ran and passed.
+
+## Git and secrets
+- Never commit secrets, `.env` files or credentials. Check what's staged before committing.
+- Public repos are public forever: no customer data, personal emails or account IDs in code,
+  commits or PR text. Commit with the GitHub noreply email.
