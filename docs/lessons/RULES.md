@@ -132,7 +132,7 @@ Add a rule when a mistake is corrected and its root cause is understood. Keep it
 
 ### IV-9: Test orders are never fulfilled and never counted
 - **Why:** `verify-live`, `rollback` and the weekly `e2e-live` each leave a real pending order named
-  "E2E GATE – DO NOT FULFILL" in production. Diagnostic orders have been created by hand too.
+  "E2E GATE - DO NOT FULFILL" in production. Diagnostic orders have been created by hand too.
 - **How:** exclude them from fulfilment, stock and every sales or conversion number.
 
 ### IV-10: Monitor every hostname customers use
