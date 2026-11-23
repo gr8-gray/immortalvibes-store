@@ -280,7 +280,7 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: worker/package-lock.json
+          cache-dependency-path: web/package-lock.json # worker/ was removed in PR #18; the old path broke this job
 
       - name: Redeploy Pages (previous good)
         # Path is relative to web/ (we cd there first) — must NOT be prefixed with
