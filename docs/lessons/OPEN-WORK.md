@@ -32,7 +32,7 @@ guess whether something works. Update this file when an item changes. Last full 
   reached the payment form (RULES IV-8). Measure sessions reaching `/checkout` versus paid orders, and exclude
   test orders (RULES IV-9).
 - **Size-and-colour combinations** aren't a stock dimension (stock is per product + one variant label).
-- `npm run check` has ~15 pre-existing TypeScript errors (Stripe element typing, transitions). They don't
+- `npm run check` has 14 pre-existing TypeScript errors (measured 2026-11-22; Svelte component exports, GSAP tween types). They don't
   break anything. Clean up when convenient.
 
 ## Repo housekeeping

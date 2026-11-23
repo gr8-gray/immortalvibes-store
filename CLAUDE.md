@@ -26,7 +26,7 @@ cd api && go test ./...                  # full API suite, hermetic (no live ser
 cd api && go run .                       # needs env vars exported; see api/.env.example (no .env auto-load)
 cd web && npm install && npm run dev
 cd web && npm run build && npm run e2e:local   # Playwright vs vite preview + mocked API
-cd web && npm run check                  # svelte-check; ~15 pre-existing TS errors, don't chase them unprompted
+cd web && npm run check                  # svelte-check; 14 pre-existing TS errors (2026-11-22), don't chase them unprompted
 ```
 
 - **Never run `npm run e2e:live` locally.** It hits the production site and creates a real pending order. It

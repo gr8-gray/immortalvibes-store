@@ -73,6 +73,7 @@ go test ./...
    to Pages.
 
 Both rollback paths have drill inputs (`rollback_drill`, `api_rollback_drill`) to exercise them on demand.
+Current proof status of each safety net is tracked in [`docs/lessons/OPEN-WORK.md`](docs/lessons/OPEN-WORK.md).
 This deploy-then-verify-then-rollback loop is the part of this project worth reading closely if
 you're evaluating CD design — see the comments in `deploy.yml` for the specifics (test gate,
 rollback drill dispatch input, live verification).
