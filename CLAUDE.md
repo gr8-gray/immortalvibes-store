@@ -1,8 +1,10 @@
 # CLAUDE.md — Immortal Vibes
 
-Instructions for Claude Code sessions in this repo. Read this, then the rules in
-[`docs/lessons/RULES.md`](docs/lessons/RULES.md). They are hard constraints. Known gaps and unfinished work
-are in [`docs/lessons/OPEN-WORK.md`](docs/lessons/OPEN-WORK.md).
+Instructions for Claude Code sessions in this repo. The codebase rules (hard constraints) and the known
+gaps are imported below, so they load with this file:
+
+@docs/lessons/RULES.md
+@docs/lessons/OPEN-WORK.md
 
 ## What this is
 
@@ -31,7 +33,9 @@ cd web && npm run check                  # svelte-check; 14 pre-existing TS erro
 
 - **Never run `npm run e2e:live` locally.** It hits the production site and creates a real pending order. It
   runs only in CI: after every deploy (`verify-live`), weekly, or by manual dispatch of Storefront E2E.
-- **There is no staging stack.** Production is the only live environment.
+- **There is no staging stack.** Production is the only live environment. Pages *preview* deployments are not
+  a sandbox either: previews call the production API (`GO_API` in `web/src/routes/api/[...path]/+server.ts`),
+  so a checkout on a preview creates real orders and moves real stock.
 
 ## How a change reaches production
 
@@ -39,7 +43,7 @@ Only one route: `.github/workflows/deploy.yml`, on push to `main`.
 
 1. `test-api`: the whole Go suite. Everything below waits on it.
 2. `deploy-api` and `deploy-pages` run **in parallel**:
-   - `deploy-api` skips itself when `api/` is unchanged. Otherwise it records the running image, runs
+   - `deploy-api` still shows green when `api/` is unchanged, but its *Deploy API to Fly* step is skipped. Otherwise it records the running image, runs
      `flyctl deploy`, and runs `.github/scripts/smoke-api.sh`. **If the smoke fails it rolls back to the
      recorded image.**
    - `deploy-pages` builds `web/` and deploys to Cloudflare Pages.
@@ -50,8 +54,9 @@ Only one route: `.github/workflows/deploy.yml`, on push to `main`.
 Cloudflare Pages' Git integration has production deploys disabled. An idle `github:push` record per push is
 normal (RULES IV-2). Storefront E2E (`storefront-e2e.yml`) also runs `e2e-local` on PRs that touch `web/`.
 
-**"Did it work?" checklist** (STOP 1). In the `deploy` run: every job **ran**, not skipped, and passed;
-for API changes, `deploy-api`'s *Smoke the API* step passed; `verify-live` passed. Then look at the live site.
+**"Did it work?" checklist** (STOP 1). In the `deploy` run, every job except `rollback` ran and passed
+(`rollback` is skipped on every healthy push). For API changes, open `deploy-api` and confirm the *Deploy API to
+Fly* and *Smoke the API* steps both ran, not skipped. `verify-live` passed. Then look at the live site.
 
 **Config is a second route.** `fly secrets set` creates a new production release outside the pipeline, and
 the image rollback can't undo it (RULES IV-17). For a secret rotation: ask first, change one value, check
@@ -75,9 +80,10 @@ FULFILL"** in production. Exclude these from fulfilment, stock and every sales o
 
 - **Fly secrets** (read in `api/config/config.go`): `DATABASE_URL`, `PROXY_SECRET`, `ADMIN_SECRET`, `STRIPE_SECRET_KEY`,
   `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`, `SHIPPO_API_KEY`, `OWNER_EMAIL`, `FROM_NAME`, `FROM_STREET1`,
-  `FROM_CITY`, `FROM_STATE`, `FROM_ZIP`, `FROM_PHONE`, `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_KV_CARTS_ID`,
+  `FROM_CITY`, `FROM_STATE`, `FROM_ZIP`, `FROM_COUNTRY` (optional, default US), `FROM_PHONE`, `CF_ACCOUNT_ID`, `CF_API_TOKEN`, `CF_KV_CARTS_ID`,
   `R2_PUBLIC_URL`, `NTFY_URL`, `NTFY_TOPIC`.
-- **Cloudflare Pages env:** `PROXY_SECRET` (must match Fly's).
+- **Cloudflare Pages env:** `PROXY_SECRET` (must match Fly's), `PUBLIC_STRIPE_PUBLISHABLE_KEY` (rotate it
+  together with `STRIPE_SECRET_KEY`), `PUBLIC_API_URL`.
 - **GitHub Actions:** `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `FLY_API_TOKEN`, plus optional alert
   secrets `NTFY_URL`, `NTFY_TOPIC`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
 
@@ -88,6 +94,7 @@ choosing among installed dependencies.
 
 **Ask first:**
 - merging to `main` (= production deploy)
+- dispatching any workflow that touches production (`deploy` drills, Storefront E2E `run_live`)
 - live Stripe changes (products, prices, coupons, refunds)
 - stock writes via `PUT /api/admin/products/{id}/stock`
 - database migrations

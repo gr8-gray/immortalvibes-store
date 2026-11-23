@@ -30,7 +30,8 @@ account, not a shared one.
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+**Windows (PowerShell):** install [Git for Windows](https://git-scm.com/downloads/win) first. Claude Code on
+native Windows uses its Git Bash. Then:
 ```powershell
 irm https://claude.ai/install.ps1 | iex
 ```
@@ -56,21 +57,37 @@ Copy `global-CLAUDE.md.template` into your Claude folder as `CLAUDE.md`:
 | Windows | `%USERPROFILE%\.claude\CLAUDE.md` |
 
 ```bash
+# macOS / Linux / WSL
 mkdir -p ~/.claude && cp docs/claude-setup/global-CLAUDE.md.template ~/.claude/CLAUDE.md
 ```
 
-Open it and fill in the three `<<...>>` placeholders at the top: your name, what you're working on,
-and where your ledger lives.
+```powershell
+# Windows (PowerShell)
+New-Item -ItemType Directory -Force "$HOME\.claude" | Out-Null
+Copy-Item docs\claude-setup\global-CLAUDE.md.template "$HOME\.claude\CLAUDE.md"
+```
+
+Open it and fill in the four `<<...>>` placeholders at the top: your name, your background, what
+you're working on, and where your ledger lives.
 
 ## 4. Set up your mistakes ledger
 
 Keep it in a **private** git repo of your own, so it survives a new laptop and has history:
 
 ```bash
+# macOS / Linux / WSL
 mkdir -p ~/dev/claude-memory && cp docs/claude-setup/mistakes-ledger.template.md ~/dev/claude-memory/mistakes-ledger.md
 cd ~/dev/claude-memory && git init && git add . && git commit -m "ledger: start"
-# then create a PRIVATE repo on GitHub and push it
 ```
+
+```powershell
+# Windows (PowerShell)
+New-Item -ItemType Directory -Force "$HOME\dev\claude-memory" | Out-Null
+Copy-Item docs\claude-setup\mistakes-ledger.template.md "$HOME\dev\claude-memory\mistakes-ledger.md"
+Set-Location "$HOME\dev\claude-memory"; git init; git add .; git commit -m "ledger: start"
+```
+
+Then create a **private** repo on GitHub and push it.
 
 Put that path in the `<<LEDGER PATH>>` placeholder in your `CLAUDE.md`.
 
@@ -84,8 +101,9 @@ From the root of your clone:
 claude
 ```
 
-The repo's own `CLAUDE.md` and `docs/lessons/` (the codebase's rules, past incidents and open work) load
-automatically in every session you start inside it.
+The repo's `CLAUDE.md` loads automatically in every session you start inside it, and it imports
+`docs/lessons/RULES.md` and `docs/lessons/OPEN-WORK.md`. The incident write-ups in `docs/lessons/incidents/`
+are read on demand.
 
 A good first prompt: *"Read CLAUDE.md and docs/lessons/RULES.md, then explain how a change gets to
 production and how I know it worked."*
